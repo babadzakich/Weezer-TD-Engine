@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Weezer-Tower-Defence", "Weezer-Tower-Defence\Weezer-Tower-Defence.csproj", "{D9A8479D-3F33-4730-8CE4-FCB02BDE4D45}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D9A8479D-3F33-4730-8CE4-FCB02BDE4D45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9A8479D-3F33-4730-8CE4-FCB02BDE4D45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9A8479D-3F33-4730-8CE4-FCB02BDE4D45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9A8479D-3F33-4730-8CE4-FCB02BDE4D45}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
