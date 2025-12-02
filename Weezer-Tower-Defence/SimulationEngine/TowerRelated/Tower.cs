@@ -1,17 +1,18 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+namespace SimulationEngine.TowerRelated;
 
-class Tower
+public class Tower
 {
     public Vector2 Position { get; set; }
-    private TowerType _type;
+    private readonly TowerConfig _type;
     // private List<Enemy> enemiesInRange;
     private float _fireCooldown;
 
     private Texture2D _sprite;
 
-    public Tower(TowerType type, Vector2 position)
+    public Tower(TowerConfig type, Vector2 position)
     {
         _type = type;
         Position = position;

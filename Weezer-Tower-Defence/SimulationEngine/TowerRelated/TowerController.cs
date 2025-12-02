@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-class TowerController : Controller
+namespace SimulationEngine.TowerRelated;
+
+public class TowerController : Controller
 {
-    private readonly List<Tower> towers;
+    public readonly List<Tower> towers;
     private static TowerController _instance;
 
     private readonly Game _engine;

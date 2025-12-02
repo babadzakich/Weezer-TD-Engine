@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
 
-namespace SimulationEngine.BulletRelated.ProjectileConfig;
+namespace SimulationEngine.BulletRelated.DamageDealers;
 
 public class ProjectileConfig : DamageDealerConfig
 {
