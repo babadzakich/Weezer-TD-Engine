@@ -1,24 +1,24 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-class TowerManager : Manager
+class TowerController : Controller
 {
-    private List<Tower> towers;
-    private static TowerManager _instance;
+    private readonly List<Tower> towers;
+    private static TowerController _instance;
 
-    private Game _engine;
-
-    private TowerManager(Game engine)
+    private readonly Game _engine;
+    
+    private TowerController(Game engine)
     {
         towers = new List<Tower>();
         _engine = engine;
     }
 
-    public static TowerManager GetInstance(Game engine)
+    public static TowerController GetInstance(Game engine)
     {
         if (_instance == null)
         {
-            _instance = new TowerManager(engine);
+            _instance = new TowerController(engine);
         }
         return _instance;
     }
@@ -28,11 +28,11 @@ class TowerManager : Manager
         towers.Add(tower);
     }
 
-    public void Update(double deltaTime)
+    public void Update(GameTime deltaTime)
     {
         foreach (var tower in towers)
         {
-            tower.Update(deltaTime, );
+            tower.Update(deltaTime);
         }
     }
 

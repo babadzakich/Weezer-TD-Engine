@@ -1,6 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SimulationEngine.BulletRelated;
+using SimulationEngine.BulletRelated.ProjectileConfig;
 
 namespace Weezer_Tower_Defence;
 
@@ -8,6 +10,9 @@ public class Game1 : Game
 {
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
+    private Texture2D _bulletTexture;
+
+    private DamageDealerController damageDealerController;
 
     public Game1()
     {
@@ -18,7 +23,14 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        // TODO: Add your initialization logic here
+        damageDealerController = DamageDealerController.GetInstance(this);
+        damageDealerController.AddDamageDealer(
+            new DamageDealer(
+                ProjectileConfig.Default,
+                new Vector2(100, 100),
+                new Vector2(1, 1)
+            )
+        );
 
         base.Initialize();
     }
@@ -27,7 +39,17 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        // TODO: use this.Content to load your game content here
+        // Создаём временную текстуру для пули (белый квадрат 10x10)
+        _bulletTexture = new Texture2D(GraphicsDevice, 10, 10);
+        Color[] data = new Color[10 * 10];
+        for (int i = 0; i < data.Length; i++) data[i] = Color.Red;
+        _bulletTexture.SetData(data);
+
+        // Присваиваем текстуру всем пулям в контроллере
+        foreach (var bullet in damageDealerController.damageDealers)
+        {
+            bullet.Texture = _bulletTexture;
+        }
     }
 
     protected override void Update(GameTime gameTime)
@@ -35,7 +57,7 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
 
-        // TODO: Add your update logic here
+        damageDealerController.Update(gameTime);
 
         base.Update(gameTime);
     }
@@ -44,7 +66,9 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        // TODO: Add your drawing code here
+        _spriteBatch.Begin();
+        damageDealerController.Draw(_spriteBatch);
+        _spriteBatch.End();
 
         base.Draw(gameTime);
     }
