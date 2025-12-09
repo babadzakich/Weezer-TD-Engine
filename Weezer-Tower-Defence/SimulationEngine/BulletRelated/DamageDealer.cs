@@ -6,55 +6,42 @@ namespace SimulationEngine.BulletRelated;
 public class DamageDealer
 {
     public DamageDealerConfig Config { get; }
+    public IDamageDealerBehavior Behavior { get; }
     public Texture2D Texture { get; set; }
 
-    private Vector2 position;
-    private Vector2 direction;
-    private float rotation;
-    private readonly DamageDealerController controller = DamageDealerController.GetInstance(null);
+    public Vector2 position;
+    public bool IsActive = true;
+    public Vector2 Direction;
+    public float Rotation;
+    public readonly DamageDealerController controller = DamageDealerController.GetInstance(null);
 
-    public DamageDealer(DamageDealerConfig config, Vector2 startPosition, Vector2 direction)
+    public DamageDealer(DamageDealerConfig config, IDamageDealerBehavior behavior, Vector2 startPosition, Vector2 direction)
     {
         Config = config;
+        Behavior = behavior;
         position = startPosition;
-        this.direction = Vector2.Normalize(direction);
-        rotation = (float)System.Math.Atan2(this.direction.Y, this.direction.X);
+        Direction = Vector2.Normalize(direction);
+        Rotation = (float)System.Math.Atan2(Direction.Y, Direction.X);
     }
 
 
-    public void Update(GameTime deltaTime)
-    {
-        Config.ApplyBehavior(this, deltaTime);
-
-        if (position.X < 0 || position.Y < 0)
+    public void Update(GameTime gameTime)
         {
-            controller.RemoveDamageDealer(this);
+            if (!IsActive) return;
+            Behavior.Update(this, gameTime);
         }
-    }
 
-    public void Draw(SpriteBatch spriteBatch)
-    {
-        if (Texture != null)
+        public void Draw(SpriteBatch spriteBatch)
         {
-            Config.Draw(spriteBatch, Texture, position, rotation);
+            if (!IsActive || Texture == null) return;
+
+            Vector2 origin = new Vector2(Texture.Width / 2f, Texture.Height / 2f);
+            spriteBatch.Draw(Texture, Position, null, Config.TintColor, Rotation, origin, Config.Scale, SpriteEffects.None, 0f);
         }
-    }
     
     public Vector2 Position
     {
         get => position;
         set => position = value;
-    }
-    
-    public Vector2 Direction
-    {
-        get => direction;
-        set => direction = value;
-    }
-    
-    public float Rotation
-    {
-        get => rotation;
-        set => rotation = value;
     }
 }
