@@ -90,38 +90,13 @@ public class Path
             for (int j = 0; j < SplineResolution; j++)
             {
                 float t = j / (float)SplineResolution;
-                Vector2 point = CatmullRom(p0, p1, p2, p3, t);
+                Vector2 point = Vector2.CatmullRom(p0, p1, p2, p3, t);
                 _smoothPath.Add(point);
             }
         }
         
         // Добавляем последнюю точку
         _smoothPath.Add(Waypoints[Waypoints.Count - 1]);
-    }
-
-    /// <summary>
-    /// Catmull-Rom интерполяция
-    /// </summary>
-    private Vector2 CatmullRom(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3, float t)
-    {
-        float t2 = t * t;
-        float t3 = t2 * t;
-
-        float x = 0.5f * (
-            (2f * p1.X) +
-            (-p0.X + p2.X) * t +
-            (2f * p0.X - 5f * p1.X + 4f * p2.X - p3.X) * t2 +
-            (-p0.X + 3f * p1.X - 3f * p2.X + p3.X) * t3
-        );
-
-        float y = 0.5f * (
-            (2f * p1.Y) +
-            (-p0.Y + p2.Y) * t +
-            (2f * p0.Y - 5f * p1.Y + 4f * p2.Y - p3.Y) * t2 +
-            (-p0.Y + 3f * p1.Y - 3f * p2.Y + p3.Y) * t3
-        );
-
-        return new Vector2(x, y);
     }
 
     /// <summary>

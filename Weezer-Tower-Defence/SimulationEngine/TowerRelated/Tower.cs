@@ -5,41 +5,30 @@ namespace SimulationEngine.TowerRelated;
 
 public class Tower
 {
+    public TowerConfig Config { get; private set; }
+    public ITowerBehavior Behavior { get; private set; }
     public Vector2 Position { get; set; }
-    private readonly TowerConfig _type;
-    // private List<Enemy> enemiesInRange;
-    private float _fireCooldown;
+    public Texture2D Texture { get; set; }
+    
+    public int UpgradeLevel { get; set; }
 
-    private Texture2D _sprite;
-
-    public Tower(TowerConfig type, Vector2 position)
+    public Tower(TowerConfig config, Vector2 position)
     {
-        _type = type;
+        Config = config;
         Position = position;
-        // enemiesInRange = new List<Enemy>();
-        _fireCooldown = 0f;
+        UpgradeLevel = 0;
+        
+        Behavior = TowerBehaviorRegistry.Instance.Create(config.BehaviorType);
+        Behavior.Initialize(this, config);
     }
 
     public void Update(GameTime gameTime)
     {
-     _fireCooldown -= (float)gameTime.ElapsedGameTime.TotalSeconds;
-     if (_fireCooldown <= 0f)
-        {
-            
-        }   
+        Behavior.Update(this, gameTime);
     }
-    public void Draw(SpriteBatch sb)
+
+    public void Draw(SpriteBatch spriteBatch)
     {
-        if (_sprite != null)
-            sb.Draw(_sprite, Position - new Vector2(_sprite.Width/2, _sprite.Height/2), Color.White);
-        else 
-        {
-            // Draw a placeholder rectangle if the sprite is not loaded
-            Texture2D placeholder = new Texture2D(sb.GraphicsDevice, 40, 40);
-            Color[] data = new Color[40 * 40];
-            for (int i = 0; i < data.Length; ++i) data[i] = Color.Gray;
-            placeholder.SetData(data);
-            sb.Draw(placeholder, Position - new Vector2(20, 20), Color.White);
-        }
+        Behavior.Draw(this, spriteBatch, Texture);
     }
 }

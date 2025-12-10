@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 namespace SimulationEngine.BulletRelated;
 
 
-public abstract class DamageDealerConfig
+public class DamageDealerConfig
 {
     public int Damage { get; set; }
         public float Speed { get; set; }

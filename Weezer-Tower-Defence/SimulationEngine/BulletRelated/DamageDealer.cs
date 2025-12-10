@@ -44,4 +44,10 @@ public class DamageDealer
         get => position;
         set => position = value;
     }
+
+    public bool IsOutOfBounds(Rectangle bounds)
+    {
+        return Position.X < bounds.Left || Position.X > bounds.Right ||
+               Position.Y < bounds.Top || Position.Y > bounds.Bottom;
+    }
 }

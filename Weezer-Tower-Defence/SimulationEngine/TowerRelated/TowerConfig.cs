@@ -1,65 +1,64 @@
-using SimulationEngine.BulletRelated;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
+using System.Collections.Generic;
+using System;
 
 namespace SimulationEngine.TowerRelated;
 
 /// <summary>
 /// Базовый класс типа башни. Наследуйте от него для создания своих башен в плагинах.
 /// </summary>
-public abstract class TowerConfig
+public class TowerConfig
 {
-    public string Id { get; } // уникальный идентификатор типа башни
-    public int Cost { get; }
-    public float Range { get; } // радиус обнаружения в пикселях
-    public float FireRate { get; } // выстрелов в секунду
-    public DamageDealerConfig ProjectileConfig { get; }
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public int Cost { get; set; }
+    public float Range { get; set; }
+    public float FireRate { get; set; }
+    public float Damage { get; set; }
     
-    // Визуальные параметры
-    public string TexturePath { get; protected set; }
-    public Color TintColor { get; protected set; }
-    public float Scale { get; protected set; }
+    // Визуальные данные
+    public string TexturePath { get; set; }
+    public string TintColorHex { get; set; } // Цвет в формате #RRGGBBAA
+    public float Scale { get; set; }
+    
+    // Данные о снаряде
+    public string ProjectileConfigId { get; set; }
+    
+    // Стратегия поведения (имя класса)
+    public string BehaviorType { get; set; } // Например: "BasicTowerBehavior", "SniperTowerBehavior"
+    
+    // Дополнительные параметры (гибкие данные для разных типов башен)
+    public Dictionary<string, object> CustomParameters { get; set; }
 
-    protected TowerConfig(string id, int cost, float range, float fireRate, 
-        DamageDealerConfig projectileConfig, string texturePath = null, 
-        Color? tintColor = null, float scale = 1f)
+    public TowerConfig()
     {
-        Id = id;
-        Cost = cost;
-        Range = range;
-        FireRate = fireRate;
-        ProjectileConfig = projectileConfig;
-        TexturePath = texturePath;
-        TintColor = tintColor ?? Color.White;
-        Scale = scale;
+        Scale = 1f;
+        CustomParameters = new Dictionary<string, object>();
     }
-
+    
     /// <summary>
-    /// Переопределите для кастомного поведения башни (например, особая логика стрельбы)
+    /// Получить цвет из hex строки
     /// </summary>
-    public virtual void OnFire(Tower tower, Vector2 targetPosition)
+    public Color GetTintColor()
     {
-        // Базовая логика стрельбы - создаём пулю
-    }
-
-    /// <summary>
-    /// Переопределите для кастомной логики выбора цели
-    /// </summary>
-    public virtual Vector2? FindTarget(Tower tower, object[] enemies)
-    {
-        // Базовая логика - ближайший враг в радиусе
-        return null;
-    }
-
-    /// <summary>
-    /// Переопределите для кастомной отрисовки башни
-    /// </summary>
-    public virtual void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 position)
-    {
-        if (texture != null)
+        if (string.IsNullOrEmpty(TintColorHex))
+            return Color.White;
+            
+        try
         {
-            Vector2 origin = new Vector2(texture.Width / 2f, texture.Height / 2f);
-            spriteBatch.Draw(texture, position, null, TintColor, 0f, origin, Scale, SpriteEffects.None, 0f);
+            // Парсим #RRGGBB или #RRGGBBAA
+            string hex = TintColorHex.TrimStart('#');
+            
+            byte r = Convert.ToByte(hex.Substring(0, 2), 16);
+            byte g = Convert.ToByte(hex.Substring(2, 2), 16);
+            byte b = Convert.ToByte(hex.Substring(4, 2), 16);
+            byte a = hex.Length == 8 ? Convert.ToByte(hex.Substring(6, 2), 16) : (byte)255;
+            
+            return new Color(r, g, b, a);
+        }
+        catch
+        {
+            return Color.White;
         }
     }
 }
