@@ -56,10 +56,10 @@ public static class SaveConverter
         {
             saveData.Towers.Add(new TowerData
             {
-                TowerTypeId = tower.Config.Id,
+                TowerTypeId = tower.Behavior.Id,
                 PositionX = tower.Position.X,
                 PositionY = tower.Position.Y,
-                UpgradeLevel = 0, // TODO: добавить систему апгрейдов
+                UpgradeLevel = tower.UpgradeLevel,
                 FireCooldown = 0 // Можно не сохранять, не критично
             });
         }
@@ -75,7 +75,7 @@ public static class SaveConverter
         GameManager gameManager,
         GameMap map,
         TowerController towerController,
-        Dictionary<string, TowerConfig> towerConfigs) // Реестр доступных типов башен
+        Dictionary<string, ITowerBehavior> towerBehaviors) // Реестр доступных типов башен
     {
         if (saveData == null) return;
         
@@ -117,10 +117,10 @@ public static class SaveConverter
         // Восстанавливаем башни
         foreach (var towerData in saveData.Towers)
         {
-            if (towerConfigs.TryGetValue(towerData.TowerTypeId, out TowerConfig config))
+            if (towerBehaviors.TryGetValue(towerData.TowerTypeId, out ITowerBehavior behavior))
             {
                 var tower = new Tower(
-                    config,
+                    behavior,
                     new Vector2(towerData.PositionX, towerData.PositionY)
                 );
                 towerController.AddTower(tower);
@@ -131,13 +131,13 @@ public static class SaveConverter
     /// <summary>
     /// Создать реестр доступных типов башен
     /// </summary>
-    public static Dictionary<string, TowerConfig> CreateTowerConfigRegistry(params TowerConfig[] configs)
+    public static Dictionary<string, ITowerBehavior> CreateTowerBehaviorRegistry(params ITowerBehavior[] behaviors)
     {
-        var registry = new Dictionary<string, TowerConfig>();
+        var registry = new Dictionary<string, ITowerBehavior>();
         
-        foreach (var config in configs)
+        foreach (var behavior in behaviors)
         {
-            registry[config.Id] = config;
+            registry[behavior.Id] = behavior;
         }
         
         return registry;

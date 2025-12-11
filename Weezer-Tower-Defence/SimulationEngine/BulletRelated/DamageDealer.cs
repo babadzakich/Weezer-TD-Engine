@@ -5,7 +5,6 @@ namespace SimulationEngine.BulletRelated;
 
 public class DamageDealer
 {
-    public DamageDealerConfig Config { get; }
     public IDamageDealerBehavior Behavior { get; }
     public Texture2D Texture { get; set; }
 
@@ -15,9 +14,8 @@ public class DamageDealer
     public float Rotation;
     public readonly DamageDealerController controller = DamageDealerController.GetInstance(null);
 
-    public DamageDealer(DamageDealerConfig config, IDamageDealerBehavior behavior, Vector2 startPosition, Vector2 direction)
+    public DamageDealer(IDamageDealerBehavior behavior, Vector2 startPosition, Vector2 direction)
     {
-        Config = config;
         Behavior = behavior;
         position = startPosition;
         Direction = Vector2.Normalize(direction);
@@ -33,10 +31,7 @@ public class DamageDealer
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            if (!IsActive || Texture == null) return;
-
-            Vector2 origin = new Vector2(Texture.Width / 2f, Texture.Height / 2f);
-            spriteBatch.Draw(Texture, Position, null, Config.TintColor, Rotation, origin, Config.Scale, SpriteEffects.None, 0f);
+            this.Behavior.Draw(this, spriteBatch);
         }
     
     public Vector2 Position

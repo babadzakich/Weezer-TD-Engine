@@ -122,24 +122,24 @@ public class GameManager
         UIManager.HideTowerSelection();
     }
 
-    private void OnTowerSelectedFromPanel(TowerConfig towerConfig)
+    private void OnTowerSelectedFromPanel(ITowerBehavior towerBehavior)
     {
         // Проверяем, что у нас выбрана зона для строительства
         if (_selectedBuildZone == null) return;
         
         // Проверяем, хватает ли денег
-        if (!UIManager.CanAffordTower(towerConfig))
+        if (!UIManager.CanAffordTower(towerBehavior))
         {
             // TODO: показать сообщение о недостатке средств
             return;
         }
         
-        // Создаём башню в выбранной зоне
-        var tower = new Tower(towerConfig, _selectedBuildZone.Position);
+        // Создаём башню с выбранным поведением
+        var tower = new Tower(towerBehavior, _selectedBuildZone.Position);
         TowerController.AddTower(tower);
         
         // Списываем деньги и занимаем зону
-        UIManager.PurchaseTower(towerConfig);
+        UIManager.PurchaseTower(towerBehavior);
         _selectedBuildZone.Occupy();
         
         // Закрываем панель выбора

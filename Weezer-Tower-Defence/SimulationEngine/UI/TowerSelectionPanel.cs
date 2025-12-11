@@ -14,9 +14,9 @@ public class TowerSelectionPanel : UIElement
 {
     public List<TowerButton> TowerButtons { get; private set; }
     public Color BackgroundColor { get; set; }
-    public TowerConfig SelectedTower { get; private set; }
+    public ITowerBehavior SelectedTower { get; private set; }
     
-    public event Action<TowerConfig> OnTowerSelected;
+    public event Action<ITowerBehavior> OnTowerSelected;
 
     public TowerSelectionPanel(Vector2 position, Vector2 size) : base(position, size)
     {
@@ -24,26 +24,26 @@ public class TowerSelectionPanel : UIElement
         TowerButtons = new List<TowerButton>();
     }
 
-    public void AddTowerOption(TowerConfig towerConfig, Texture2D icon = null)
+    public void AddTowerOption(ITowerBehavior towerBehavior, Texture2D icon = null)
     {
         int index = TowerButtons.Count;
         Vector2 buttonPos = Position + new Vector2(10, 10 + index * 90);
         Vector2 buttonSize = new Vector2(Size.X - 20, 80);
         
-        var button = new TowerButton(buttonPos, buttonSize, towerConfig, icon);
-        button.OnClick += () => SelectTower(towerConfig);
+        var button = new TowerButton(buttonPos, buttonSize, towerBehavior, icon);
+        button.OnClick += () => SelectTower(towerBehavior);
         TowerButtons.Add(button);
     }
 
-    private void SelectTower(TowerConfig towerConfig)
+    private void SelectTower(ITowerBehavior towerBehavior)
     {
-        SelectedTower = towerConfig;
-        OnTowerSelected?.Invoke(towerConfig);
+        SelectedTower = towerBehavior;
+        OnTowerSelected?.Invoke(towerBehavior);
         
         // Подсвечиваем выбранную кнопку
         foreach (var btn in TowerButtons)
         {
-            btn.IsSelected = (btn.TowerConfig == towerConfig);
+            btn.IsSelected = (btn.TowerBehavior == towerBehavior);
         }
     }
 
@@ -97,15 +97,15 @@ public class TowerSelectionPanel : UIElement
 /// </summary>
 public class TowerButton : Button
 {
-    public TowerConfig TowerConfig { get; }
+    public ITowerBehavior TowerBehavior { get; }
     public Texture2D Icon { get; set; }
     public bool IsSelected { get; set; }
     public Color SelectedColor { get; set; }
 
-    public TowerButton(Vector2 position, Vector2 size, TowerConfig towerConfig, Texture2D icon) 
+    public TowerButton(Vector2 position, Vector2 size, ITowerBehavior towerBehavior, Texture2D icon) 
         : base(position, size, "")
     {
-        TowerConfig = towerConfig;
+        TowerBehavior = towerBehavior;
         Icon = icon;
         SelectedColor = new Color(100, 150, 100);
     }
@@ -127,11 +127,11 @@ public class TowerButton : Button
         if (font != null)
         {
             Vector2 textPos = Position + new Vector2(10, 10);
-            spriteBatch.DrawString(font, TowerConfig.Id, textPos, TextColor);
+            spriteBatch.DrawString(font, TowerBehavior.Id, textPos, TextColor);
             textPos.Y += 20;
-            spriteBatch.DrawString(font, $"Cost: ${TowerConfig.Cost}", textPos, Color.Gold);
+            spriteBatch.DrawString(font, $"Cost: ${TowerBehavior.Cost}", textPos, Color.Gold);
             textPos.Y += 20;
-            spriteBatch.DrawString(font, $"Range: {TowerConfig.Range}", textPos, Color.Cyan);
+            spriteBatch.DrawString(font, $"Range: {TowerBehavior.Range}", textPos, Color.Cyan);
         }
     }
 

@@ -72,9 +72,9 @@ public class UIManager
     /// <summary>
     /// Добавить доступную для постройки башню
     /// </summary>
-    public void AddAvailableTower(TowerConfig towerConfig)
+    public void AddAvailableTower(ITowerBehavior towerBehavior)
     {
-        TowerSelectionPanel.AddTowerOption(towerConfig);
+        TowerSelectionPanel.AddTowerOption(towerBehavior);
     }
 
     /// <summary>
@@ -141,19 +141,19 @@ public class UIManager
     /// <summary>
     /// Проверить, можно ли купить башню
     /// </summary>
-    public bool CanAffordTower(TowerConfig towerConfig)
+    public bool CanAffordTower(ITowerBehavior towerBehavior)
     {
-        return Money >= towerConfig.Cost;
+        return Money >= towerBehavior.Cost;
     }
 
     /// <summary>
     /// Купить башню (списать деньги)
     /// </summary>
-    public bool PurchaseTower(TowerConfig towerConfig)
+    public bool PurchaseTower(ITowerBehavior towerBehavior)
     {
-        if (CanAffordTower(towerConfig))
+        if (CanAffordTower(towerBehavior))
         {
-            Money -= towerConfig.Cost;
+            Money -= towerBehavior.Cost;
             return true;
         }
         return false;
@@ -164,7 +164,7 @@ public class UIManager
     /// </summary>
     public void SellTower(Tower tower, float refundPercent = 0.7f)
     {
-        int refund = (int)(tower.Config.Cost * refundPercent);
+        int refund = (int)(tower.Behavior.Cost * refundPercent);
         Money += refund;
     }
 

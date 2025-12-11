@@ -34,9 +34,8 @@ public class TowerBehaviorRegistry
     private void RegisterDefaultBehaviors()
     {
         Register("BasicTowerBehavior", () => new BasicTowerBehavior());
-        Register("SniperTowerBehavior", () => new SniperTowerBehavior());
-        Register("AoeTowerBehavior", () => new AoeTowerBehavior());
         Register("LaserTowerBehavior", () => new LaserTowerBehavior());
+        // Другие поведения можно добавить позже или через плагины
     }
 
     /// <summary>

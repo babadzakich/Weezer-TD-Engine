@@ -2,9 +2,10 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated;
-using SimulationEngine.BulletRelated.DamageDealers;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.MapRelated;
+using SimulationEngine.BulletRelated.Behaviors;
+using SimulationEngine.TowerRelated.Behaviors;
 
 namespace Weezer_Tower_Defence;
 
@@ -23,6 +24,8 @@ public class Game1 : Game
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
+        _graphics.PreferredBackBufferWidth = 1600;
+        _graphics.PreferredBackBufferHeight = 900;
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
     }
@@ -57,7 +60,7 @@ public class Game1 : Game
         damageDealerController = DamageDealerController.GetInstance(this);
         damageDealerController.AddDamageDealer(
             new DamageDealer(
-                ProjectileConfig.Default,
+                new StandardBulletBehavior(),
                 new Vector2(100, 100),
                 new Vector2(1, 1)
             )
@@ -66,7 +69,7 @@ public class Game1 : Game
         towerController = TowerController.GetInstance(this);
         towerController.AddTower(
             new Tower(
-                SniperTowerConfig.Default,
+                new BasicTowerBehavior(),
                 new Vector2(400, 300) // Позиция башни в центре экрана
             )
         );

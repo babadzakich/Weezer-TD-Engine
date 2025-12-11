@@ -87,11 +87,11 @@ public class TowerControlPanel : UIElement
             Vector2 textPos = Position + new Vector2(10, 10);
             spriteBatch.DrawString(font, "Tower Info", textPos, Color.White);
             textPos.Y += 25;
-            spriteBatch.DrawString(font, $"Type: {SelectedTower.Config.Id}", textPos, Color.Cyan);
+            spriteBatch.DrawString(font, $"Type: {SelectedTower.Behavior.Id}", textPos, Color.Cyan);
             textPos.Y += 20;
-            spriteBatch.DrawString(font, $"Range: {SelectedTower.Config.Range}", textPos, Color.Yellow);
+            spriteBatch.DrawString(font, $"Range: {SelectedTower.Behavior.Range}", textPos, Color.Yellow);
             textPos.Y += 20;
-            spriteBatch.DrawString(font, $"Fire Rate: {SelectedTower.Config.FireRate}/s", textPos, Color.Orange);
+            spriteBatch.DrawString(font, $"Fire Rate: {SelectedTower.Behavior.FireRate}/s", textPos, Color.Orange);
         }
 
         _sellButton.Draw(spriteBatch, pixel, font);
