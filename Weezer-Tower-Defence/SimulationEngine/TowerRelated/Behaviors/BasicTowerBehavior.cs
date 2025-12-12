@@ -1,7 +1,9 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.BulletRelated;
+using SimulationEngine.BulletRelated.Behaviors;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace SimulationEngine.TowerRelated.Behaviors;
@@ -12,27 +14,53 @@ namespace SimulationEngine.TowerRelated.Behaviors;
 public class BasicTowerBehavior : ITowerBehavior
 {
     // Свойства башни
-    public string Id => "basic_tower";
-    public string Name => "Basic Tower";
-    public int Cost => 100;
-    public float Range => 150f;
-    public float FireRate => 1f;
+    public string Id { get; }
+    public string Name { get; }
+    public IDamageDealerBehavior projectileConfig;
+    public int Cost { get; }
+    public float Range { get; }
+    public float FireRate { get; }
+    private Enemy _currentTarget;
 
-    public BasicTowerBehavior()
+    public BasicTowerBehavior(string id, string name, IDamageDealerBehavior projectileConfig, int cost, float range, float fireRate)
     {
-        // Можно загрузить дополнительные параметры
+        Id = id;
+        Name = name;
+        this.projectileConfig = projectileConfig;
+        Cost = cost;
+        Range = range;
+        FireRate = fireRate;
     }
 
     public void Update(Tower tower, GameTime gameTime)
     {
-        // Базовая логика обновления
+        
     }
 
-    public Vector2? FindTarget(Tower tower, object[] enemies)
+    public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
-        // Базовая логика - ищем ближайшего врага в радиусе
-        // TODO: когда будет система врагов, реализовать поиск
-        return null;
+        
+        if (_currentTarget != null)
+        {
+            if (Vector2.Distance(_currentTarget.Position, tower.Position) > Range) 
+                _currentTarget = null;
+            else
+                return _currentTarget.Position;
+        }
+        Enemy closestEnemy = null;
+        float closestDistance = float.MaxValue;
+
+        foreach (var enemy in enemies.Enemies)
+        {
+            float distance = Vector2.Distance(tower.Position, enemy.Position);
+            if (distance <= Range && distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemy = enemy;
+            }
+        }
+        
+        return closestEnemy?.Position;
     }
 
     public void Fire(Tower tower, Vector2 targetPosition)
@@ -41,8 +69,8 @@ public class BasicTowerBehavior : ITowerBehavior
         Vector2 direction = Vector2.Normalize(targetPosition - tower.Position);
         
         // TODO: создать DamageDealer и добавить в контроллер
-        // var bullet = new DamageDealer(projectileConfig, tower.Position, direction);
-        // DamageDealerController.GetInstance(null).AddDamageDealer(bullet);
+        var bullet = new DamageDealer(projectileConfig, tower.Position, direction);
+        DamageDealerController.GetInstance(null).AddDamageDealer(bullet);
     }
 
     public void Draw(Tower tower, SpriteBatch spriteBatch, Texture2D texture)

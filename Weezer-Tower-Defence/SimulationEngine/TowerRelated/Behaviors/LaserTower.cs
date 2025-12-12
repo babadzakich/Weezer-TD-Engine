@@ -35,7 +35,7 @@ public class LaserTowerBehavior : ITowerBehavior
     public void Update(Tower tower, GameTime gameTime)
     {
         // Лазер не имеет cooldown, постоянно наносит урон
-        currentTarget = FindTarget(tower, new object[0]);
+        currentTarget = FindTarget(tower, EnemyController.GetInstance(null));
         
         if (currentTarget.HasValue)
         {
@@ -43,7 +43,7 @@ public class LaserTowerBehavior : ITowerBehavior
         }
     }
 
-    public Vector2? FindTarget(Tower tower, object[] enemies)
+    public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
         // Ищем первого врага в радиусе
         return null;

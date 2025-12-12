@@ -1,7 +1,8 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
-interface Controller
+public interface Controller
 {
-    void Update(GameTime deltaTime);
-    void Draw(Microsoft.Xna.Framework.Graphics.SpriteBatch spriteBatch);
+    public void Update(GameTime deltaTime);
+    public void Draw(SpriteBatch spriteBatch);
 }

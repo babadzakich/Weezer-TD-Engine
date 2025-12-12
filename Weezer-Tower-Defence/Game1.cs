@@ -15,10 +15,12 @@ public class Game1 : Game
     private SpriteBatch _spriteBatch;
     private Texture2D _bulletTexture;
     private Texture2D _towerTexture;
+    private Texture2D _enemyTexture;
     private Texture2D _pixel;
 
     private DamageDealerController damageDealerController;
     private TowerController towerController;
+    private EnemyController enemyController;
     private GameMap gameMap;
 
     public Game1()
@@ -60,7 +62,7 @@ public class Game1 : Game
         damageDealerController = DamageDealerController.GetInstance(this);
         damageDealerController.AddDamageDealer(
             new DamageDealer(
-                new StandardBulletBehavior(),
+                new StandardBulletBehavior(20f, 300f, 500f),
                 new Vector2(100, 100),
                 new Vector2(1, 1)
             )
@@ -69,8 +71,18 @@ public class Game1 : Game
         towerController = TowerController.GetInstance(this);
         towerController.AddTower(
             new Tower(
-                new BasicTowerBehavior(),
+                new BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f),
                 new Vector2(400, 300) // Позиция башни в центре экрана
+            )
+        );
+
+        enemyController = EnemyController.GetInstance(this);
+        // Спавним тестового врага на первой точке пути (текстура будет назначена в LoadContent)
+        enemyController.AddEnemy(
+            new Enemy(
+                new SimulationEngine.EnemyRelated.EnemyTypes.BasicEnemyType(null, 100f, 100),
+                new Vector2(50, 300), // Стартовая позиция (точка спавна)
+                path
             )
         );
 
@@ -97,10 +109,27 @@ public class Game1 : Game
         for (int i = 0; i < towerData.Length; i++) towerData[i] = Color.Blue;
         _towerTexture.SetData(towerData);
 
+        // Создаём временную текстуру для врага (зелёный квадрат 30x30)
+        _enemyTexture = new Texture2D(GraphicsDevice, 30, 30);
+        Color[] enemyData = new Color[30 * 30];
+        for (int i = 0; i < enemyData.Length; i++) enemyData[i] = Color.Green;
+        _enemyTexture.SetData(enemyData);
+
         // Присваиваем текстуру всем пулям в контроллере
         foreach (var bullet in damageDealerController.damageDealers)
         {
             bullet.Texture = _bulletTexture;
+        }
+        
+        // Присваиваем текстуру всем врагам в контроллере
+        foreach (var enemy in enemyController.Enemies)
+        {
+            var enemyType = enemy.GetType().GetField("_type", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(enemy);
+            if (enemyType is SimulationEngine.EnemyRelated.EnemyTypes.BasicEnemyType basicType)
+            {
+                var textureField = basicType.GetType().GetField("_texture", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                textureField?.SetValue(basicType, _enemyTexture);
+            }
         }
     }
 
@@ -111,6 +140,7 @@ public class Game1 : Game
 
         damageDealerController.Update(gameTime);
         towerController.Update(gameTime);
+        enemyController.Update(gameTime);
 
         base.Update(gameTime);
     }
@@ -123,6 +153,7 @@ public class Game1 : Game
         gameMap.Draw(_spriteBatch, _pixel);
         towerController.Draw(_spriteBatch);
         damageDealerController.Draw(_spriteBatch);
+        enemyController.Draw(_spriteBatch);
         _spriteBatch.End();
 
         base.Draw(gameTime);

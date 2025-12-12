@@ -7,11 +7,15 @@ namespace SimulationEngine.BulletRelated.Behaviors
     {
         private float _speed;
         private float _damage;
+        private float _maxDistance;
+        private Vector2 _moveDirection;
 
-        public StandardBulletBehavior()
+        public StandardBulletBehavior(float damage, float speed, float maxDistance)
         {
-            _speed = 10f;
-            _damage = 20f;
+            _damage = damage;
+            _speed = speed;
+            _maxDistance = maxDistance;
+
         }
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)

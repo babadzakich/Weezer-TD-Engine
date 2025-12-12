@@ -17,7 +17,7 @@ namespace SimulationEngine.TowerRelated;
 /// </summary>
 public interface ITowerBehavior
 {
-    // Свойства башни - определяют характеристики
+    // Свойства башни
     /// <summary>Уникальный идентификатор типа башни</summary>
     string Id { get; }
     /// <summary>Название башни для UI</summary>
@@ -28,7 +28,7 @@ public interface ITowerBehavior
     float Range { get; }
     /// <summary>Скорострельность (выстрелов в секунду)</summary>
     float FireRate { get; }
-    
+ 
     /// <summary>
     /// Обновление логики башни
     /// </summary>
@@ -37,7 +37,7 @@ public interface ITowerBehavior
     /// <summary>
     /// Найти цель для атаки
     /// </summary>
-    Vector2? FindTarget(Tower tower, object[] enemies);
+    Vector2? FindTarget(Tower tower, EnemyController enemies);
     
     /// <summary>
     /// Выстрелить по цели

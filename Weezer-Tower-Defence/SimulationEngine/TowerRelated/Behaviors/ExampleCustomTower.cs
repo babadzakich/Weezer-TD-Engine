@@ -42,7 +42,7 @@ public class ExampleCustomTower : ITowerBehavior
         
         if (_cooldown <= 0)
         {
-            var target = FindTarget(tower, new object[0]); // TODO: передать реальных врагов
+            var target = FindTarget(tower, EnemyController.GetInstance(null)); // TODO: передать реальных врагов
             if (target.HasValue)
             {
                 Fire(tower, target.Value);
@@ -54,7 +54,7 @@ public class ExampleCustomTower : ITowerBehavior
     /// <summary>
     /// Найти цель для атаки
     /// </summary>
-    public Vector2? FindTarget(Tower tower, object[] enemies)
+    public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
         // Ваша логика поиска цели
         // Например: ближайший враг, самый сильный, самый слабый и т.д.
