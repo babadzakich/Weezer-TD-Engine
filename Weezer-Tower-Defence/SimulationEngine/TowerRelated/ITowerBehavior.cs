@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.BulletRelated;
+using SimulationEngine.EnemyRelated;
 
 namespace SimulationEngine.TowerRelated;
 
@@ -28,12 +29,7 @@ public interface ITowerBehavior
     float Range { get; }
     /// <summary>Скорострельность (выстрелов в секунду)</summary>
     float FireRate { get; }
- 
-    /// <summary>
-    /// Обновление логики башни
-    /// </summary>
-    void Update(Tower tower, GameTime gameTime);
-    
+
     /// <summary>
     /// Найти цель для атаки
     /// </summary>

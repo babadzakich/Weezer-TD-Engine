@@ -123,7 +123,7 @@ public class GameInputHandler
         
         // Списываем деньги и занимаем зону
         _uiManager.PurchaseTower(towerBehavior);
-        _selectedBuildZone.Occupy();
+        _selectedBuildZone.Occupy(tower);
         
         // Закрываем панель выбора
         _uiManager.HideTowerSelection();

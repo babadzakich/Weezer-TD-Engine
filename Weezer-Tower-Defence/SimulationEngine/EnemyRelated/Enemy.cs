@@ -1,15 +1,20 @@
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using SimulationEngine.EnemyRelated;
 
+namespace SimulationEngine.EnemyRelated;
 
 public class Enemy
 {
     public Vector2 Position { get; set; }
     private IEnemyType _type;
-    private readonly SimulationEngine.MapRelated.Path _path;
-    public Enemy(IEnemyType enemyType, Vector2 position, SimulationEngine.MapRelated.Path path)
+    private readonly MapRelated.Path _path;
+    public int Health => _type.health;
+    public int Damage => _type.Damage;
+    public bool isAlive { get; set; } = true;
+    
+    public string GetDefensePointId() => _path.DefensePointId;
+    
+    public Enemy(IEnemyType enemyType, Vector2 position, MapRelated.Path path)
     {
         _type = enemyType;
         Position = position;
@@ -22,7 +27,6 @@ public class Enemy
     public void Update(GameTime gameTime)
     {
         _type.Update(this, gameTime, _path);
-        
     }
     public void Draw(SpriteBatch sb)
     {

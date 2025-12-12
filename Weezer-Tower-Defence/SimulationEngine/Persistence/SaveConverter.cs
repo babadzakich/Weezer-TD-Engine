@@ -101,14 +101,7 @@ public static class SaveConverter
             }
             
             // Восстанавливаем занятость зон строительства
-            foreach (var zoneId in saveData.Map.OccupiedBuildZoneIds)
-            {
-                var zone = map.BuildZones.Find(z => z.Id == zoneId);
-                if (zone != null)
-                {
-                    zone.Occupy();
-                }
-            }
+            // OccupiedZones больше не используется, зоны будут заняты при загрузке башен
         }
         
         // Очищаем существующие башни

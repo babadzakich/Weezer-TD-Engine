@@ -5,6 +5,9 @@ using SimulationEngine.TowerRelated;
 using SimulationEngine.UI;
 using System;
 using SimulationEngine.BulletRelated.Behaviors;
+using SimulationEngine.WaveRelated;
+using SimulationEngine.EnemyRelated;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace SimulationEngine;
 
@@ -16,6 +19,8 @@ public class GameManager
     public UIManager UIManager { get; private set; }
     public GameMap Map { get; private set; }
     internal TowerController TowerController { get; private set; }
+    internal WaveController WaveController { get; private set; }
+    internal EnemyController EnemyController { get; private set; }
     
     private GameInputHandler _inputHandler;
 
@@ -32,31 +37,42 @@ public class GameManager
         return _instance;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController)
+    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, towerController);
+        _instance = new GameManager(screenWidth, screenHeight, map, towerController, waveController, enemyController);
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController)
+    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
         TowerController = towerController;
+        WaveController = waveController;
+        EnemyController = enemyController;
         
         _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
         
         UIManager.OnStartWaveRequested += StartWave;
+        
+        // Добавляем доступные башни в UI
+        UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f, null), 100, 150f, 1f));
     }
 
     public void Update(GameTime gameTime)
     {
         UIManager.Update(gameTime);
         _inputHandler.Update();
+        
+        // Обновляем Lives на основе здоровья базы
+        if (Map.DefensePoints.Count > 0)
+        {
+            UIManager.Lives = Map.DefensePoints[0].Health;
+        }
         
         // Проверка на поражение
         if (UIManager.Lives <= 0)
@@ -65,10 +81,21 @@ public class GameManager
         }
     }
 
+    public void Draw(SpriteBatch spriteBatch, Texture2D pixelTexture, SpriteFont font = null)
+    {
+        Map.Draw(spriteBatch, pixelTexture);
+        TowerController.Draw(spriteBatch);
+        if (EnemyController != null)
+            EnemyController.Draw(spriteBatch);
+        UIManager.Draw(spriteBatch, pixelTexture, font);
+    }
+
     private void StartWave()
     {
-        // TODO: Запуск волны врагов
-        UIManager.Wave++;
+        if (WaveController != null && !WaveController.IsWaveActive && WaveController.CurrentWaveIndex < WaveController.TotalWaves)
+        {
+            WaveController.StartNextWave();
+        }
     }
 
     public void AddMoney(int amount)

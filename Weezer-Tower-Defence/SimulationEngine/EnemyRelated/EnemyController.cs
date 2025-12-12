@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using SimulationEngine;
+
+namespace SimulationEngine.EnemyRelated;
 
 public class EnemyController : Controller
 {
@@ -9,18 +10,20 @@ public class EnemyController : Controller
     private static EnemyController _instance;
 
     private Game _engine;
+    private MapRelated.GameMap _gameMap;
 
-    private EnemyController(Game engine)
+    private EnemyController(Game engine, MapRelated.GameMap gameMap)
     {
         Enemies = new List<Enemy>();
         _engine = engine;
+        _gameMap = gameMap;
     }
 
-    public static EnemyController GetInstance(Game engine)
+    public static EnemyController GetInstance(Game engine, MapRelated.GameMap gameMap = null)
     {
         if (_instance == null)
         {
-            _instance = new EnemyController(engine);
+            _instance = new EnemyController(engine, gameMap);
         }
         return _instance;
     }
@@ -32,9 +35,26 @@ public class EnemyController : Controller
 
     public void Update(GameTime gameTime)
     {
-        foreach (var enemy in Enemies)
+        for (int i = Enemies.Count - 1; i >= 0; i--)
         {
-            enemy.Update(gameTime);
+            var enemy = Enemies[i];
+            if (enemy.isAlive)
+            {
+                enemy.Update(gameTime);
+            }
+            else
+            {
+                // Враг достиг конца пути - наносим урон базе
+                if (_gameMap != null)
+                {
+                    var defensePoint = _gameMap.GetDefensePoint(enemy.GetDefensePointId());
+                    if (defensePoint != null)
+                    {
+                        defensePoint.TakeDamage(enemy.Damage);
+                    }
+                }
+                Enemies.RemoveAt(i);
+            }
         }
     }
 
@@ -42,7 +62,8 @@ public class EnemyController : Controller
     {
         foreach (var enemy in Enemies)
         {
-            enemy.Draw(spriteBatch);
+            if (enemy.isAlive)
+                enemy.Draw(spriteBatch);
         }
     }
 }

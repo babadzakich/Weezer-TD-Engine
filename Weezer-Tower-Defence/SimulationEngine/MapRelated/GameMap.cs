@@ -75,6 +75,14 @@ public class GameMap
     }
 
     /// <summary>
+    /// Получить путь по ID (алиас для совместимости)
+    /// </summary>
+    public Path GetPathById(string pathId)
+    {
+        return GetPath(pathId);
+    }
+
+    /// <summary>
     /// Получить точку защиты по ID
     /// </summary>
     public DefensePoint GetDefensePoint(string id)
@@ -91,13 +99,7 @@ public class GameMap
         foreach (var path in Paths)
         {
             var pathPoints = path.GetSmoothPath();
-            
-            // Рисуем оригинальные waypoints (красные точки)
-            foreach (var waypoint in path.Waypoints)
-            {
-                DrawCircle(spriteBatch, pixel, waypoint, 5, Color.Red * 0.5f);
-            }
-            
+
             // Рисуем сглаженный путь (жёлтые линии)
             for (int i = 0; i < pathPoints.Count - 1; i++)
             {
@@ -121,7 +123,8 @@ public class GameMap
         // Рисуем точки защиты
         foreach (var defense in DefensePoints)
         {
-            DrawCircle(spriteBatch, pixel, defense.Position, 15, Color.Blue);
+            Color color = defense.IsDestroyed ? Color.Gray : Color.Blue;
+            DrawCircle(spriteBatch, pixel, defense.Position, 15, color);
         }
     }
 

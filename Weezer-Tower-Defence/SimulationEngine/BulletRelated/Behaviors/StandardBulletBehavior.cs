@@ -8,19 +8,21 @@ namespace SimulationEngine.BulletRelated.Behaviors
         private float _speed;
         private float _damage;
         private float _maxDistance;
-        private Vector2 _moveDirection;
 
-        public StandardBulletBehavior(float damage, float speed, float maxDistance)
+        private Texture2D _texture;
+
+        public StandardBulletBehavior(float damage, float speed, float maxDistance, Texture2D texture)
         {
             _damage = damage;
             _speed = speed;
             _maxDistance = maxDistance;
-
+            _texture = texture;
         }
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {
-            
+            if (_texture == null) _texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+            spriteBatch.Draw(_texture, damageDealer.Position, Color.White);
         }
 
         public void Update(DamageDealer bullet, GameTime gameTime)

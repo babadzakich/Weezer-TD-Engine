@@ -9,7 +9,7 @@ public class DefensePoint
 {
     public Vector2 Position { get; set; }
     public string Id { get; set; }
-    public int Health { get; set; } // Здоровье базы
+    public int Health { get; set; }
     public int MaxHealth { get; set; }
 
     public DefensePoint(Vector2 position, string id, int maxHealth = 100)

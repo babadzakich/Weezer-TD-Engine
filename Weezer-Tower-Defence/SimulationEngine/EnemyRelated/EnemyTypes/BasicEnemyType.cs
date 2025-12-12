@@ -7,36 +7,43 @@ namespace SimulationEngine.EnemyRelated.EnemyTypes;
 public class BasicEnemyType : IEnemyType
 {
     private Texture2D _texture;
-    private int _health;
-    private float _speed;
     private int _currentWaypointIndex = 0;
+    public int health { get; set; } = 100;
 
-    public BasicEnemyType(Texture2D texture = null, float speed = 100f, int health = 100)
+    public float speed => 60f;
+
+    public int Damage => 10; // Базовый враг наносит 10 урона
+
+    public BasicEnemyType(Texture2D texture = null)
     {
         _texture = texture;
-        _speed = speed;
-        _health = health;
     }
+
+    public void SetTexture(Texture2D texture)
+    {
+        _texture = texture;
+    }
+
     public void TakeDamage(float amount)
     {
-        // Реализация получения урона для базового врага
+        health -= (int)amount;
     }
 
     public void Update(Enemy enemy, GameTime gameTime, Path path)
     {
         var waypoints = path.GetSmoothPath();
         
-        // Если путь пуст или мы уже прошли его
+        // Если путь пуст или мы уже прошли его - враг достиг точки защиты
         if (waypoints.Count == 0 || _currentWaypointIndex >= waypoints.Count)
         {
-            // Враг достиг конца пути
-            // TODO: Нанести урон базе и удалить врага
+            // Враг достиг конца пути, EnemyController нанесет урон базе
+            enemy.isAlive = false;
             return;
         }
 
         Vector2 target = waypoints[_currentWaypointIndex];
         float distance = Vector2.Distance(enemy.Position, target);
-        float moveAmount = _speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        float moveAmount = speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         if (distance <= moveAmount)
         {

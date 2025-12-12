@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using SimulationEngine.TowerRelated;
 
 namespace SimulationEngine.MapRelated;
 
@@ -7,6 +8,7 @@ namespace SimulationEngine.MapRelated;
 /// </summary>
 public class BuildZone
 {
+    private Tower occupyingTower;
     public Vector2 Position { get; set; }
     public string Id { get; set; }
     public bool IsOccupied { get; set; }
@@ -38,9 +40,10 @@ public class BuildZone
     /// <summary>
     /// Занять зону башней
     /// </summary>
-    public void Occupy()
+    public void Occupy(Tower tower)
     {
         IsOccupied = true;
+        occupyingTower = tower;
     }
 
     /// <summary>
@@ -48,6 +51,7 @@ public class BuildZone
     /// </summary>
     public void Free()
     {
+        occupyingTower = null;
         IsOccupied = false;
     }
 }

@@ -6,6 +6,11 @@ using SimulationEngine.TowerRelated;
 using SimulationEngine.MapRelated;
 using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.TowerRelated.Behaviors;
+using SimulationEngine.EnemyRelated;
+using SimulationEngine.WaveRelated;
+using SimulationEngine.EnemyRelated.EnemyTypes;
+using SimulationEngine;
+using SimulationEngine.UI;
 
 namespace Weezer_Tower_Defence;
 
@@ -17,10 +22,13 @@ public class Game1 : Game
     private Texture2D _towerTexture;
     private Texture2D _enemyTexture;
     private Texture2D _pixel;
+    private SpriteFont _font;
 
     private DamageDealerController damageDealerController;
     private TowerController towerController;
     private EnemyController enemyController;
+    private WaveController waveController;
+    private GameManager gameManager;
     private GameMap gameMap;
 
     public Game1()
@@ -62,7 +70,7 @@ public class Game1 : Game
         damageDealerController = DamageDealerController.GetInstance(this);
         damageDealerController.AddDamageDealer(
             new DamageDealer(
-                new StandardBulletBehavior(20f, 300f, 500f),
+                new StandardBulletBehavior(20f, 300f, 500f, null),
                 new Vector2(100, 100),
                 new Vector2(1, 1)
             )
@@ -71,20 +79,32 @@ public class Game1 : Game
         towerController = TowerController.GetInstance(this);
         towerController.AddTower(
             new Tower(
-                new BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f),
+                new BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f, null), 100, 150f, 1f),
                 new Vector2(400, 300) // Позиция башни в центре экрана
             )
         );
 
-        enemyController = EnemyController.GetInstance(this);
-        // Спавним тестового врага на первой точке пути (текстура будет назначена в LoadContent)
-        enemyController.AddEnemy(
-            new Enemy(
-                new SimulationEngine.EnemyRelated.EnemyTypes.BasicEnemyType(null, 100f, 100),
-                new Vector2(50, 300), // Стартовая позиция (точка спавна)
-                path
-            )
-        );
+        enemyController = EnemyController.GetInstance(this, gameMap);
+        
+        // Инициализируем WaveController
+        waveController = WaveController.GetInstance(enemyController, gameMap);
+        
+        // Создаём тестовые волны
+        var wave1 = new Wave("wave1");
+        wave1.AddEnemy(typeof(BasicEnemyType), 5, gameMap.SpawnPoints[0]);
+        waveController.AddWave(wave1);
+        
+        var wave2 = new Wave("wave2");
+        wave2.AddEnemy(typeof(BasicEnemyType), 8, gameMap.SpawnPoints[0]);
+        waveController.AddWave(wave2);
+        
+        var wave3 = new Wave("wave3");
+        wave3.AddEnemy(typeof(BasicEnemyType), 10, gameMap.SpawnPoints[0]);
+        waveController.AddWave(wave3);
+        
+        // Инициализируем GameManager с UI
+        gameManager = GameManager.getInstance(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight, gameMap, towerController, waveController, enemyController);
+        gameManager.OnGameOver += () => Exit();
 
         base.Initialize();
     }
@@ -96,6 +116,10 @@ public class Game1 : Game
         // Создаём пиксельную текстуру для отрисовки линий/прямоугольников
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
+        
+        // Загружаем шрифт (если есть), иначе используем null
+        try { _font = Content.Load<SpriteFont>("Fonts/Default"); } 
+        catch { _font = null; }
 
         // Создаём временную текстуру для пули (красный квадрат 10x10)
         _bulletTexture = new Texture2D(GraphicsDevice, 10, 10);
@@ -121,16 +145,11 @@ public class Game1 : Game
             bullet.Texture = _bulletTexture;
         }
         
-        // Присваиваем текстуру всем врагам в контроллере
-        foreach (var enemy in enemyController.Enemies)
-        {
-            var enemyType = enemy.GetType().GetField("_type", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(enemy);
-            if (enemyType is SimulationEngine.EnemyRelated.EnemyTypes.BasicEnemyType basicType)
-            {
-                var textureField = basicType.GetType().GetField("_texture", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                textureField?.SetValue(basicType, _enemyTexture);
-            }
-        }
+        // Присваиваем текстуру WaveController для врагов
+        waveController.SetEnemyTexture(_enemyTexture);
+        
+        // Запускаем первую волну
+        waveController.StartNextWave();
     }
 
     protected override void Update(GameTime gameTime)
@@ -141,6 +160,18 @@ public class Game1 : Game
         damageDealerController.Update(gameTime);
         towerController.Update(gameTime);
         enemyController.Update(gameTime);
+        waveController.Update(gameTime);
+        gameManager.Update(gameTime);
+        
+        // Обновляем UI информацию
+        gameManager.UIManager.Wave = waveController.CurrentWaveIndex + 1;
+        
+        // Проверяем поражение
+        if (gameMap.DefensePoints.Count > 0 && gameMap.DefensePoints[0].IsDestroyed)
+        {
+            // Game Over
+            Exit();
+        }
 
         base.Update(gameTime);
     }
@@ -154,6 +185,8 @@ public class Game1 : Game
         towerController.Draw(_spriteBatch);
         damageDealerController.Draw(_spriteBatch);
         enemyController.Draw(_spriteBatch);
+        waveController.Draw(_spriteBatch);
+        gameManager.UIManager.Draw(_spriteBatch, _pixel, _font);
         _spriteBatch.End();
 
         base.Draw(gameTime);

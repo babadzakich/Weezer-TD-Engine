@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.BulletRelated;
+using SimulationEngine.EnemyRelated;
 using SimulationEngine.BulletRelated.Behaviors;
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ public class BasicTowerBehavior : ITowerBehavior
     public int Cost { get; }
     public float Range { get; }
     public float FireRate { get; }
-    private Enemy _currentTarget;
+    private SimulationEngine.EnemyRelated.Enemy _currentTarget;
 
     public BasicTowerBehavior(string id, string name, IDamageDealerBehavior projectileConfig, int cost, float range, float fireRate)
     {
@@ -32,10 +33,7 @@ public class BasicTowerBehavior : ITowerBehavior
         FireRate = fireRate;
     }
 
-    public void Update(Tower tower, GameTime gameTime)
-    {
-        
-    }
+    
 
     public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
@@ -47,6 +45,7 @@ public class BasicTowerBehavior : ITowerBehavior
             else
                 return _currentTarget.Position;
         }
+        
         Enemy closestEnemy = null;
         float closestDistance = float.MaxValue;
 
@@ -75,7 +74,41 @@ public class BasicTowerBehavior : ITowerBehavior
 
     public void Draw(Tower tower, SpriteBatch spriteBatch, Texture2D texture)
     {
+        if (texture == null) texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+        // Рисуем радиус атаки
+        DrawRangeCircle(spriteBatch, tower.Position, Range, new Color(255, 255, 255, 50));
+        
         // Рисуем башню
+        spriteBatch.Draw(texture, tower.Position, null, Color.White, 0f,
+            new Vector2(texture.Width / 2f, texture.Height / 2f), 1f, SpriteEffects.None, 0f);
+    }
+    
+    private void DrawRangeCircle(SpriteBatch spriteBatch, Vector2 center, float radius, Color color)
+    {
+        int segments = 64;
+        Texture2D pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+        pixel.SetData(new[] { Color.White });
+        
+        for (int i = 0; i < segments; i++)
+        {
+            float angle1 = (float)(2 * Math.PI * i / segments);
+            float angle2 = (float)(2 * Math.PI * (i + 1) / segments);
+            
+            Vector2 p1 = center + new Vector2((float)Math.Cos(angle1), (float)Math.Sin(angle1)) * radius;
+            Vector2 p2 = center + new Vector2((float)Math.Cos(angle2), (float)Math.Sin(angle2)) * radius;
+            
+            DrawLine(spriteBatch, pixel, p1, p2, color, 2f);
+        }
+    }
+    
+    private void DrawLine(SpriteBatch spriteBatch, Texture2D pixel, Vector2 start, Vector2 end, Color color, float thickness)
+    {
+        Vector2 edge = end - start;
+        float angle = (float)Math.Atan2(edge.Y, edge.X);
+        
+        spriteBatch.Draw(pixel,
+            new Rectangle((int)start.X, (int)start.Y, (int)edge.Length(), (int)thickness),
+            null, color, angle, new Vector2(0, 0.5f), SpriteEffects.None, 0);
     }
 }
 
