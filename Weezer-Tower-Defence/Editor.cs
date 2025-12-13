@@ -24,7 +24,7 @@ public class Editor : Game
     protected override void Initialize()
     {
         base.Initialize();
-        levelEditor = new LevelEditor();
+        levelEditor = new LevelEditor(Content);
     }
 
     protected override void LoadContent()

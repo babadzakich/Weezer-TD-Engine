@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated;
-using SimulationEngine.BulletRelated.DamageDealers;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.MapRelated;
 

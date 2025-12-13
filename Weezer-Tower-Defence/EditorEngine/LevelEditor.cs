@@ -1,13 +1,26 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Content;
 using SimulationEngine.MapRelated;
 using System.Collections.Generic;
+using EditorEngine.Waves;
+using System;
+using EditorEngine.UI;
+using SimulationEngine.TowerRelated;
 
 namespace EditorEngine;
 
 public class LevelEditor
 {
+    private TowerEditorPanel towerPanel;
+
+    private bool debugToggleMessage = false;
+    private float debugMessageTimer = 0f;
+
+    private WaveSet waveSet;
+    private ManageWavesPanel wavesPanel;
+
     private GameMap currentMap;
     private Vector2 cameraPosition = Vector2.Zero;
     private const float CameraSpeed = 300f;
@@ -16,6 +29,7 @@ public class LevelEditor
     // Input states
     private KeyboardState previousKeyboardState;
     private MouseState previousMouseState;
+    private SpriteFont defaultFont;
 
     // Editor modes
     private enum EditorMode
@@ -23,25 +37,76 @@ public class LevelEditor
         None,
         PlacingSpawn,
         PlacingDefense,
-        DrawingPath
+        DrawingPath,
+        WavesEditing,
+
+        TowerEdititing,
     }
 
     private EditorMode currentMode = EditorMode.None;
     private List<Vector2> currentPathPoints = new List<Vector2>();
     private string selectedPathDefensePointId = null;
 
-    public LevelEditor()
+    public LevelEditor(ContentManager content)
     {
+        towerPanel = new TowerEditorPanel(new TowerConfig());
+
         currentMap = new GameMap("level_1", "Level 1", 1920, 1080);
+        waveSet = new WaveSet { MapId = currentMap.Id };
+        wavesPanel = new ManageWavesPanel(waveSet, currentMap);
+
+            // Загрузка шрифта
+        defaultFont = content.Load<SpriteFont>("DefaultFont"); 
+        
+        // Авто-показ панели при старте
+
     }
 
     public void Update(GameTime gameTime, KeyboardState keyboardState, MouseState mouseState)
     {
+        if (keyboardState.IsKeyDown(Keys.T) && previousKeyboardState.IsKeyUp(Keys.T)){
+            towerPanel.Toggle();
+        }    
+
+        if (keyboardState.IsKeyDown(Keys.M) && previousKeyboardState.IsKeyUp(Keys.M)) {
+            wavesPanel.Toggle();
+            currentMode = EditorMode.WavesEditing;
+            debugToggleMessage = true;
+            debugMessageTimer = 2f;
+        }
+        if (wavesPanel.IsOpen)
+        {
+            if (keyboardState.IsKeyDown(Keys.N) &&
+                previousKeyboardState.IsKeyUp(Keys.N))
+            {
+                wavesPanel.AddWave();
+            }
+
+            if (keyboardState.IsKeyDown(Keys.D) &&
+                previousKeyboardState.IsKeyUp(Keys.D))
+            {
+                wavesPanel.RemoveWave(wavesPanel.SelectedWaveIndex);
+            }
+
+            if (keyboardState.IsKeyDown(Keys.Up))
+                wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex - 1);
+
+            if (keyboardState.IsKeyDown(Keys.Down))
+                wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex + 1);
+        }
+
         HandleCameraMovement(gameTime, keyboardState);
         HandleMouseInput(mouseState);
 
+
         previousKeyboardState = keyboardState;
         previousMouseState = mouseState;
+        if (debugToggleMessage)
+        {
+            debugMessageTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (debugMessageTimer <= 0f)
+                debugToggleMessage = false;
+        }
     }
 
     private void HandleCameraMovement(GameTime gameTime, KeyboardState keyboardState)
@@ -101,7 +166,7 @@ public class LevelEditor
         // Save on Ctrl+S
         if (previousKeyboardState.IsKeyDown(Keys.LeftControl) && previousKeyboardState.IsKeyDown(Keys.S))
         {
-            SaveMap();
+            MapSerializer.SaveMap(currentMap, $"Content/Maps/{currentMap.Id}.json");
         }
     }
 
@@ -144,16 +209,21 @@ public class LevelEditor
 
     public void Draw(SpriteBatch spriteBatch, Texture2D pixel)
     {
+
         DrawGrid(spriteBatch, pixel);
-
         DrawMapBoundaries(spriteBatch, pixel);
-
         DrawSpawnPoints(spriteBatch, pixel);
         DrawDefensePoints(spriteBatch, pixel);
         DrawPaths(spriteBatch, pixel);
         DrawCurrentPath(spriteBatch, pixel);
-
         DrawUI(spriteBatch, pixel);
+
+        if (towerPanel.IsOpen)
+            towerPanel.Draw(spriteBatch, defaultFont, pixel);
+
+        if (wavesPanel.IsOpen)
+            DrawWavesPanel(spriteBatch, pixel);
+
     }
 
     private void DrawGrid(SpriteBatch spriteBatch, Texture2D pixel)
@@ -250,62 +320,78 @@ public class LevelEditor
         }
     }
 
+    private void DrawWavesPanel(SpriteBatch spriteBatch, Texture2D pixel)
+    {
+        // Панель фиксирована на экране, координаты не зависят от камеры
+        Rectangle panelRect = new Rectangle(50, 50, 400, 500);
+
+        // Фон панели
+        spriteBatch.Draw(pixel, panelRect, Color.Black * 0.85f);
+
+        // Заголовок
+        DrawRectangle(spriteBatch, pixel,
+            new Rectangle(panelRect.X, panelRect.Y, panelRect.Width, 40),
+            Color.DarkSlateGray);
+        spriteBatch.DrawString(defaultFont, "Wave Manager",
+            new Vector2(panelRect.X + 10, panelRect.Y + 10), Color.White);
+
+        // Список волн
+        int y = panelRect.Y + 50;
+        var waves = wavesPanel.GetWaves();
+        for (int i = 0; i < waves.Count; i++)
+        {
+            Color c = i == wavesPanel.SelectedWaveIndex ? Color.Cyan : Color.Gray;
+            Rectangle waveRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 30);
+            DrawRectangle(spriteBatch, pixel, waveRect, c * 0.5f);
+
+            // Название волны (или индекс)
+            spriteBatch.DrawString(defaultFont, $"Wave {i + 1}", new Vector2(waveRect.X + 6, waveRect.Y + 6), Color.White);
+
+            y += 35;
+        }
+    }
+
     private void DrawUI(SpriteBatch spriteBatch, Texture2D pixel)
     {
+        // --- Toolbar (кнопки режимов редактора) ---
         int toolbarX = 10;
         int toolbarY = 10;
         int buttonSize = 40;
         int buttonSpacing = 10;
 
-        // Draw toolbar background
         DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX - 5, toolbarY - 5, 
             (buttonSize + buttonSpacing) * 3 + 5, buttonSize + 10), Color.Black * 0.7f);
 
-        // Button 1 - Spawn Point
-        Color spawn1Color = currentMode == EditorMode.PlacingSpawn ? Color.LimeGreen : Color.Gray;
-        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX, toolbarY, buttonSize, buttonSize), spawn1Color);
+        // Spawn Point
+        Color spawnColor = currentMode == EditorMode.PlacingSpawn ? Color.LimeGreen : Color.Gray;
+        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX, toolbarY, buttonSize, buttonSize), spawnColor);
         DrawCircle(spriteBatch, pixel, new Vector2(toolbarX + buttonSize / 2, toolbarY + buttonSize / 2), 8, Color.Green);
 
-        // Button 2 - Defense Point
+        // Defense Point
         Color defenseColor = currentMode == EditorMode.PlacingDefense ? Color.IndianRed : Color.Gray;
-        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX + buttonSize + buttonSpacing, toolbarY, 
-            buttonSize, buttonSize), defenseColor);
-        DrawCircle(spriteBatch, pixel, new Vector2(toolbarX + buttonSize + buttonSpacing + buttonSize / 2, 
-            toolbarY + buttonSize / 2), 10, Color.Red);
+        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX + buttonSize + buttonSpacing, toolbarY, buttonSize, buttonSize), defenseColor);
+        DrawCircle(spriteBatch, pixel, new Vector2(toolbarX + buttonSize + buttonSpacing + buttonSize / 2, toolbarY + buttonSize / 2), 10, Color.Red);
 
-        // Button 3 - Path Drawing
+        // Path Drawing
         Color pathColor = currentMode == EditorMode.DrawingPath ? Color.Yellow : Color.Gray;
-        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 2, toolbarY, 
-            buttonSize, buttonSize), pathColor);
-        DrawLine(spriteBatch, pixel, 
-            new Vector2(toolbarX + (buttonSize + buttonSpacing) * 2 + 10, toolbarY + buttonSize / 2),
-            new Vector2(toolbarX + (buttonSize + buttonSpacing) * 2 + buttonSize - 10, toolbarY + buttonSize / 2),
-            Color.Orange, 3);
+        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 2, toolbarY, buttonSize, buttonSize), pathColor);
+        DrawLine(spriteBatch, pixel, new Vector2(toolbarX + (buttonSize + buttonSpacing) * 2 + 10, toolbarY + buttonSize / 2),
+            new Vector2(toolbarX + (buttonSize + buttonSpacing) * 2 + buttonSize - 10, toolbarY + buttonSize / 2), Color.Orange, 3);
 
-        // Draw status info
+        // --- Status Panel ---
         int infoY = toolbarY + buttonSize + 20;
-        DrawRectangle(spriteBatch, pixel, new Rectangle(10, infoY, 300, 80), Color.Black * 0.7f);
-        
-        // Draw colored status indicators (simulating text)
-        DrawSmallText(spriteBatch, pixel, 15, infoY + 5, 
-            $"Spawns: {currentMap.SpawnPoints.Count}", Color.LimeGreen);
-        DrawSmallText(spriteBatch, pixel, 15, infoY + 25, 
-            $"Defense: {currentMap.DefensePoints.Count}", Color.IndianRed);
-        DrawSmallText(spriteBatch, pixel, 15, infoY + 45, 
-            $"Paths: {currentMap.Paths.Count}", Color.Yellow);
-        
+        DrawRectangle(spriteBatch, pixel, new Rectangle(10, infoY, 300, 100), Color.Black * 0.7f);
+        spriteBatch.DrawString(defaultFont, "Spawns: " + currentMap.SpawnPoints.Count, new Vector2(15, 55), Color.LimeGreen);
+        spriteBatch.DrawString(defaultFont, "Defense: " + currentMap.DefensePoints.Count, new Vector2(15, 75), Color.IndianRed);
+        spriteBatch.DrawString(defaultFont, "Paths: " + currentMap.Paths.Count, new Vector2(15, 95), Color.Yellow);
+
+
         if (currentMode == EditorMode.DrawingPath && currentPathPoints.Count > 0)
         {
-            DrawSmallText(spriteBatch, pixel, 15, infoY + 65, 
-                $"Points: {currentPathPoints.Count}", Color.Cyan);
+            spriteBatch.DrawString(defaultFont, $"Points: {currentPathPoints.Count}", 
+                                new Vector2(15, infoY + 65), Color.Cyan);
         }
-    }
 
-    private void DrawSmallText(SpriteBatch spriteBatch, Texture2D pixel, int x, int y, string text, Color color)
-    {
-        // Простая визуализация "текста" с помощью цветных полосок
-        DrawRectangle(spriteBatch, pixel, new Rectangle(x, y, text.Length * 6, 12), color * 0.3f);
-        DrawRectangle(spriteBatch, pixel, new Rectangle(x, y, 5, 12), color);
     }
 
     private void DrawRectangle(SpriteBatch spriteBatch, Texture2D pixel, Rectangle rect, Color color)
@@ -313,15 +399,19 @@ public class LevelEditor
         spriteBatch.Draw(pixel, rect, color);
     }
 
-    public void SaveMap()
+    public void SaveAll()
     {
         MapSerializer.SaveMap(currentMap, $"Content/Maps/{currentMap.Id}.json");
+        WaveSerializer.Save(waveSet, $"Content/Maps/{currentMap.Id}.waves.json");
     }
 
-    public void LoadMap(string mapId)
+    public void LoadAll(string mapId)
     {
         currentMap = MapSerializer.LoadMap($"Content/Maps/{mapId}.json");
+        waveSet = WaveSerializer.Load($"Content/Maps/{mapId}.waves.json")
+                ?? new WaveSet { MapId = mapId };
     }
+
 
     private Vector2 ScreenToWorldSpace(Vector2 screenPos) => screenPos + cameraPosition;
     private Vector2 WorldToScreenSpace(Vector2 worldPos) => worldPos - cameraPosition;
