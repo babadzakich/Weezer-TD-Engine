@@ -1,5 +1,9 @@
 
 #----------------------------- Global Properties ----------------------------#
+#begin DefaultFont.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:DefaultFont.spritefont
 
 /outputDir:bin/$(Platform)
 /intermediateDir:obj/$(Platform)
