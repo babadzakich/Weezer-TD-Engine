@@ -22,8 +22,7 @@ public class LevelEditor
     private ManageWavesPanel wavesPanel;
 
     private GameMap currentMap;
-    private Vector2 cameraPosition = Vector2.Zero;
-    private const float CameraSpeed = 300f;
+    private Camera camera;
     private const float GridSize = 32f;
 
     // Input states
@@ -47,19 +46,18 @@ public class LevelEditor
     private List<Vector2> currentPathPoints = new List<Vector2>();
     private string selectedPathDefensePointId = null;
 
-    public LevelEditor(ContentManager content)
+    public LevelEditor(ContentManager content, int screenWidth, int screenHeight)
     {
         towerPanel = new TowerEditorPanel(new TowerConfig());
 
-        currentMap = new GameMap("level_1", "Level 1", 1920, 1080);
+        // Фиксированный размер карты
+        currentMap = new GameMap("level_1", "Level 1", 3000, 2000);
         waveSet = new WaveSet { MapId = currentMap.Id };
         wavesPanel = new ManageWavesPanel(waveSet, currentMap);
+        camera = new Camera(new Vector2(3000, 2000), screenWidth, screenHeight);
 
-            // Загрузка шрифта
+        // Загрузка шрифта
         defaultFont = content.Load<SpriteFont>("DefaultFont"); 
-        
-        // Авто-показ панели при старте
-
     }
 
     public void Update(GameTime gameTime, KeyboardState keyboardState, MouseState mouseState)
@@ -95,9 +93,8 @@ public class LevelEditor
                 wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex + 1);
         }
 
-        HandleCameraMovement(gameTime, keyboardState);
+        camera.Update(gameTime, keyboardState, mouseState);
         HandleMouseInput(mouseState);
-
 
         previousKeyboardState = keyboardState;
         previousMouseState = mouseState;
@@ -109,19 +106,9 @@ public class LevelEditor
         }
     }
 
-    private void HandleCameraMovement(GameTime gameTime, KeyboardState keyboardState)
-    {
-        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-        if (keyboardState.IsKeyDown(Keys.W)) cameraPosition.Y -= CameraSpeed * deltaTime;
-        if (keyboardState.IsKeyDown(Keys.S)) cameraPosition.Y += CameraSpeed * deltaTime;
-        if (keyboardState.IsKeyDown(Keys.A)) cameraPosition.X -= CameraSpeed * deltaTime;
-        if (keyboardState.IsKeyDown(Keys.D)) cameraPosition.X += CameraSpeed * deltaTime;
-    }
-
     private void HandleMouseInput(MouseState mouseState)
     {
-        Vector2 worldMousePos = ScreenToWorldSpace(mouseState.Position.ToVector2());
+        Vector2 worldMousePos = camera.ScreenToWorld(mouseState.Position.ToVector2());
 
         // Mode selection
         if (previousKeyboardState.IsKeyDown(Keys.D1) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
@@ -209,7 +196,6 @@ public class LevelEditor
 
     public void Draw(SpriteBatch spriteBatch, Texture2D pixel)
     {
-
         DrawGrid(spriteBatch, pixel);
         DrawMapBoundaries(spriteBatch, pixel);
         DrawSpawnPoints(spriteBatch, pixel);
@@ -229,24 +215,28 @@ public class LevelEditor
     private void DrawGrid(SpriteBatch spriteBatch, Texture2D pixel)
     {
         Color gridColor = Color.DarkGray * 0.3f;
+        
+        int screenWidth = spriteBatch.GraphicsDevice.Viewport.Width;
+        int screenHeight = spriteBatch.GraphicsDevice.Viewport.Height;
 
-        for (float x = -cameraPosition.X % GridSize; x < 1920; x += GridSize)
+        // Сетка в экранных координатах - не двигается
+        for (float x = 0; x < screenWidth; x += GridSize)
         {
-            DrawLine(spriteBatch, pixel, new Vector2(x, 0), new Vector2(x, 1080), gridColor);
+            DrawLine(spriteBatch, pixel, new Vector2(x, 0), new Vector2(x, screenHeight), gridColor);
         }
 
-        for (float y = -cameraPosition.Y % GridSize; y < 1080; y += GridSize)
+        for (float y = 0; y < screenHeight; y += GridSize)
         {
-            DrawLine(spriteBatch, pixel, new Vector2(0, y), new Vector2(1920, y), gridColor);
+            DrawLine(spriteBatch, pixel, new Vector2(0, y), new Vector2(screenWidth, y), gridColor);
         }
     }
 
     private void DrawMapBoundaries(SpriteBatch spriteBatch, Texture2D pixel)
     {
-        Vector2 topLeft = WorldToScreenSpace(Vector2.Zero);
-        Vector2 topRight = WorldToScreenSpace(new Vector2(currentMap.Width, 0));
-        Vector2 bottomLeft = WorldToScreenSpace(new Vector2(0, currentMap.Height));
-        Vector2 bottomRight = WorldToScreenSpace(new Vector2(currentMap.Width, currentMap.Height));
+        Vector2 topLeft = camera.WorldToScreen(Vector2.Zero);
+        Vector2 topRight = camera.WorldToScreen(new Vector2(currentMap.Width, 0));
+        Vector2 bottomLeft = camera.WorldToScreen(new Vector2(0, currentMap.Height));
+        Vector2 bottomRight = camera.WorldToScreen(new Vector2(currentMap.Width, currentMap.Height));
 
         Color boundaryColor = Color.White;
         int thickness = 3;
@@ -262,8 +252,8 @@ public class LevelEditor
     {
         foreach (var spawn in currentMap.SpawnPoints)
         {
-            var screenPos = WorldToScreenSpace(spawn.Position);
-            DrawCircle(spriteBatch, pixel, screenPos, 10, Color.Green);
+            var screenPos = camera.WorldToScreen(spawn.Position);
+            DrawCircle(spriteBatch, pixel, screenPos, 10 * camera.Zoom, Color.Green);
             DrawCircleOutline(spriteBatch, pixel, screenPos, 10, Color.LimeGreen, 2);
         }
     }
@@ -272,9 +262,9 @@ public class LevelEditor
     {
         foreach (var defense in currentMap.DefensePoints)
         {
-            var screenPos = WorldToScreenSpace(defense.Position);
-            DrawCircle(spriteBatch, pixel, screenPos, 15, Color.Red);
-            DrawCircleOutline(spriteBatch, pixel, screenPos, 15, Color.IndianRed, 2);
+            var screenPos = camera.WorldToScreen(defense.Position);
+            DrawCircle(spriteBatch, pixel, screenPos, 15 * camera.Zoom, Color.Red);
+            DrawCircleOutline(spriteBatch, pixel, screenPos, 15 * camera.Zoom, Color.IndianRed, 2);
         }
     }
 
@@ -285,16 +275,16 @@ public class LevelEditor
             var smoothPath = path.GetSmoothPath();
             for (int i = 0; i < smoothPath.Count - 1; i++)
             {
-                var start = WorldToScreenSpace(smoothPath[i]);
-                var end = WorldToScreenSpace(smoothPath[i + 1]);
-                DrawLine(spriteBatch, pixel, start, end, Color.Yellow, 2);
+                var start = camera.WorldToScreen(smoothPath[i]);
+                var end = camera.WorldToScreen(smoothPath[i + 1]);
+                DrawLine(spriteBatch, pixel, start, end, Color.Yellow, (int)(2 * camera.Zoom));
             }
 
             // Draw waypoints
             foreach (var waypoint in path.Waypoints)
             {
-                var screenPos = WorldToScreenSpace(waypoint);
-                DrawCircle(spriteBatch, pixel, screenPos, 5, Color.Orange);
+                var screenPos = camera.WorldToScreen(waypoint);
+                DrawCircle(spriteBatch, pixel, screenPos, 5 * camera.Zoom, Color.Orange);
             }
         }
     }
@@ -307,16 +297,16 @@ public class LevelEditor
         // Draw lines between points
         for (int i = 0; i < currentPathPoints.Count - 1; i++)
         {
-            var start = WorldToScreenSpace(currentPathPoints[i]);
-            var end = WorldToScreenSpace(currentPathPoints[i + 1]);
-            DrawLine(spriteBatch, pixel, start, end, Color.Cyan, 2);
+            var start = camera.WorldToScreen(currentPathPoints[i]);
+            var end = camera.WorldToScreen(currentPathPoints[i + 1]);
+            DrawLine(spriteBatch, pixel, start, end, Color.Cyan, (int)(2 * camera.Zoom));
         }
 
         // Draw points
         foreach (var point in currentPathPoints)
         {
-            var screenPos = WorldToScreenSpace(point);
-            DrawCircle(spriteBatch, pixel, screenPos, 6, Color.Cyan);
+            var screenPos = camera.WorldToScreen(point);
+            DrawCircle(spriteBatch, pixel, screenPos, 6 * camera.Zoom, Color.Cyan);
         }
     }
 
@@ -412,9 +402,6 @@ public class LevelEditor
                 ?? new WaveSet { MapId = mapId };
     }
 
-
-    private Vector2 ScreenToWorldSpace(Vector2 screenPos) => screenPos + cameraPosition;
-    private Vector2 WorldToScreenSpace(Vector2 worldPos) => worldPos - cameraPosition;
 
     // Helper drawing methods
     private void DrawCircle(SpriteBatch spriteBatch, Texture2D pixel, Vector2 center, float radius, Color color)

@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.MapRelated;
+using System;
 
 namespace Weezer_Tower_Defence;
 
@@ -14,6 +15,9 @@ public class Game1 : Game
     private Texture2D _bulletTexture;
     private Texture2D _towerTexture;
     private Texture2D _pixel;
+    private SpriteFont _font;
+    private bool _showInstructions = true;
+    private KeyboardState _previousKeyState;
 
     private DamageDealerController damageDealerController;
     private TowerController towerController;
@@ -24,6 +28,11 @@ public class Game1 : Game
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
+        
+        // Разрешаем изменение размера окна
+        Window.AllowUserResizing = true;
+        _graphics.PreferredBackBufferWidth = 1600;
+        _graphics.PreferredBackBufferHeight = 900;
     }
 
     protected override void Initialize()
@@ -77,6 +86,16 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+        // Загружаем шрифт
+        try
+        {
+            _font = Content.Load<SpriteFont>("DefaultFont");
+        }
+        catch
+        {
+            _font = null;
+        }
+
         // Создаём пиксельную текстуру для отрисовки линий/прямоугольников
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
@@ -102,12 +121,26 @@ public class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+        var currentKeyState = Keyboard.GetState();
+        
+        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyState.IsKeyDown(Keys.Escape))
             Exit();
 
-        damageDealerController.Update(gameTime);
-        towerController.Update(gameTime);
+        // Закрыть инструкции по нажатию Enter или пробела
+        if (_showInstructions && 
+            (currentKeyState.IsKeyDown(Keys.Enter) && _previousKeyState.IsKeyUp(Keys.Enter) ||
+             currentKeyState.IsKeyDown(Keys.Space) && _previousKeyState.IsKeyUp(Keys.Space)))
+        {
+            _showInstructions = false;
+        }
 
+        if (!_showInstructions)
+        {
+            damageDealerController.Update(gameTime);
+            towerController.Update(gameTime);
+        }
+
+        _previousKeyState = currentKeyState;
         base.Update(gameTime);
     }
 
@@ -119,8 +152,54 @@ public class Game1 : Game
         gameMap.Draw(_spriteBatch, _pixel);
         towerController.Draw(_spriteBatch);
         damageDealerController.Draw(_spriteBatch);
+        
+        // Рисуем инструкции поверх всего
+        if (_showInstructions && _font != null)
+        {
+            DrawInstructions();
+        }
+        
         _spriteBatch.End();
 
         base.Draw(gameTime);
+    }
+
+    private void DrawInstructions()
+    {
+        int screenWidth = GraphicsDevice.Viewport.Width;
+        int screenHeight = GraphicsDevice.Viewport.Height;
+        
+        // Полупрозрачный фон
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, screenWidth, screenHeight), Color.Black * 0.7f);
+        
+        // Заголовок
+        string title = "=== УПРАВЛЕНИЕ ИГРОЙ ===";
+        Vector2 titleSize = _font.MeasureString(title);
+        Vector2 titlePos = new Vector2((screenWidth - titleSize.X) / 2, 100);
+        _spriteBatch.DrawString(_font, title, titlePos, Color.Yellow);
+        
+        // Инструкции
+        string[] instructions = new string[]
+        {
+            "",
+            "ESC - Выход из игры",
+            "",
+            "Левая кнопка мыши - Взаимодействие с UI",
+            "",
+            "ENTER или ПРОБЕЛ - Закрыть это окно",
+            "",
+            "",
+            "Нажмите ENTER или ПРОБЕЛ чтобы начать игру..."
+        };
+        
+        float yOffset = 200;
+        foreach (var line in instructions)
+        {
+            Vector2 lineSize = _font.MeasureString(line);
+            Vector2 linePos = new Vector2((screenWidth - lineSize.X) / 2, yOffset);
+            Color color = line.Contains("Нажмите") ? Color.Lime : Color.White;
+            _spriteBatch.DrawString(_font, line, linePos, color);
+            yOffset += 40;
+        }
     }
 }
