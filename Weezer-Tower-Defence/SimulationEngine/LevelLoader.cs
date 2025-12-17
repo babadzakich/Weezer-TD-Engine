@@ -19,10 +19,23 @@ public class LevelLoader
     public class LoadedLevel
     {
         public GameMap Map { get; set; }
-        public List<Wave> Waves { get; set; }
+        public List<WaveData> Waves { get; set; }
         public Dictionary<string, EnemyDefinition> EnemyDefinitions { get; set; }
         public Dictionary<string, TowerDefinition> TowerDefinitions { get; set; }
         public Dictionary<string, DamageDealerDefinition> DamageDealerDefinitions { get; set; }
+    }
+
+    public class WaveData
+    {
+        public int Index { get; set; }
+        public List<EnemySpawnData> Spawns { get; set; } = new();
+    }
+
+    public class EnemySpawnData
+    {
+        public string EnemyTypeId { get; set; }
+        public string SpawnPointId { get; set; }
+        public int Count { get; set; }
     }
 
     public class EnemyDefinition
@@ -71,10 +84,8 @@ public class LevelLoader
                 DamageDealerDefinitions = new Dictionary<string, DamageDealerDefinition>()
             };
 
-            string mapsDir = IOPath.Combine(tempDir, "Maps");
-            
             // 1. Загружаем карту
-            string mapFile = Directory.GetFiles(mapsDir, "*.json", SearchOption.TopDirectoryOnly)
+            string mapFile = Directory.GetFiles(tempDir, "*.json", SearchOption.TopDirectoryOnly)
                 .FirstOrDefault(f => !f.Contains(".waves."));
             
             if (mapFile == null)
@@ -84,7 +95,7 @@ public class LevelLoader
             Console.WriteLine($"Loaded map: {level.Map.Name}");
 
             // 2. Загружаем волны
-            string wavesFile = IOPath.Combine(mapsDir, $"{level.Map.Id}.waves.json");
+            string wavesFile = IOPath.Combine(tempDir, $"{level.Map.Id}.waves.json");
             if (File.Exists(wavesFile))
             {
                 level.Waves = LoadWaves(wavesFile);
@@ -92,12 +103,12 @@ public class LevelLoader
             }
             else
             {
-                level.Waves = new List<Wave>();
+                level.Waves = new List<WaveData>();
                 Console.WriteLine("No waves file found");
             }
 
             // 3. Загружаем определения врагов
-            string enemiesDir = IOPath.Combine(mapsDir, "Enemies");
+            string enemiesDir = IOPath.Combine(tempDir, "Enemies");
             if (Directory.Exists(enemiesDir))
             {
                 LoadEnemyDefinitions(enemiesDir, level.EnemyDefinitions);
@@ -105,7 +116,7 @@ public class LevelLoader
             }
 
             // 4. Загружаем определения башен
-            string towersDir = IOPath.Combine(mapsDir, "Towers");
+            string towersDir = IOPath.Combine(tempDir, "Towers");
             if (Directory.Exists(towersDir))
             {
                 LoadTowerDefinitions(towersDir, level.TowerDefinitions);
@@ -113,7 +124,7 @@ public class LevelLoader
             }
 
             // 5. Загружаем определения снарядов
-            string ddDir = IOPath.Combine(mapsDir, "DamageDealers");
+            string ddDir = IOPath.Combine(tempDir, "DamageDealers");
             if (Directory.Exists(ddDir))
             {
                 LoadDamageDealerDefinitions(ddDir, level.DamageDealerDefinitions);
@@ -140,7 +151,12 @@ public class LevelLoader
     private static GameMap LoadMap(string mapFilePath)
     {
         string json = File.ReadAllText(mapFilePath);
-        var serializedMap = JsonSerializer.Deserialize<SerializedMap>(json);
+        
+        var options = new JsonSerializerOptions 
+        { 
+            PropertyNameCaseInsensitive = true 
+        };
+        var serializedMap = JsonSerializer.Deserialize<SerializedMap>(json, options);
 
         var map = new GameMap(serializedMap.Id, serializedMap.Name, serializedMap.Width, serializedMap.Height);
 
@@ -166,13 +182,27 @@ public class LevelLoader
         // Загружаем пути
         foreach (var p in serializedMap.Paths)
         {
-            var points = p.Points.Select(pt => new Microsoft.Xna.Framework.Vector2(pt.X, pt.Y)).ToList();
-            var path = new GamePath(p.SpawnPointId, p.DefensePointId, useSmoothPath: false);
+            var points = p.Waypoints.Select(pt => new Microsoft.Xna.Framework.Vector2(pt.X, pt.Y)).ToList();
+            
+            // Находим соответствующий SpawnPoint (используем первый для простоты)
+            var spawnPoint = map.SpawnPoints.FirstOrDefault();
+            string spawnPointId = spawnPoint?.Id ?? "";
+            
+            var path = new GamePath(spawnPointId, p.DefensePointId, useSmoothPath: p.UseSmoothPath);
+            path.Id = p.Id; // Устанавливаем ID пути
+            
             foreach (var point in points)
             {
                 path.AddWaypoint(point);
             }
             map.Paths.Add(path);
+            
+            // Связываем SpawnPoint с этим путём
+            if (spawnPoint != null)
+            {
+                spawnPoint.PathId = path.Id;
+                Console.WriteLine($"Linked SpawnPoint {spawnPoint.Id} to Path {path.Id}");
+            }
         }
 
         // Загружаем зоны строительства
@@ -191,11 +221,25 @@ public class LevelLoader
         return map;
     }
 
-    private static List<Wave> LoadWaves(string wavesFilePath)
+    private static List<WaveData> LoadWaves(string wavesFilePath)
     {
         string json = File.ReadAllText(wavesFilePath);
         var waveSet = JsonSerializer.Deserialize<WaveSet>(json);
-        return waveSet?.Waves ?? new List<Wave>();
+        
+        if (waveSet?.Waves == null)
+            return new List<WaveData>();
+        
+        // Конвертируем SerializedWave в WaveData
+        return waveSet.Waves.Select(w => new WaveData
+        {
+            Index = w.Index,
+            Spawns = w.Spawns.Select(s => new EnemySpawnData
+            {
+                EnemyTypeId = s.EnemyTypeId,
+                SpawnPointId = s.SpawnPointId,
+                Count = s.Count
+            }).ToList()
+        }).ToList();
     }
 
     private static void LoadEnemyDefinitions(string enemiesDir, Dictionary<string, EnemyDefinition> definitions)
@@ -296,9 +340,11 @@ public class LevelLoader
 
     private class SerializedPath
     {
-        public string SpawnPointId { get; set; }
+        public string Id { get; set; }
         public string DefensePointId { get; set; }
-        public List<SerializedPoint> Points { get; set; } = new();
+        public bool UseSmoothPath { get; set; }
+        public int SplineResolution { get; set; }
+        public List<SerializedPoint> Waypoints { get; set; } = new();
     }
 
     private class SerializedPoint
@@ -319,6 +365,19 @@ public class LevelLoader
     private class WaveSet
     {
         public string MapId { get; set; }
-        public List<Wave> Waves { get; set; } = new();
+        public List<SerializedWave> Waves { get; set; } = new();
+    }
+
+    private class SerializedWave
+    {
+        public int Index { get; set; }
+        public List<SerializedEnemySpawn> Spawns { get; set; } = new();
+    }
+
+    private class SerializedEnemySpawn
+    {
+        public string EnemyTypeId { get; set; }
+        public string SpawnPointId { get; set; }
+        public int Count { get; set; }
     }
 }

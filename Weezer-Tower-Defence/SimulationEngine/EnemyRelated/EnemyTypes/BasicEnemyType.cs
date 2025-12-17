@@ -8,6 +8,7 @@ namespace SimulationEngine.EnemyRelated.EnemyTypes;
 public class BasicEnemyType : IEnemyType
 {
     private Texture2D _texture;
+    private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
     public int health { get; set; } = 100;
 
@@ -18,6 +19,18 @@ public class BasicEnemyType : IEnemyType
     public BasicEnemyType(Texture2D texture = null)
     {
         _texture = texture;
+    }
+    
+    private static Texture2D GetPlaceholderTexture(GraphicsDevice device, Color color)
+    {
+        if (_placeholderTexture == null)
+        {
+            _placeholderTexture = new Texture2D(device, 20, 20);
+            Color[] data = new Color[20 * 20];
+            for (int i = 0; i < data.Length; ++i) data[i] = color;
+            _placeholderTexture.SetData(data);
+        }
+        return _placeholderTexture;
     }
 
     public void SetTexture(Texture2D texture)
@@ -65,12 +78,11 @@ public class BasicEnemyType : IEnemyType
         if (_texture != null)
         {
             spriteBatch.Draw(_texture, enemy.Position, Color.White);
-        } else {
-            // Рисуем заглушку, если текстура не установлена
-            Texture2D placeholder = new Texture2D(spriteBatch.GraphicsDevice, 20, 20);
-            Color[] data = new Color[20 * 20];
-            for (int i = 0; i < data.Length; ++i) data[i] = Color.Red;
-            placeholder.SetData(data);
+        }
+        else
+        {
+            // Рисуем красный квадратик как заглушку
+            var placeholder = GetPlaceholderTexture(spriteBatch.GraphicsDevice, Color.Red);
             spriteBatch.Draw(placeholder, enemy.Position, Color.White);
         }
     }

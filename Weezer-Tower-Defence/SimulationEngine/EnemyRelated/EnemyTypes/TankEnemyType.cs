@@ -11,15 +11,28 @@ namespace SimulationEngine.EnemyRelated.EnemyTypes;
 public class TankEnemyType : IEnemyType
 {
     private Texture2D _texture;
+    private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
     
     public int health { get; set; } = 300;
-    public float speed => 30f; // Медленный
-    public int Damage => 20; // Наносит больше урона
+    public float speed => 30f; // Медленнее базового
+    public int Damage => 20; // Танк наносит больше урона
 
     public TankEnemyType(Texture2D texture = null)
     {
         _texture = texture;
+    }
+    
+    private static Texture2D GetPlaceholderTexture(GraphicsDevice device)
+    {
+        if (_placeholderTexture == null)
+        {
+            _placeholderTexture = new Texture2D(device, 24, 24);
+            Color[] data = new Color[24 * 24];
+            for (int i = 0; i < data.Length; ++i) data[i] = Color.DarkRed;
+            _placeholderTexture.SetData(data);
+        }
+        return _placeholderTexture;
     }
 
     public void SetTexture(Texture2D texture)
@@ -64,14 +77,13 @@ public class TankEnemyType : IEnemyType
         {
             spriteBatch.Draw(_texture, 
                 enemy.Position - new Vector2(_texture.Width / 2, _texture.Height / 2), 
-                Color.DarkRed); // Тёмно-красный для танков
+                Color.White);
         }
         else
         {
-            // Простое отображение без текстуры - большой квадрат
-            Texture2D pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-            pixel.SetData(new[] { Color.White });
-            spriteBatch.Draw(pixel, new Rectangle((int)enemy.Position.X - 12, (int)enemy.Position.Y - 12, 24, 24), Color.DarkRed);
+            // Тёмно-красный большой квадрат для танков
+            var placeholder = GetPlaceholderTexture(spriteBatch.GraphicsDevice);
+            spriteBatch.Draw(placeholder, enemy.Position - new Vector2(12, 12), Color.White);
         }
     }
 }

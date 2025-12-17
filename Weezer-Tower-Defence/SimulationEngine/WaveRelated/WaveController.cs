@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -54,8 +55,13 @@ namespace SimulationEngine.WaveRelated
 
         public void StartNextWave()
         {
+            Console.WriteLine($"StartNextWave called: waveActive={_waveActive}, currentIndex={_currentWaveIndex}, totalWaves={_waves.Count}");
+            
             if (_waveActive || _currentWaveIndex >= _waves.Count)
+            {
+                Console.WriteLine("Cannot start wave - already active or no more waves");
                 return;
+            }
 
             _waveActive = true;
             _spawnTimer = 0f;
@@ -64,10 +70,13 @@ namespace SimulationEngine.WaveRelated
             _remainingEnemies.Clear();
             _enemySpawnPoints.Clear();
             
+            Console.WriteLine($"Starting wave {_currentWaveIndex}: {currentWave.Enemies.Count} enemy types");
+            
             foreach (var enemyEntry in currentWave.Enemies)
             {
                 _remainingEnemies[enemyEntry.Key] = enemyEntry.Value.count;
                 _enemySpawnPoints[enemyEntry.Key] = enemyEntry.Value.spawnPoint;
+                Console.WriteLine($"  - {enemyEntry.Key.Name}: {enemyEntry.Value.count} enemies at spawn {enemyEntry.Value.spawnPoint.Id}");
             }
         }
 
@@ -109,41 +118,61 @@ namespace SimulationEngine.WaveRelated
 
         private void SpawnNextEnemy()
         {
+            Console.WriteLine($"SpawnNextEnemy called: {_remainingEnemies.Count} enemy types remaining");
+            
             foreach (var enemyType in _remainingEnemies.Keys)
             {
                 if (_remainingEnemies[enemyType] > 0)
                 {
                     SpawnPoint spawnPoint = _enemySpawnPoints[enemyType];
+                    Console.WriteLine($"Trying to spawn {enemyType.Name} at spawn point {spawnPoint.Id}, pathId={spawnPoint.PathId}");
+                    
                     var path = _gameMap.GetPathById(spawnPoint.PathId);
+                    
+                    if (path == null)
+                    {
+                        Console.WriteLine($"ERROR: Path not found for spawn point {spawnPoint.Id} with pathId={spawnPoint.PathId}");
+                    }
                     
                     if (path != null)
                     {
-                        // Создаём НОВЫЙ экземпляр поведения для каждого врага через рефлексию
-                        IEnemyType newEnemyType = null;
+                        Enemy enemy = null;
                         
-                        var constructor = enemyType.GetConstructor(new[] { typeof(Texture2D) });
-                        if (constructor != null)
+                        // Проверяем, есть ли строковый ID врага (загружен из уровня)
+                        Wave currentWave = _waves[_currentWaveIndex];
+                        if (currentWave.EnemyStringIds.TryGetValue(enemyType, out string enemyStringId))
                         {
-                            newEnemyType = (IEnemyType)constructor.Invoke(new object[] { _enemyTexture });
+                            Console.WriteLine($"Using factory to create enemy: {enemyStringId}");
+                            // Используем фабрику для создания врага по строковому ID
+                            enemy = EnemyTypeFactory.Instance.CreateEnemy(enemyStringId, spawnPoint.Position, path);
                         }
                         else
                         {
-                            // Пробуем конструктор без параметров
-                            var defaultConstructor = enemyType.GetConstructor(System.Type.EmptyTypes);
-                            if (defaultConstructor != null)
+                            // Старый метод через рефлексию (для совместимости)
+                            IEnemyType newEnemyType = null;
+                            
+                            var constructor = enemyType.GetConstructor(new[] { typeof(Texture2D) });
+                            if (constructor != null)
                             {
-                                newEnemyType = (IEnemyType)defaultConstructor.Invoke(null);
+                                newEnemyType = (IEnemyType)constructor.Invoke(new object[] { _enemyTexture });
+                            }
+                            else
+                            {
+                                var defaultConstructor = enemyType.GetConstructor(System.Type.EmptyTypes);
+                                if (defaultConstructor != null)
+                                {
+                                    newEnemyType = (IEnemyType)defaultConstructor.Invoke(null);
+                                }
+                            }
+                            
+                            if (newEnemyType != null)
+                            {
+                                enemy = new Enemy(newEnemyType, spawnPoint.Position, path);
                             }
                         }
                         
-                        if (newEnemyType != null)
+                        if (enemy != null)
                         {
-                            var enemy = new Enemy(
-                                newEnemyType,
-                                spawnPoint.Position,
-                                path
-                            );
-                            
                             _enemyController.AddEnemy(enemy);
                         }
                         

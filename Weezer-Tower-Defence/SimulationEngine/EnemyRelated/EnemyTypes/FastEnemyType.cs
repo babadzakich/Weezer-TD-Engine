@@ -11,6 +11,7 @@ namespace SimulationEngine.EnemyRelated.EnemyTypes;
 public class FastEnemyType : IEnemyType
 {
     private Texture2D _texture;
+    private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
     
     public int health { get; set; } = 50;
@@ -20,6 +21,18 @@ public class FastEnemyType : IEnemyType
     public FastEnemyType(Texture2D texture = null)
     {
         _texture = texture;
+    }
+    
+    private static Texture2D GetPlaceholderTexture(GraphicsDevice device)
+    {
+        if (_placeholderTexture == null)
+        {
+            _placeholderTexture = new Texture2D(device, 16, 16);
+            Color[] data = new Color[16 * 16];
+            for (int i = 0; i < data.Length; ++i) data[i] = Color.Yellow;
+            _placeholderTexture.SetData(data);
+        }
+        return _placeholderTexture;
     }
 
     public void SetTexture(Texture2D texture)
@@ -64,14 +77,13 @@ public class FastEnemyType : IEnemyType
         {
             spriteBatch.Draw(_texture, 
                 enemy.Position - new Vector2(_texture.Width / 2, _texture.Height / 2), 
-                Color.Yellow); // Жёлтый цвет для быстрых врагов
+                Color.White);
         }
         else
         {
-            // Простое отображение без текстуры
-            Texture2D pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-            pixel.SetData(new[] { Color.White });
-            spriteBatch.Draw(pixel, new Rectangle((int)enemy.Position.X - 8, (int)enemy.Position.Y - 8, 16, 16), Color.Yellow);
+            // Жёлтый квадратик для быстрых врагов
+            var placeholder = GetPlaceholderTexture(spriteBatch.GraphicsDevice);
+            spriteBatch.Draw(placeholder, enemy.Position - new Vector2(8, 8), Color.White);
         }
     }
 }

@@ -18,16 +18,6 @@ namespace EditorEngine;
 /// </summary>
 public static class LevelPackager
 {
-    public class EnemyConfig
-    {
-        public string Id { get; set; }
-        public string DisplayName { get; set; }
-        public int Health { get; set; }
-        public float Speed { get; set; }
-        public int Damage { get; set; }
-        public string SourceFile { get; set; } // Имя .cs файла
-    }
-
     public class TowerConfig
     {
         public string Id { get; set; }
@@ -61,20 +51,16 @@ public static class LevelPackager
 
         try
         {
-            // Создаём структуру папок
-            string mapsDir = IOPath.Combine(levelDir, "Maps");
-            Directory.CreateDirectory(mapsDir);
-
-            // 1. Сохраняем карту в папку Maps
-            string mapJson = IOPath.Combine(mapsDir, $"{map.Id}.json");
+            // 1. Сохраняем карту
+            string mapJson = IOPath.Combine(levelDir, $"{map.Id}.json");
             MapSerializer.SaveMap(map, mapJson);
 
-            // 2. Сохраняем волны в папку Maps
-            string wavesJson = IOPath.Combine(mapsDir, $"{map.Id}.waves.json");
+            // 2. Сохраняем волны
+            string wavesJson = IOPath.Combine(levelDir, $"{map.Id}.waves.json");
             WaveSerializer.Save(waveSet, wavesJson);
 
-            // 3. Создаём папку для врагов внутри Maps
-            string enemiesDir = IOPath.Combine(mapsDir, "Enemies");
+            // 3. Создаём папку для врагов
+            string enemiesDir = IOPath.Combine(levelDir, "Enemies");
             Directory.CreateDirectory(enemiesDir);
             Console.WriteLine($"Created Enemies directory: {enemiesDir}");
 
@@ -84,61 +70,59 @@ public static class LevelPackager
             
             foreach (var enemyTypeId in usedEnemyTypes)
             {
-                var enemyInfo = EnemyTypeRegistry.Instance.GetEnemyInfo(enemyTypeId);
-                if (enemyInfo != null)
+                // Получаем конфиг врага из EnemyConfigRegistry
+                var enemyConfig = EnemyConfigRegistry.Instance.GetConfig(enemyTypeId);
+                if (enemyConfig != null)
                 {
-                    // Сохраняем конфиг врага
-                    var config = new EnemyConfig
-                    {
-                        Id = enemyInfo.Id,
-                        DisplayName = enemyInfo.DisplayName,
-                        Health = enemyInfo.BaseHealth,
-                        Speed = enemyInfo.BaseSpeed,
-                        Damage = enemyInfo.Damage,
-                        SourceFile = $"{enemyInfo.Type.Name}.cs"
-                    };
+                    // Сохраняем JSON конфига напрямую в папку врагов уровня
+                    string configPath = IOPath.Combine(enemiesDir, $"{enemyConfig.Id}.json");
+                    var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                    File.WriteAllText(configPath, JsonSerializer.Serialize(enemyConfig, jsonOptions));
+                    Console.WriteLine($"Saved enemy config: {enemyConfig.Id}");
 
-                    string configPath = IOPath.Combine(enemiesDir, $"{enemyInfo.Id}.json");
-                    var options = new JsonSerializerOptions { WriteIndented = true };
-                    File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
-
-                    // Копируем исходный .cs файл
-                    // Пытаемся найти файл в разных местах
-                    string[] possiblePaths = new[]
+                    // Копируем исходный .cs файл поведения
+                    var behavior = EnemyBehaviorRegistry.Instance.GetBehavior(enemyConfig.BehaviorId);
+                    if (behavior != null)
                     {
-                        // В исходниках проекта
-                        IOPath.Combine(Directory.GetCurrentDirectory(), "EditorEngine", "Enemies", "Types", $"{enemyInfo.Type.Name}.cs"),
-                        // Рядом с exe
-                        IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "EditorEngine", "Enemies", "Types", $"{enemyInfo.Type.Name}.cs"),
-                        // Относительно рабочей директории
-                        IOPath.Combine("EditorEngine", "Enemies", "Types", $"{enemyInfo.Type.Name}.cs")
-                    };
-
-                    string sourceFile = null;
-                    foreach (var path in possiblePaths)
-                    {
-                        if (File.Exists(path))
+                        string behaviorTypeName = behavior.GetType().Name;
+                        
+                        // Пытаемся найти файл в разных местах
+                        string[] possiblePaths = new[]
                         {
-                            sourceFile = path;
-                            break;
+                            IOPath.Combine(Directory.GetCurrentDirectory(), "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
+                            IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
+                            IOPath.Combine("EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs")
+                        };
+
+                        string sourceFile = null;
+                        foreach (var path in possiblePaths)
+                        {
+                            if (File.Exists(path))
+                            {
+                                sourceFile = path;
+                                break;
+                            }
+                        }
+
+                        if (sourceFile != null)
+                        {
+                            string destFile = IOPath.Combine(enemiesDir, $"{behaviorTypeName}.cs");
+                            File.Copy(sourceFile, destFile, true);
+                            Console.WriteLine($"Copied enemy behavior: {behaviorTypeName}.cs");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Warning: Behavior source file not found for {behaviorTypeName}");
                         }
                     }
-
-                    if (sourceFile != null)
-                    {
-                        string destFile = IOPath.Combine(enemiesDir, $"{enemyInfo.Type.Name}.cs");
-                        File.Copy(sourceFile, destFile, true);
-                        Console.WriteLine($"Copied enemy source: {enemyInfo.Type.Name}.cs");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Warning: Source file not found for {enemyInfo.Type.Name}");
-                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: Enemy config not found for {enemyTypeId}");
                 }
             }
 
             // Если в папке Enemies ничего нет, создаём файл-заглушку
-            // (пустые папки не попадают в zip-архив)
             if (Directory.GetFiles(enemiesDir).Length == 0)
             {
                 string placeholder = IOPath.Combine(enemiesDir, ".gitkeep");
@@ -146,8 +130,8 @@ public static class LevelPackager
                 Console.WriteLine("Created placeholder in empty Enemies folder");
             }
 
-            // 4. Создаём папку для башен внутри Maps
-            string towersDir = IOPath.Combine(mapsDir, "Towers");
+            // 4. Создаём папку для башен
+            string towersDir = IOPath.Combine(levelDir, "Towers");
             Directory.CreateDirectory(towersDir);
             Console.WriteLine($"Created Towers directory: {towersDir}");
 
@@ -184,8 +168,8 @@ public static class LevelPackager
                 Console.WriteLine("Created placeholder in empty Towers folder");
             }
 
-            // 5. Создаём папку для damage dealers внутри Maps
-            string damageDealersDir = IOPath.Combine(mapsDir, "DamageDealers");
+            // 5. Создаём папку для damage dealers
+            string damageDealersDir = IOPath.Combine(levelDir, "DamageDealers");
             Directory.CreateDirectory(damageDealersDir);
             Console.WriteLine($"Created DamageDealers directory: {damageDealersDir}");
 

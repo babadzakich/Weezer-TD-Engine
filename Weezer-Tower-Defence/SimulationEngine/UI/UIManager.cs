@@ -40,14 +40,14 @@ public class UIManager
         );
         _allElements.Add(ResourcePanel);
         
-        // Кнопка запуска волны
+        // Кнопка запуска волны (в левом верхнем углу, большая и заметная)
         StartWaveButton = new Button(
-            new Vector2(screenWidth - 160, 10),
-            new Vector2(150, 60),
-            "Start Wave"
+            new Vector2(10, 90),
+            new Vector2(200, 80),
+            "START WAVE"
         );
-        StartWaveButton.BackgroundColor = new Color(50, 150, 50);
-        StartWaveButton.HoverColor = new Color(60, 180, 60);
+        StartWaveButton.BackgroundColor = new Color(0, 150, 0);
+        StartWaveButton.HoverColor = new Color(0, 200, 0);
         StartWaveButton.OnClick += () => OnStartWaveRequested?.Invoke();
         _allElements.Add(StartWaveButton);
         

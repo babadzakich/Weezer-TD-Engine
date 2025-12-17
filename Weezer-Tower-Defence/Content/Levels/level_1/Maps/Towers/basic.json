@@ -1,8 +1,0 @@
-{
-  "Id": "basic",
-  "Name": "Basic Tower",
-  "Cost": 100,
-  "Range": 150,
-  "FireRate": 1,
-  "SourceFile": "BasicTower.cs"
-}

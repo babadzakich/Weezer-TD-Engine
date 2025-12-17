@@ -12,6 +12,7 @@ using SimulationEngine.WaveRelated;
 using SimulationEngine.EnemyRelated.EnemyTypes;
 using SimulationEngine;
 using SimulationEngine.UI;
+using System.Linq;
 
 namespace Weezer_Tower_Defence;
 
@@ -71,6 +72,10 @@ public class Game1 : Game
             Console.WriteLine($"- Paths: {gameMap.Paths.Count}");
             Console.WriteLine($"- Build zones: {gameMap.BuildZones.Count}");
             
+            // Загружаем определения врагов в фабрику
+            EnemyTypeFactory.Instance.LoadEnemyTypesFromLevel(loadedLevel.EnemyDefinitions);
+            Console.WriteLine($"Loaded {loadedLevel.EnemyDefinitions.Count} enemy definitions into factory");
+            
             // Инициализируем контроллеры
             damageDealerController = DamageDealerController.GetInstance(this);
             towerController = TowerController.GetInstance(this);
@@ -78,8 +83,9 @@ public class Game1 : Game
             waveController = WaveController.GetInstance(enemyController, gameMap);
             
             // Загружаем волны из уровня
-            foreach (var wave in loadedLevel.Waves)
+            foreach (var waveData in loadedLevel.Waves)
             {
+                var wave = ConvertWaveDataToWave(waveData, gameMap);
                 waveController.AddWave(wave);
             }
             Console.WriteLine($"Loaded {loadedLevel.Waves.Count} waves");
@@ -112,23 +118,21 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        // Загружаем шрифт
-        try
-        {
-            _font = Content.Load<SpriteFont>("DefaultFont");
-        }
-        catch
-        {
-            _font = null;
-        }
-
         // Создаём пиксельную текстуру для отрисовки линий/прямоугольников
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
         
-        // Загружаем шрифт (если есть), иначе используем null
-        try { _font = Content.Load<SpriteFont>("Fonts/Default"); } 
-        catch { _font = null; }
+        // Загружаем шрифт
+        try
+        {
+            _font = Content.Load<SpriteFont>("DefaultFont");
+            Console.WriteLine("Font loaded successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not load font: {ex.Message}");
+            _font = null;
+        }
 
         // Создаём временную текстуру для пули (красный квадрат 10x10)
         _bulletTexture = new Texture2D(GraphicsDevice, 10, 10);
@@ -240,5 +244,39 @@ public class Game1 : Game
             _spriteBatch.DrawString(_font, line, linePos, color);
             yOffset += 40;
         }
+    }
+
+    /// <summary>
+    /// Конвертирует WaveData из архива в Wave для SimulationEngine
+    /// </summary>
+    private Wave ConvertWaveDataToWave(LevelLoader.WaveData waveData, GameMap gameMap)
+    {
+        var wave = new Wave($"wave_{waveData.Index}");
+        
+        foreach (var spawn in waveData.Spawns)
+        {
+            // Находим точку спавна по ID
+            var spawnPoint = gameMap.SpawnPoints.FirstOrDefault(sp => sp.Id == spawn.SpawnPointId);
+            if (spawnPoint == null)
+            {
+                Console.WriteLine($"Warning: Spawn point {spawn.SpawnPointId} not found for enemy {spawn.EnemyTypeId}");
+                continue;
+            }
+
+            // Получаем определение врага
+            var enemyDef = EnemyTypeFactory.Instance.GetEnemyDefinition(spawn.EnemyTypeId);
+            if (enemyDef == null)
+            {
+                Console.WriteLine($"Warning: Enemy definition {spawn.EnemyTypeId} not found");
+                continue;
+            }
+
+            // Используем BasicEnemyType как placeholder тип, но сохраняем строковый ID
+            // WaveController будет использовать строковый ID для создания правильных врагов через фабрику
+            wave.AddEnemy(typeof(BasicEnemyType), spawn.Count, spawnPoint, spawn.EnemyTypeId);
+            Console.WriteLine($"Added to wave {waveData.Index}: {spawn.Count}x {spawn.EnemyTypeId} at {spawn.SpawnPointId}");
+        }
+        
+        return wave;
     }
 }

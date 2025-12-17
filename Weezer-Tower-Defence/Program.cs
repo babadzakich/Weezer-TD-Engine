@@ -8,10 +8,20 @@ namespace Weezer_Tower_Defence
 {
     public static class Program
     {
-        static void Main()
+        static void Main(string[] args)
         {
-            using var game = new Game1();
-            game.Run();
+            bool editorMode = args.Length > 0 && args[0] == "--editor";
+            
+            if (editorMode)
+            {
+                using var game = new Editor();
+                game.Run();
+            }
+            else
+            {
+                using var game = new Game1();
+                game.Run();
+            }
         }
     }
 
