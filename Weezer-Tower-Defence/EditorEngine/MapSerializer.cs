@@ -34,6 +34,27 @@ public static class MapSerializer
 
         [JsonPropertyName("paths")]
         public List<SerializedPath> Paths { get; set; } = new();
+
+        [JsonPropertyName("buildZones")]
+        public List<SerializedBuildZone> BuildZones { get; set; } = new();
+    }
+
+    private class SerializedBuildZone
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; }
+
+        [JsonPropertyName("x")]
+        public float X { get; set; }
+
+        [JsonPropertyName("y")]
+        public float Y { get; set; }
+
+        [JsonPropertyName("sizeX")]
+        public float SizeX { get; set; }
+
+        [JsonPropertyName("sizeY")]
+        public float SizeY { get; set; }
     }
 
     private class SerializedSpawnPoint
@@ -149,6 +170,19 @@ public static class MapSerializer
                 serialized.Paths.Add(serializedPath);
             }
 
+            // Serialize build zones
+            foreach (var buildZone in map.BuildZones)
+            {
+                serialized.BuildZones.Add(new SerializedBuildZone
+                {
+                    Id = buildZone.Id,
+                    X = buildZone.Position.X,
+                    Y = buildZone.Position.Y,
+                    SizeX = buildZone.Size.X,
+                    SizeY = buildZone.Size.Y
+                });
+            }
+
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true
@@ -203,6 +237,20 @@ public static class MapSerializer
                     newPath.AddWaypoint(waypoint.ToVector2());
                 }
                 map.AddPath(newPath);
+            }
+
+            // Deserialize build zones
+            if (serialized.BuildZones != null)
+            {
+                foreach (var buildZone in serialized.BuildZones)
+                {
+                    var zone = new BuildZone(
+                        new Vector2(buildZone.X, buildZone.Y),
+                        buildZone.Id,
+                        new Vector2(buildZone.SizeX, buildZone.SizeY)
+                    );
+                    map.AddBuildZone(zone);
+                }
             }
 
             Console.WriteLine($"Map loaded from {filePath}");

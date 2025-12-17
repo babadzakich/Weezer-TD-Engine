@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using EditorEngine.Waves;
+using EditorEngine.Enemies;
 using SimulationEngine.MapRelated;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -140,17 +141,27 @@ public class ManageWavesPanel
     }
 
     /// <summary>
-    /// Пока просто строковый список.
-    /// Потом можно связать с EnemyRegistry / configs.
+    /// Получить доступные типы врагов из реестра
     /// </summary>
     public IReadOnlyList<string> GetAvailableEnemyTypeIds()
     {
-        return new List<string>
-        {
-            "basic",
-            "fast",
-            "tank"
-        };
+        return EnemyTypeRegistry.Instance.GetAllEnemyTypeIds();
+    }
+
+    /// <summary>
+    /// Получить информацию о типе врага (для отображения в UI)
+    /// </summary>
+    public EnemyTypeRegistry.EnemyTypeInfo GetEnemyTypeInfo(string enemyTypeId)
+    {
+        return EnemyTypeRegistry.Instance.GetEnemyInfo(enemyTypeId);
+    }
+
+    /// <summary>
+    /// Получить все типы врагов с полной информацией
+    /// </summary>
+    public IReadOnlyList<EnemyConfig> GetAllEnemyConfigs()
+    {
+        return EnemyConfigRegistry.Instance.GetAllConfigs();
     }
      private void DrawRectangle(SpriteBatch spriteBatch, Texture2D pixel, Rectangle rect, Color color)
     {

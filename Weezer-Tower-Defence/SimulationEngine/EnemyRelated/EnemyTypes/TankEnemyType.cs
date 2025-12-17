@@ -5,17 +5,19 @@ using SimulationEngine.MapRelated;
 
 namespace SimulationEngine.EnemyRelated.EnemyTypes;
 
-public class BasicEnemyType : IEnemyType
+/// <summary>
+/// Танк - медленный враг с большим здоровьем
+/// </summary>
+public class TankEnemyType : IEnemyType
 {
     private Texture2D _texture;
     private int _currentWaypointIndex = 0;
-    public int health { get; set; } = 100;
+    
+    public int health { get; set; } = 300;
+    public float speed => 30f; // Медленный
+    public int Damage => 20; // Наносит больше урона
 
-    public float speed => 60f;
-
-    public int Damage => 10; // Базовый враг наносит 10 урона
-
-    public BasicEnemyType(Texture2D texture = null)
+    public TankEnemyType(Texture2D texture = null)
     {
         _texture = texture;
     }
@@ -34,10 +36,8 @@ public class BasicEnemyType : IEnemyType
     {
         var waypoints = path.GetSmoothPath();
         
-        // Если путь пуст или мы уже прошли его - враг достиг точки защиты
         if (waypoints.Count == 0 || _currentWaypointIndex >= waypoints.Count)
         {
-            // Враг достиг конца пути, EnemyController нанесет урон базе
             enemy.isAlive = false;
             return;
         }
@@ -48,13 +48,11 @@ public class BasicEnemyType : IEnemyType
 
         if (distance <= moveAmount)
         {
-            // Мы достигли точки
             enemy.Position = target;
             _currentWaypointIndex++;
         }
         else
         {
-            // Двигаемся к точке
             Vector2 direction = Vector2.Normalize(target - enemy.Position);
             enemy.Position += direction * moveAmount;
         }
@@ -64,14 +62,16 @@ public class BasicEnemyType : IEnemyType
     {
         if (_texture != null)
         {
-            spriteBatch.Draw(_texture, enemy.Position, Color.White);
-        } else {
-            // Рисуем заглушку, если текстура не установлена
-            Texture2D placeholder = new Texture2D(spriteBatch.GraphicsDevice, 20, 20);
-            Color[] data = new Color[20 * 20];
-            for (int i = 0; i < data.Length; ++i) data[i] = Color.Red;
-            placeholder.SetData(data);
-            spriteBatch.Draw(placeholder, enemy.Position, Color.White);
+            spriteBatch.Draw(_texture, 
+                enemy.Position - new Vector2(_texture.Width / 2, _texture.Height / 2), 
+                Color.DarkRed); // Тёмно-красный для танков
+        }
+        else
+        {
+            // Простое отображение без текстуры - большой квадрат
+            Texture2D pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+            pixel.SetData(new[] { Color.White });
+            spriteBatch.Draw(pixel, new Rectangle((int)enemy.Position.X - 12, (int)enemy.Position.Y - 12, 24, 24), Color.DarkRed);
         }
     }
 }

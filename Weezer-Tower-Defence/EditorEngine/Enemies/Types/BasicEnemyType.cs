@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.EnemyRelated;
 using SimulationEngine.MapRelated;
 
-namespace SimulationEngine.EnemyRelated.EnemyTypes;
+namespace EditorEngine.Enemies.Types;
 
 public class BasicEnemyType : IEnemyType
 {
@@ -15,7 +15,11 @@ public class BasicEnemyType : IEnemyType
 
     public int Damage => 10; // Базовый враг наносит 10 урона
 
-    public BasicEnemyType(Texture2D texture = null)
+    public BasicEnemyType() : this(null)
+    {
+    }
+
+    public BasicEnemyType(Texture2D texture)
     {
         _texture = texture;
     }

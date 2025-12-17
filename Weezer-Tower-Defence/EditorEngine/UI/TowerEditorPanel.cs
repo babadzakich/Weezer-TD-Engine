@@ -1,40 +1,38 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using SimulationEngine.TowerRelated;
 using EditorEngine.Towers;
 
 namespace EditorEngine.UI;
 
 public class TowerEditorPanel
 {
-    private readonly TowerConfig config;
+    private string id = "new_tower";
+    private string name = "New Tower";
+    private int cost = 100;
+    private float range = 150f;
+    private float fireRate = 1f;
 
     private readonly UITextField idField;
     private readonly UITextField nameField;
     private readonly UITextField costField;
     private readonly UITextField rangeField;
     private readonly UITextField fireRateField;
-    private readonly UITextField damageField;
-    private readonly UITextField behaviorField;
 
     private readonly UIButton saveButton;
 
     public bool IsOpen { get; private set; }
 
-    public TowerEditorPanel(TowerConfig config)
+    public TowerEditorPanel()
     {
-        this.config = config;
-
         int x = 20, y = 20, w = 220, h = 26, gap = 34;
 
-        idField       = new(new Rectangle(x, y, w, h), config.Id);
-        nameField     = new(new Rectangle(x, y += gap, w, h), config.Name);
-        costField     = new(new Rectangle(x, y += gap, w, h), config.Cost.ToString());
-        rangeField    = new(new Rectangle(x, y += gap, w, h), config.Range.ToString());
-        fireRateField = new(new Rectangle(x, y += gap, w, h), config.FireRate.ToString());
-        damageField   = new(new Rectangle(x, y += gap, w, h), config.Damage.ToString());
-        behaviorField = new(new Rectangle(x, y += gap, w, h), config.BehaviorType);
+        idField       = new(new Rectangle(x, y, w, h), id);
+        nameField     = new(new Rectangle(x, y += gap, w, h), name);
+        costField     = new(new Rectangle(x, y += gap, w, h), cost.ToString());
+        rangeField    = new(new Rectangle(x, y += gap, w, h), range.ToString());
+        fireRateField = new(new Rectangle(x, y += gap, w, h), fireRate.ToString());
 
         saveButton = new UIButton(
             new Rectangle(x, y + gap + 10, w, h),
@@ -56,50 +54,42 @@ public class TowerEditorPanel
         costField.Update(mouse, keyboard);
         rangeField.Update(mouse, keyboard);
         fireRateField.Update(mouse, keyboard);
-        damageField.Update(mouse, keyboard);
-        behaviorField.Update(mouse, keyboard);
 
         saveButton.Update(mouse);
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)
-{
-    if (!IsOpen) return;
+    {
+        if (!IsOpen) return;
 
-    int panelWidth = 260;
-    int panelHeight = 350;
-    int x = 10;
-    int y = 10;
+        int panelWidth = 260;
+        int panelHeight = 280;
+        int x = 10;
+        int y = 10;
 
-    // Фон панели
-    sb.Draw(pixel, new Rectangle(x, y, panelWidth, panelHeight), Color.Black * 0.85f);
+        // Фон панели
+        sb.Draw(pixel, new Rectangle(x, y, panelWidth, panelHeight), Color.Black * 0.85f);
 
-    int labelOffset = 18;
-    int fieldHeight = 26;
+        int labelOffset = 34;
 
-    DrawLabel(sb, font, "Id", new Vector2(x + 4, y + 4));
-    idField.Draw(sb, font, pixel);
+        DrawLabel(sb, font, "Id:", new Vector2(x + 4, y + 4));
+        idField.Draw(sb, font, pixel);
 
-    DrawLabel(sb, font, "Name", new Vector2(x + 4, y + 4 + labelOffset * 1));
-    nameField.Draw(sb, font, pixel);
+        DrawLabel(sb, font, "Name:", new Vector2(x + 4, y + 4 + labelOffset * 1));
+        nameField.Draw(sb, font, pixel);
 
-    DrawLabel(sb, font, "Cost", new Vector2(x + 4, y + 4 + labelOffset * 2));
-    costField.Draw(sb, font, pixel);
+        DrawLabel(sb, font, "Cost:", new Vector2(x + 4, y + 4 + labelOffset * 2));
+        costField.Draw(sb, font, pixel);
 
-    DrawLabel(sb, font, "Range", new Vector2(x + 4, y + 4 + labelOffset * 3));
-    rangeField.Draw(sb, font, pixel);
+        DrawLabel(sb, font, "Range:", new Vector2(x + 4, y + 4 + labelOffset * 3));
+        rangeField.Draw(sb, font, pixel);
 
-    DrawLabel(sb, font, "Fire Rate", new Vector2(x + 4, y + 4 + labelOffset * 4));
-    fireRateField.Draw(sb, font, pixel);
+        DrawLabel(sb, font, "Fire Rate:", new Vector2(x + 4, y + 4 + labelOffset * 4));
+        fireRateField.Draw(sb, font, pixel);
 
-    DrawLabel(sb, font, "Damage", new Vector2(x + 4, y + 4 + labelOffset * 5));
-    damageField.Draw(sb, font, pixel);
+        saveButton.Draw(sb, font, pixel);
+    }
 
-    DrawLabel(sb, font, "Behavior", new Vector2(x + 4, y + 4 + labelOffset * 6));
-    behaviorField.Draw(sb, font, pixel);
-
-    saveButton.Draw(sb, font, pixel);
-}
     private void DrawLabel(SpriteBatch sb, SpriteFont font, string text, Vector2 pos)
     {
         sb.DrawString(font, text, pos, Color.White);
@@ -107,17 +97,38 @@ public class TowerEditorPanel
 
     private void SaveTower()
     {
-        config.Id = idField.Text;
-        config.Name = nameField.Text;
-        config.Cost = int.Parse(costField.Text);
-        config.Range = float.Parse(rangeField.Text);
-        config.FireRate = float.Parse(fireRateField.Text);
-        config.Damage = float.Parse(damageField.Text);
-        config.BehaviorType = behaviorField.Text;
+        // Читаем значения из полей
+        id = idField.Text;
+        name = nameField.Text;
+        
+        if (int.TryParse(costField.Text, out int parsedCost))
+            cost = parsedCost;
+        
+        if (float.TryParse(rangeField.Text, out float parsedRange))
+            range = parsedRange;
+        
+        if (float.TryParse(fireRateField.Text, out float parsedFireRate))
+            fireRate = parsedFireRate;
 
-        TowerPackageSaver.Save(
-            $"Content/Towers/{config.Id}.tdtower",
-            config
-        );
+        // Сохраняем только JSON конфиг в Content/Towers/
+        // .cs файлы создавать не нужно - они уже есть в Types/
+        string configDir = "Content/Towers";
+        System.IO.Directory.CreateDirectory(configDir);
+        
+        string configPath = System.IO.Path.Combine(configDir, $"{id}.json");
+        
+        var config = new {
+            Id = id,
+            Name = name,
+            Cost = cost,
+            Range = range,
+            FireRate = fireRate
+        };
+        
+        var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+        string json = System.Text.Json.JsonSerializer.Serialize(config, options);
+        System.IO.File.WriteAllText(configPath, json);
+        
+        Console.WriteLine($"Tower config saved: {configPath}");
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated;
@@ -47,69 +48,62 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        // Создаём тестовую карту
-        gameMap = new GameMap("test_map", "Test Map", 1600, 900);
+        // Загружаем уровень из архива
+        string levelArchivePath = "Content/level_1_package.zip";
         
-        // Создаём путь со сплайном
-        var path = new Path("path1", "defense1", useSmoothPath: true, splineResolution: 25);
-        path.AddWaypoints(
-            new Vector2(50, 300),
-            new Vector2(200, 100),
-            new Vector2(400, 300),
-            new Vector2(600, 150),
-            new Vector2(750, 300)
-        );
-        gameMap.AddPath(path);
-        
-        // Точка защиты
-        gameMap.AddDefensePoint(new DefensePoint(new Vector2(750, 300), "defense1", 100));
-        
-        // Точка спавна
-        gameMap.AddSpawnPoint(new SpawnPoint(new Vector2(50, 300), "spawn1", "path1"));
-        
-        // Зоны строительства
-        gameMap.AddBuildZone(new BuildZone(new Vector2(200, 250), "zone1", new Vector2(50, 50)));
-        gameMap.AddBuildZone(new BuildZone(new Vector2(400, 450), "zone2", new Vector2(50, 50)));
-        gameMap.AddBuildZone(new BuildZone(new Vector2(600, 250), "zone3", new Vector2(50, 50)));
+        if (!System.IO.File.Exists(levelArchivePath))
+        {
+            Console.WriteLine($"ERROR: Level archive not found at {levelArchivePath}");
+            Console.WriteLine("Please create a level in the editor (dotnet run -- editor) and press Ctrl+P to package it.");
+            Exit();
+            return;
+        }
 
-        damageDealerController = DamageDealerController.GetInstance(this);
-        damageDealerController.AddDamageDealer(
-            new DamageDealer(
-                new StandardBulletBehavior(20f, 300f, 500f, null),
-                new Vector2(100, 100),
-                new Vector2(1, 1)
-            )
-        );
-
-        towerController = TowerController.GetInstance(this);
-        towerController.AddTower(
-            new Tower(
-                new BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f, null), 100, 150f, 1f),
-                new Vector2(400, 300) // Позиция башни в центре экрана
-            )
-        );
-
-        enemyController = EnemyController.GetInstance(this, gameMap);
-        
-        // Инициализируем WaveController
-        waveController = WaveController.GetInstance(enemyController, gameMap);
-        
-        // Создаём тестовые волны
-        var wave1 = new Wave("wave1");
-        wave1.AddEnemy(typeof(BasicEnemyType), 5, gameMap.SpawnPoints[0]);
-        waveController.AddWave(wave1);
-        
-        var wave2 = new Wave("wave2");
-        wave2.AddEnemy(typeof(BasicEnemyType), 8, gameMap.SpawnPoints[0]);
-        waveController.AddWave(wave2);
-        
-        var wave3 = new Wave("wave3");
-        wave3.AddEnemy(typeof(BasicEnemyType), 10, gameMap.SpawnPoints[0]);
-        waveController.AddWave(wave3);
-        
-        // Инициализируем GameManager с UI
-        gameManager = GameManager.getInstance(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight, gameMap, towerController, waveController, enemyController);
-        gameManager.OnGameOver += () => Exit();
+        try
+        {
+            Console.WriteLine($"Loading level from: {levelArchivePath}");
+            var loadedLevel = LevelLoader.LoadFromArchive(levelArchivePath);
+            
+            gameMap = loadedLevel.Map;
+            Console.WriteLine($"Loaded map: {gameMap.Name} ({gameMap.Width}x{gameMap.Height})");
+            Console.WriteLine($"- Spawn points: {gameMap.SpawnPoints.Count}");
+            Console.WriteLine($"- Defense points: {gameMap.DefensePoints.Count}");
+            Console.WriteLine($"- Paths: {gameMap.Paths.Count}");
+            Console.WriteLine($"- Build zones: {gameMap.BuildZones.Count}");
+            
+            // Инициализируем контроллеры
+            damageDealerController = DamageDealerController.GetInstance(this);
+            towerController = TowerController.GetInstance(this);
+            enemyController = EnemyController.GetInstance(this, gameMap);
+            waveController = WaveController.GetInstance(enemyController, gameMap);
+            
+            // Загружаем волны из уровня
+            foreach (var wave in loadedLevel.Waves)
+            {
+                waveController.AddWave(wave);
+            }
+            Console.WriteLine($"Loaded {loadedLevel.Waves.Count} waves");
+            
+            // Инициализируем GameManager
+            gameManager = GameManager.getInstance(
+                _graphics.PreferredBackBufferWidth, 
+                _graphics.PreferredBackBufferHeight, 
+                gameMap, 
+                towerController, 
+                waveController, 
+                enemyController
+            );
+            gameManager.OnGameOver += () => Exit();
+            
+            Console.WriteLine("Level loaded successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR loading level: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            Exit();
+            return;
+        }
 
         base.Initialize();
     }
@@ -190,13 +184,6 @@ public class Game1 : Game
             Exit();
         }
 
-        if (!_showInstructions)
-        {
-            damageDealerController.Update(gameTime);
-            towerController.Update(gameTime);
-        }
-
-        _previousKeyState = currentKeyState;
         base.Update(gameTime);
     }
 

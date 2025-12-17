@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using EditorEngine;
+using SimulationEngine;
 
 namespace Weezer_Tower_Defence
 {
@@ -9,7 +10,7 @@ namespace Weezer_Tower_Defence
     {
         static void Main()
         {
-            using var game = new EditorGame();
+            using var game = new Game1();
             game.Run();
         }
     }

@@ -24,12 +24,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Подключаем все исходники кроме Game1.cs -->
-    <Compile Remove="Game1.cs" />
+    <!-- Исключаем Content из компиляции - там лежат архивы уровней и их файлы -->
+    <Compile Remove="Content/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Зависимости MonoGame -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="MonoGame.Extended" Version="3.8.0" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />

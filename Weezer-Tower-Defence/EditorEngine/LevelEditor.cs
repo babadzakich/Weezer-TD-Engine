@@ -20,6 +20,7 @@ public class LevelEditor
 
     private WaveSet waveSet;
     private ManageWavesPanel wavesPanel;
+    private EnemySelectionPanel enemySelectionPanel;
 
     private GameMap currentMap;
     private Camera camera;
@@ -37,6 +38,7 @@ public class LevelEditor
         PlacingSpawn,
         PlacingDefense,
         DrawingPath,
+        PlacingBuildZone,
         WavesEditing,
 
         TowerEdititing,
@@ -48,12 +50,18 @@ public class LevelEditor
 
     public LevelEditor(ContentManager content, int screenWidth, int screenHeight)
     {
-        towerPanel = new TowerEditorPanel(new TowerConfig());
+        towerPanel = new TowerEditorPanel();
 
         // Фиксированный размер карты
         currentMap = new GameMap("level_1", "Level 1", 3000, 2000);
         waveSet = new WaveSet { MapId = currentMap.Id };
         wavesPanel = new ManageWavesPanel(waveSet, currentMap);
+        
+        // Инициализация панели выбора врагов
+        enemySelectionPanel = new EnemySelectionPanel((enemyTypeId, spawnPointId, count) => {
+            wavesPanel.AddEnemySpawnToSelectedWave(enemyTypeId, spawnPointId, count);
+        });
+        
         camera = new Camera(new Vector2(3000, 2000), screenWidth, screenHeight);
 
         // Загрузка шрифта
@@ -86,11 +94,37 @@ public class LevelEditor
                 wavesPanel.RemoveWave(wavesPanel.SelectedWaveIndex);
             }
 
-            if (keyboardState.IsKeyDown(Keys.Up))
+            if (keyboardState.IsKeyDown(Keys.Up) &&
+                previousKeyboardState.IsKeyUp(Keys.Up))
                 wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex - 1);
 
-            if (keyboardState.IsKeyDown(Keys.Down))
+            if (keyboardState.IsKeyDown(Keys.Down) &&
+                previousKeyboardState.IsKeyUp(Keys.Down))
                 wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex + 1);
+
+            // Открыть панель добавления врага (клавиша E)
+            if (keyboardState.IsKeyDown(Keys.E) &&
+                previousKeyboardState.IsKeyUp(Keys.E) &&
+                wavesPanel.SelectedWaveIndex >= 0)
+            {
+                enemySelectionPanel.Open();
+            }
+        }
+
+        // Save on Ctrl+S
+        if (keyboardState.IsKeyDown(Keys.LeftControl) && 
+            keyboardState.IsKeyDown(Keys.S) && 
+            previousKeyboardState.IsKeyUp(Keys.S))
+        {
+            SaveAll();
+        }
+
+        // Pack level on Ctrl+P
+        if (keyboardState.IsKeyDown(Keys.LeftControl) && 
+            keyboardState.IsKeyDown(Keys.P) && 
+            previousKeyboardState.IsKeyUp(Keys.P))
+        {
+            PackLevel();
         }
 
         camera.Update(gameTime, keyboardState, mouseState);
@@ -110,6 +144,39 @@ public class LevelEditor
     {
         Vector2 worldMousePos = camera.ScreenToWorld(mouseState.Position.ToVector2());
 
+        // Обработка клика по панели выбора врагов
+        if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
+        {
+            if (enemySelectionPanel.IsOpen)
+            {
+                enemySelectionPanel.HandleClick(mouseState.Position, 
+                    wavesPanel.GetAllEnemyConfigs(), 
+                    wavesPanel.GetAvailableSpawnPointIds());
+                return;
+            }
+
+            // Обработка клика по панели волн для выбора волны
+            if (wavesPanel.IsOpen)
+            {
+                Rectangle panelRect = new Rectangle(50, 50, 450, 550);
+                if (panelRect.Contains(mouseState.Position))
+                {
+                    int y = panelRect.Y + 50;
+                    var waves = wavesPanel.GetWaves();
+                    for (int i = 0; i < waves.Count; i++)
+                    {
+                        Rectangle waveRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 30);
+                        if (waveRect.Contains(mouseState.Position))
+                        {
+                            wavesPanel.SelectWave(i);
+                            return;
+                        }
+                        y += 35;
+                    }
+                }
+            }
+        }
+
         // Mode selection
         if (previousKeyboardState.IsKeyDown(Keys.D1) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
             currentMode = EditorMode.PlacingSpawn;
@@ -117,6 +184,8 @@ public class LevelEditor
             currentMode = EditorMode.PlacingDefense;
         else if (previousKeyboardState.IsKeyDown(Keys.D3) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
             currentMode = EditorMode.DrawingPath;
+        else if (previousKeyboardState.IsKeyDown(Keys.D4) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
+            currentMode = EditorMode.PlacingBuildZone;
 
         // Left click actions
         if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
@@ -131,6 +200,9 @@ public class LevelEditor
                     break;
                 case EditorMode.DrawingPath:
                     AddPathPoint(worldMousePos);
+                    break;
+                case EditorMode.PlacingBuildZone:
+                    PlaceBuildZone(worldMousePos);
                     break;
             }
         }
@@ -149,12 +221,6 @@ public class LevelEditor
         {
             // Could implement deletion of last element
         }
-
-        // Save on Ctrl+S
-        if (previousKeyboardState.IsKeyDown(Keys.LeftControl) && previousKeyboardState.IsKeyDown(Keys.S))
-        {
-            MapSerializer.SaveMap(currentMap, $"Content/Maps/{currentMap.Id}.json");
-        }
     }
 
     private void PlaceSpawnPoint(Vector2 position)
@@ -168,6 +234,12 @@ public class LevelEditor
         var defensePoint = new DefensePoint(position, $"defense_{currentMap.DefensePoints.Count}", 100);
         currentMap.AddDefensePoint(defensePoint);
         selectedPathDefensePointId = defensePoint.Id;
+    }
+
+    private void PlaceBuildZone(Vector2 position)
+    {
+        var buildZone = new BuildZone(position, $"build_{currentMap.BuildZones.Count}");
+        currentMap.AddBuildZone(buildZone);
     }
 
     private void AddPathPoint(Vector2 position)
@@ -200,6 +272,7 @@ public class LevelEditor
         DrawMapBoundaries(spriteBatch, pixel);
         DrawSpawnPoints(spriteBatch, pixel);
         DrawDefensePoints(spriteBatch, pixel);
+        DrawBuildZones(spriteBatch, pixel);
         DrawPaths(spriteBatch, pixel);
         DrawCurrentPath(spriteBatch, pixel);
         DrawUI(spriteBatch, pixel);
@@ -209,6 +282,11 @@ public class LevelEditor
 
         if (wavesPanel.IsOpen)
             DrawWavesPanel(spriteBatch, pixel);
+
+        if (enemySelectionPanel.IsOpen)
+            enemySelectionPanel.Draw(spriteBatch, defaultFont, pixel, 
+                wavesPanel.GetAllEnemyConfigs(), 
+                wavesPanel.GetAvailableSpawnPointIds());
 
     }
 
@@ -268,6 +346,29 @@ public class LevelEditor
         }
     }
 
+    private void DrawBuildZones(SpriteBatch spriteBatch, Texture2D pixel)
+    {
+        foreach (var buildZone in currentMap.BuildZones)
+        {
+            var screenPos = camera.WorldToScreen(buildZone.Position);
+            var size = buildZone.Size * camera.Zoom;
+            
+            // Рисуем прямоугольник зоны
+            Rectangle rect = new Rectangle(
+                (int)(screenPos.X - size.X / 2),
+                (int)(screenPos.Y - size.Y / 2),
+                (int)size.X,
+                (int)size.Y
+            );
+            
+            // Заливка
+            spriteBatch.Draw(pixel, rect, Color.Blue * 0.3f);
+            
+            // Рамка
+            DrawRectangleOutline(spriteBatch, pixel, rect, Color.Cyan, 2);
+        }
+    }
+
     private void DrawPaths(SpriteBatch spriteBatch, Texture2D pixel)
     {
         foreach (var path in currentMap.Paths)
@@ -313,7 +414,7 @@ public class LevelEditor
     private void DrawWavesPanel(SpriteBatch spriteBatch, Texture2D pixel)
     {
         // Панель фиксирована на экране, координаты не зависят от камеры
-        Rectangle panelRect = new Rectangle(50, 50, 400, 500);
+        Rectangle panelRect = new Rectangle(50, 50, 450, 550);
 
         // Фон панели
         spriteBatch.Draw(pixel, panelRect, Color.Black * 0.85f);
@@ -334,10 +435,61 @@ public class LevelEditor
             Rectangle waveRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 30);
             DrawRectangle(spriteBatch, pixel, waveRect, c * 0.5f);
 
-            // Название волны (или индекс)
-            spriteBatch.DrawString(defaultFont, $"Wave {i + 1}", new Vector2(waveRect.X + 6, waveRect.Y + 6), Color.White);
+            // Название волны и количество врагов
+            int enemyCount = waves[i].Spawns.Count;
+            spriteBatch.DrawString(defaultFont, $"Wave {i + 1} ({enemyCount} spawns)", 
+                new Vector2(waveRect.X + 6, waveRect.Y + 6), Color.White);
 
             y += 35;
+        }
+
+        y += 10;
+
+        // Показываем детали выбранной волны
+        if (wavesPanel.SelectedWaveIndex >= 0)
+        {
+            var selectedWave = wavesPanel.GetSelectedWave();
+            if (selectedWave != null)
+            {
+                spriteBatch.DrawString(defaultFont, "Enemies in wave:",
+                    new Vector2(panelRect.X + 10, y), Color.Yellow);
+                y += 25;
+
+                var spawns = selectedWave.Spawns;
+                if (spawns.Count == 0)
+                {
+                    spriteBatch.DrawString(defaultFont, "No enemies yet. Press E to add.",
+                        new Vector2(panelRect.X + 10, y), Color.Gray);
+                }
+                else
+                {
+                    foreach (var spawn in spawns)
+                    {
+                        var enemyInfo = wavesPanel.GetEnemyTypeInfo(spawn.EnemyTypeId);
+                        string enemyName = enemyInfo?.DisplayName ?? spawn.EnemyTypeId;
+                        string text = $"{enemyName} x{spawn.Count} @ {spawn.SpawnPointId}";
+                        spriteBatch.DrawString(defaultFont, text,
+                            new Vector2(panelRect.X + 15, y), Color.White);
+                        y += 20;
+                    }
+                }
+            }
+
+            y += 10;
+            spriteBatch.DrawString(defaultFont, "Controls:",
+                new Vector2(panelRect.X + 10, y), Color.LightGreen);
+            y += 20;
+            spriteBatch.DrawString(defaultFont, "N - Add Wave",
+                new Vector2(panelRect.X + 10, y), Color.White);
+            y += 18;
+            spriteBatch.DrawString(defaultFont, "D - Delete Wave",
+                new Vector2(panelRect.X + 10, y), Color.White);
+            y += 18;
+            spriteBatch.DrawString(defaultFont, "E - Add Enemy",
+                new Vector2(panelRect.X + 10, y), Color.White);
+            y += 18;
+            spriteBatch.DrawString(defaultFont, "Up/Down - Select Wave",
+                new Vector2(panelRect.X + 10, y), Color.White);
         }
     }
 
@@ -368,18 +520,25 @@ public class LevelEditor
         DrawLine(spriteBatch, pixel, new Vector2(toolbarX + (buttonSize + buttonSpacing) * 2 + 10, toolbarY + buttonSize / 2),
             new Vector2(toolbarX + (buttonSize + buttonSpacing) * 2 + buttonSize - 10, toolbarY + buttonSize / 2), Color.Orange, 3);
 
+        // Build Zone button
+        Color buildColor = currentMode == EditorMode.PlacingBuildZone ? Color.Cyan : Color.Gray;
+        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 3, toolbarY, buttonSize, buttonSize), buildColor);
+        Rectangle buildRect = new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 3 + 10, toolbarY + 10, 20, 20);
+        DrawRectangle(spriteBatch, pixel, buildRect, Color.Blue * 0.5f);
+
         // --- Status Panel ---
         int infoY = toolbarY + buttonSize + 20;
-        DrawRectangle(spriteBatch, pixel, new Rectangle(10, infoY, 300, 100), Color.Black * 0.7f);
+        DrawRectangle(spriteBatch, pixel, new Rectangle(10, infoY, 300, 120), Color.Black * 0.7f);
         spriteBatch.DrawString(defaultFont, "Spawns: " + currentMap.SpawnPoints.Count, new Vector2(15, 55), Color.LimeGreen);
         spriteBatch.DrawString(defaultFont, "Defense: " + currentMap.DefensePoints.Count, new Vector2(15, 75), Color.IndianRed);
         spriteBatch.DrawString(defaultFont, "Paths: " + currentMap.Paths.Count, new Vector2(15, 95), Color.Yellow);
+        spriteBatch.DrawString(defaultFont, "Build Zones: " + currentMap.BuildZones.Count, new Vector2(15, 115), Color.Cyan);
 
 
         if (currentMode == EditorMode.DrawingPath && currentPathPoints.Count > 0)
         {
             spriteBatch.DrawString(defaultFont, $"Points: {currentPathPoints.Count}", 
-                                new Vector2(15, infoY + 65), Color.Cyan);
+                                new Vector2(15, infoY + 85), Color.Cyan);
         }
 
     }
@@ -389,10 +548,37 @@ public class LevelEditor
         spriteBatch.Draw(pixel, rect, color);
     }
 
+    private void DrawRectangleOutline(SpriteBatch spriteBatch, Texture2D pixel, Rectangle rect, Color color, int thickness)
+    {
+        // Верх
+        spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
+        // Низ
+        spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y + rect.Height - thickness, rect.Width, thickness), color);
+        // Лево
+        spriteBatch.Draw(pixel, new Rectangle(rect.X, rect.Y, thickness, rect.Height), color);
+        // Право
+        spriteBatch.Draw(pixel, new Rectangle(rect.X + rect.Width - thickness, rect.Y, thickness, rect.Height), color);
+    }
+
     public void SaveAll()
     {
         MapSerializer.SaveMap(currentMap, $"Content/Maps/{currentMap.Id}.json");
         WaveSerializer.Save(waveSet, $"Content/Maps/{currentMap.Id}.waves.json");
+        Console.WriteLine("Level saved successfully!");
+    }
+
+    public void PackLevel()
+    {
+        try
+        {
+            string outputPath = $"Content/{currentMap.Id}_package.zip";
+            LevelPackager.PackLevel(currentMap, waveSet, outputPath);
+            Console.WriteLine($"Level packed successfully to: {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error packing level: {ex.Message}");
+        }
     }
 
     public void LoadAll(string mapId)
