@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices.Swift;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -11,6 +12,7 @@ public class Enemy
     public int Health => _type.health;
     public int Damage => _type.Damage;
     public bool isAlive { get; set; } = true;
+    public bool isKilled { get; set; } = false;
     
     public string GetDefensePointId() => _path.DefensePointId;
     
@@ -40,6 +42,7 @@ public class Enemy
         if (_type.health <= 0)
         {
             isAlive = false;
+            isKilled = true;
             return;
         }
     }
