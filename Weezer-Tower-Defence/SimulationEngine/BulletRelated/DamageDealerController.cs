@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 using System.Collections.Generic;
+using SimulationEngine.EnemyRelated;
+using SimulationEngine;
 
 namespace SimulationEngine.BulletRelated;
 
@@ -37,9 +39,41 @@ public class DamageDealerController : Controller
 
     public void Update(GameTime deltaTime)
     {
-        foreach (var damageDealer in damageDealers)
+        var enemyController = GameManager.GetInstance().EnemyController;
+
+        for (int i = damageDealers.Count - 1; i >= 0; i--)
         {
+            var damageDealer = damageDealers[i];
             damageDealer.Update(deltaTime);
+
+            if (!damageDealer.IsActive)
+            {
+                damageDealers.RemoveAt(i);
+                continue;
+            }
+
+            if (enemyController == null)
+                continue;
+
+            // Simple collision check: bullet as point, enemy as small circle
+            foreach (var enemy in enemyController.Enemies)
+            {
+                if (!enemy.isAlive)
+                    continue;
+
+                float distance = Vector2.Distance(damageDealer.Position, enemy.Position);
+                const float hitRadius = 16f;
+
+                if (distance <= hitRadius)
+                {
+                    enemy.TakeDamage(damageDealer.Behavior.Damage);
+
+                    // Single-hit bullet: deactivate and remove
+                    damageDealer.IsActive = false;
+                    damageDealers.RemoveAt(i);
+                    break;
+                }
+            }
         }
     }
 

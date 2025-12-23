@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.BulletRelated;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.EnemyRelated;
+using SimulationEngine;
 
 namespace SimulationEngine.TowerRelated.Behaviors;
 
@@ -36,7 +37,8 @@ public class LaserTowerBehavior : ITowerBehavior
     public void Update(Tower tower, GameTime gameTime)
     {
         // Лазер не имеет cooldown, постоянно наносит урон
-        currentTarget = FindTarget(tower, EnemyController.GetInstance(null));
+        var enemyController = GameManager.GetInstance().EnemyController;
+        currentTarget = enemyController != null ? FindTarget(tower, enemyController) : null;
         
         if (currentTarget.HasValue)
         {

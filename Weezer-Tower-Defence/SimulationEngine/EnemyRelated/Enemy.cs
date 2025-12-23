@@ -36,5 +36,11 @@ public class Enemy
     public void TakeDamage(float amount)
     {
         _type.TakeDamage(amount);
+        // kill enemy if health is leess or equals than 0
+        if (_type.health <= 0)
+        {
+            isAlive = false;
+            return;
+        }
     }
 }
