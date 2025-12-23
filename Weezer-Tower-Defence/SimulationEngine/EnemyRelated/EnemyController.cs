@@ -49,7 +49,7 @@ public class EnemyController : Controller
                 if (_gameMap != null)
                 {
                     var defensePoint = _gameMap.GetDefensePoint(enemy.GetDefensePointId());
-                    if (defensePoint != null)
+                    if (defensePoint != null && !enemy.isKilled)
                     {
                         defensePoint.TakeDamage(enemy.Damage);
                     }
