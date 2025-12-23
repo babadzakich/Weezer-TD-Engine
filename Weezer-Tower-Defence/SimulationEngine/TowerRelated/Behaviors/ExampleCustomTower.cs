@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.EnemyRelated;
+using SimulationEngine;
 
 namespace SimulationEngine.TowerRelated.Behaviors;
 
@@ -43,7 +44,8 @@ public class ExampleCustomTower : ITowerBehavior
         
         if (_cooldown <= 0)
         {
-            var target = FindTarget(tower, EnemyController.GetInstance(null)); // TODO: передать реальных врагов
+            var enemyController = GameManager.GetInstance().EnemyController;
+            var target = enemyController != null ? FindTarget(tower, enemyController) : null;
             if (target.HasValue)
             {
                 Fire(tower, target.Value);

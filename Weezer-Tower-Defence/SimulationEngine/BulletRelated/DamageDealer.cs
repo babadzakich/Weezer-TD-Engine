@@ -13,11 +13,13 @@ public class DamageDealer
     public Vector2 Direction;
     public float Rotation;
     public readonly DamageDealerController controller = DamageDealerController.GetInstance(null);
+    public Vector2 StartPosition { get; }
 
     public DamageDealer(IDamageDealerBehavior behavior, Vector2 startPosition, Vector2 direction)
     {
         Behavior = behavior;
         position = startPosition;
+        StartPosition = startPosition;
         Direction = Vector2.Normalize(direction);
         Rotation = (float)System.Math.Atan2(Direction.Y, Direction.X);
     }

@@ -8,6 +8,7 @@ using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.WaveRelated;
 using SimulationEngine.EnemyRelated;
 using Microsoft.Xna.Framework.Graphics;
+using SimulationEngine.BulletRelated;
 
 namespace SimulationEngine;
 
@@ -21,6 +22,7 @@ public class GameManager
     internal TowerController TowerController { get; private set; }
     internal WaveController WaveController { get; private set; }
     internal EnemyController EnemyController { get; private set; }
+    internal DamageDealerController DamageDealerController { get; private set; }
     
     private GameInputHandler _inputHandler;
 
@@ -37,23 +39,24 @@ public class GameManager
         return _instance;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null)
+    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, towerController, waveController, enemyController);
+        _instance = new GameManager(screenWidth, screenHeight, map, towerController, waveController, enemyController, damageDealerController);
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null)
+    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
         TowerController = towerController;
         WaveController = waveController;
         EnemyController = enemyController;
+        DamageDealerController = damageDealerController ?? DamageDealerController.GetInstance(null);
         
         _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
         
@@ -67,6 +70,10 @@ public class GameManager
     {
         UIManager.Update(gameTime);
         _inputHandler.Update();
+
+        TowerController.Update(gameTime);
+        EnemyController?.Update(gameTime);
+        DamageDealerController?.Update(gameTime);
         
         // Обновляем Lives на основе здоровья базы
         if (Map.DefensePoints.Count > 0)
@@ -87,6 +94,7 @@ public class GameManager
         TowerController.Draw(spriteBatch);
         if (EnemyController != null)
             EnemyController.Draw(spriteBatch);
+        DamageDealerController?.Draw(spriteBatch);
         UIManager.Draw(spriteBatch, pixelTexture, font);
     }
 

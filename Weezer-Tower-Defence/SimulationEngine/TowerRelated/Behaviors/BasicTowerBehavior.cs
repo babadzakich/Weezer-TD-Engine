@@ -6,6 +6,7 @@ using SimulationEngine.BulletRelated.Behaviors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SimulationEngine;
 
 namespace SimulationEngine.TowerRelated.Behaviors;
 
@@ -37,7 +38,6 @@ public class BasicTowerBehavior : ITowerBehavior
 
     public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
-        
         if (_currentTarget != null)
         {
             if (Vector2.Distance(_currentTarget.Position, tower.Position) > Range) 
@@ -46,20 +46,31 @@ public class BasicTowerBehavior : ITowerBehavior
                 return _currentTarget.Position;
         }
         
-        Enemy closestEnemy = null;
-        float closestDistance = float.MaxValue;
+        Enemy furthestEnemy = null;
+        float smallestDistanceToGoal = float.MaxValue;
 
         foreach (var enemy in enemies.Enemies)
         {
-            float distance = Vector2.Distance(tower.Position, enemy.Position);
-            if (distance <= Range && distance < closestDistance)
+            float distanceToTower = Vector2.Distance(tower.Position, enemy.Position);
+            if (distanceToTower <= Range)
             {
-                closestDistance = distance;
-                closestEnemy = enemy;
+                // Prefer enemy closest to the goal (furthest along the path)
+                float distanceToGoal = float.MaxValue;
+                var enemyController = GameManager.GetInstance().EnemyController;
+                if (enemyController != null)
+                {
+                    distanceToGoal = enemyController.GetDistanceToGoal(enemy);
+                }
+
+                if (distanceToGoal < smallestDistanceToGoal)
+                {
+                    smallestDistanceToGoal = distanceToGoal;
+                    furthestEnemy = enemy;
+                }
             }
         }
         
-        return closestEnemy?.Position;
+        return furthestEnemy?.Position;
     }
 
     public void Fire(Tower tower, Vector2 targetPosition)
@@ -67,9 +78,9 @@ public class BasicTowerBehavior : ITowerBehavior
         // Создаём пулю в направлении цели
         Vector2 direction = Vector2.Normalize(targetPosition - tower.Position);
         
-        // TODO: создать DamageDealer и добавить в контроллер
         var bullet = new DamageDealer(projectileConfig, tower.Position, direction);
-        DamageDealerController.GetInstance(null).AddDamageDealer(bullet);
+        var dmgController = GameManager.GetInstance().DamageDealerController;
+        dmgController?.AddDamageDealer(bullet);
     }
 
     public void Draw(Tower tower, SpriteBatch spriteBatch, Texture2D texture)
