@@ -23,7 +23,12 @@ namespace SimulationEngine.BulletRelated.Behaviors
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {
-            if (_texture == null) _texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+            if (_texture == null) {
+                _texture = new Texture2D(spriteBatch.GraphicsDevice, 15, 15);
+                Color[] bulletData = new Color[15 * 15];
+                for (int i = 0; i < bulletData.Length; i++) bulletData[i] = Color.White;
+                _texture.SetData(bulletData);
+            }
             spriteBatch.Draw(_texture, damageDealer.Position, Color.White);
         }
 

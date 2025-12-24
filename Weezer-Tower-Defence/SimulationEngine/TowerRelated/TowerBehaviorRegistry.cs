@@ -33,7 +33,7 @@ public class TowerBehaviorRegistry
     /// </summary>
     private void RegisterDefaultBehaviors()
     {
-        Register("BasicTowerBehavior", () => new BasicTowerBehavior("basic_tower", "Basic Tower", new SimulationEngine.BulletRelated.Behaviors.StandardBulletBehavior(25f, 300f, 500f, null), 100, 150f, 1f));
+        Register("BasicTowerBehavior", () => new BasicTowerBehavior("basic_tower", "Basic Tower", new SimulationEngine.BulletRelated.Behaviors.StandardBulletBehavior(25f, 10f, 1000f, null), 100, 150f, 1f));
         Register("LaserTowerBehavior", () => new LaserTowerBehavior());
         // Другие поведения можно добавить позже или через плагины
     }

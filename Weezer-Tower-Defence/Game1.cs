@@ -119,8 +119,10 @@ public class Game1 : Game
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
         // Создаём пиксельную текстуру для отрисовки линий/прямоугольников
-        _pixel = new Texture2D(GraphicsDevice, 1, 1);
-        _pixel.SetData(new[] { Color.White });
+        _pixel = new Texture2D(GraphicsDevice, 10, 10);
+        Color[] pixeldata = new Color[10 * 10];
+        for (int i = 0; i < pixeldata.Length; i++) pixeldata[i] = Color.White;
+        _pixel.SetData(pixeldata);
         
         // Загружаем шрифт
         try
@@ -135,8 +137,8 @@ public class Game1 : Game
         }
 
         // Создаём временную текстуру для пули (красный квадрат 10x10)
-        _bulletTexture = new Texture2D(GraphicsDevice, 10, 10);
-        Color[] bulletData = new Color[10 * 10];
+        _bulletTexture = new Texture2D(GraphicsDevice, 100, 100);
+        Color[] bulletData = new Color[100 * 100];
         for (int i = 0; i < bulletData.Length; i++) bulletData[i] = Color.Red;
         _bulletTexture.SetData(bulletData);
 
