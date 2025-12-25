@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.EnemyRelated;
+using SimulationEngine;
 namespace SimulationEngine.TowerRelated;
 
 public class Tower
@@ -22,11 +23,15 @@ public class Tower
 
     public void Update(GameTime gameTime)
     {
-        Vector2? targetPosition = Behavior.FindTarget(this, EnemyController.GetInstance(null));
-        if (targetPosition.HasValue && cooldownTimer <= 0f)
+        var enemyController = GameManager.GetInstance().EnemyController;
+        if (enemyController != null)
         {
-            Behavior.Fire(this, targetPosition.Value);
-            cooldownTimer = 1f / Behavior.FireRate;
+            Vector2? targetPosition = Behavior.FindTarget(this, enemyController);
+            if (targetPosition.HasValue && cooldownTimer <= 0f)
+            {
+                Behavior.Fire(this, targetPosition.Value);
+                cooldownTimer = 1f / Behavior.FireRate;
+            }
         }
 
         if (cooldownTimer > 0f)

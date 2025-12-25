@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using SimulationEngine.MapRelated;
 
 namespace SimulationEngine.EnemyRelated;
 
@@ -10,16 +11,16 @@ public class EnemyController : Controller
     private static EnemyController _instance;
 
     private Game _engine;
-    private MapRelated.GameMap _gameMap;
+    private GameMap _gameMap;
 
-    private EnemyController(Game engine, MapRelated.GameMap gameMap)
+    private EnemyController(Game engine, GameMap gameMap)
     {
         Enemies = new List<Enemy>();
         _engine = engine;
         _gameMap = gameMap;
     }
 
-    public static EnemyController GetInstance(Game engine, MapRelated.GameMap gameMap = null)
+    public static EnemyController GetInstance(Game engine, GameMap gameMap = null)
     {
         if (_instance == null)
         {
@@ -48,7 +49,7 @@ public class EnemyController : Controller
                 if (_gameMap != null)
                 {
                     var defensePoint = _gameMap.GetDefensePoint(enemy.GetDefensePointId());
-                    if (defensePoint != null)
+                    if (defensePoint != null && !enemy.isKilled)
                     {
                         defensePoint.TakeDamage(enemy.Damage);
                     }
@@ -65,5 +66,21 @@ public class EnemyController : Controller
             if (enemy.isAlive)
                 enemy.Draw(spriteBatch);
         }
+    }
+
+    /// <summary>
+    /// Approximate distance from an enemy to its goal (defense point).
+    /// Used for target priority: smaller distance => closer to goal.
+    /// </summary>
+    public float GetDistanceToGoal(Enemy enemy)
+    {
+        if (_gameMap == null || enemy == null)
+            return float.MaxValue;
+
+        var defensePoint = _gameMap.GetDefensePoint(enemy.GetDefensePointId());
+        if (defensePoint == null)
+            return float.MaxValue;
+
+        return Vector2.Distance(enemy.Position, defensePoint.Position);
     }
 }

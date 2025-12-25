@@ -19,9 +19,16 @@ namespace SimulationEngine.BulletRelated.Behaviors
             _texture = texture;
         }
 
+        public float Damage => _damage;
+
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {
-            if (_texture == null) _texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+            if (_texture == null) {
+                _texture = new Texture2D(spriteBatch.GraphicsDevice, 15, 15);
+                Color[] bulletData = new Color[15 * 15];
+                for (int i = 0; i < bulletData.Length; i++) bulletData[i] = Color.White;
+                _texture.SetData(bulletData);
+            }
             spriteBatch.Draw(_texture, damageDealer.Position, Color.White);
         }
 
@@ -29,10 +36,13 @@ namespace SimulationEngine.BulletRelated.Behaviors
         {
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
             bullet.Position += bullet.Direction * _speed * deltaTime;
-            
-            // Basic bounds check or logic could go here, 
-            // but usually the controller handles removal if out of bounds.
-            // For now, just movement.
+
+            // Deactivate if bullet travelled beyond its maximum distance
+            float traveled = Vector2.Distance(bullet.StartPosition, bullet.Position);
+            if (traveled >= _maxDistance)
+            {
+                bullet.IsActive = false;
+            }
         }
 
         private void onHitTarget(DamageDealer bullet/*, EnemyController targets*/)
