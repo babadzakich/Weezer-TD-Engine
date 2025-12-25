@@ -1,0 +1,8 @@
+{
+  "Id": "machinegun",
+  "Name": "Machine Gun Tower",
+  "Cost": 150,
+  "Range": 100,
+  "FireRate": 3,
+  "SourceFile": "MachineGunTower.cs"
+}

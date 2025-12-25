@@ -1,0 +1,15 @@
+{
+  "MapId": "level_1",
+  "Waves": [
+    {
+      "Index": 0,
+      "Spawns": [
+        {
+          "EnemyTypeId": "goblin",
+          "SpawnPointId": "spawn_0",
+          "Count": 6
+        }
+      ]
+    }
+  ]
+}

@@ -74,6 +74,7 @@ public class LevelLoader
         try
         {
             // Распаковываем архив
+            Console.WriteLine($"Extracting level archive: {archivePath} to {tempDir}");
             ZipFile.ExtractToDirectory(archivePath, tempDir);
             Console.WriteLine($"Extracted level to: {tempDir}");
 

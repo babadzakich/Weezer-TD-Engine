@@ -3,9 +3,6 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace EditorEngine.Enemies;
 
-/// <summary>
-/// Интерфейс поведения врага - как он движется, атакует, рендерится
-/// </summary>
 public interface IEnemyBehavior
 {
     string BehaviorId { get; }
@@ -15,9 +12,6 @@ public interface IEnemyBehavior
     void Draw(EnemyInstance enemy, SpriteBatch spriteBatch);
 }
 
-/// <summary>
-/// Конфигурация конкретного врага - его параметры
-/// </summary>
 public class EnemyConfig
 {
     public string Id { get; set; }
@@ -28,9 +22,6 @@ public class EnemyConfig
     public int Damage { get; set; }
 }
 
-/// <summary>
-/// Экземпляр врага в игре - комбинация поведения и параметров
-/// </summary>
 public class EnemyInstance
 {
     public EnemyConfig Config { get; set; }

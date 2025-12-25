@@ -9,12 +9,8 @@ using System.Linq;
 
 namespace SimulationEngine.TowerRelated.Behaviors;
 
-/// <summary>
-/// Базовое поведение башни - стреляет в ближайшего врага
-/// </summary>
 public class BasicTowerBehavior : ITowerBehavior
 {
-    // Свойства башни
     public string Id { get; }
     public string Name { get; }
     public IDamageDealerBehavior projectileConfig;
