@@ -100,7 +100,8 @@ public class Game1 : Game
                 waveController, 
                 enemyController
             );
-            gameManager.OnGameOver += () => Exit();
+            gameManager.Defeat += () => Exit();
+            gameManager.Win += () => Exit();
             
             Console.WriteLine("Level loaded successfully!");
         }

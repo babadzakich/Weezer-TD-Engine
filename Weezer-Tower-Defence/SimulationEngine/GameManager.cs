@@ -26,7 +26,8 @@ public class GameManager
     
     private GameInputHandler _inputHandler;
 
-    public event Action OnGameOver;
+    public event Action Defeat;
+    public event Action Win;
 
     private static GameManager _instance;
 
@@ -81,10 +82,15 @@ public class GameManager
             UIManager.Lives = Map.DefensePoints[0].Health;
         }
         
-        // Проверка на поражение или конец волн
-        if (UIManager.Lives <= 0 || (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive))
+        // Проверка на поражение
+        if (UIManager.Lives <= 0)
         {
-            OnGameOver?.Invoke();
+            Defeat?.Invoke();
+        }
+        // Чекаем победу
+        if (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive)
+        {
+            Win?.Invoke();
         }
     }
 
