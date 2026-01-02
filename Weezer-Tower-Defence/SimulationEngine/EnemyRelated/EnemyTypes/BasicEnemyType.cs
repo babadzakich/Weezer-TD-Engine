@@ -10,7 +10,9 @@ public class BasicEnemyType : IEnemyType
     private Texture2D _texture;
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
-    public int health { get; set; } = 100;
+    private const int _maxHealth = 100;
+    public int health { get; set; } = _maxHealth;
+    public int MaxHealth => _maxHealth;
 
     public float speed => 60f;
 

@@ -6,6 +6,7 @@ namespace SimulationEngine.EnemyRelated
     public interface IEnemyType
     {
         public int health { get; }
+        public int MaxHealth { get; }
         public float speed { get; }
         public int Damage { get; } // Урон, который враг наносит базе
         void TakeDamage(float amount);

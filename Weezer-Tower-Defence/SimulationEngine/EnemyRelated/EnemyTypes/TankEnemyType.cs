@@ -13,8 +13,10 @@ public class TankEnemyType : IEnemyType
     private Texture2D _texture;
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
+    private const int _maxHealth = 300;
     
-    public int health { get; set; } = 300;
+    public int health { get; set; } = _maxHealth;
+    public int MaxHealth => _maxHealth;
     public float speed => 30f; // Медленнее базового
     public int Damage => 20; // Танк наносит больше урона
 

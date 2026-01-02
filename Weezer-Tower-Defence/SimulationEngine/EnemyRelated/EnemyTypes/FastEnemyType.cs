@@ -13,8 +13,10 @@ public class FastEnemyType : IEnemyType
     private Texture2D _texture;
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
+    private const int _maxHealth = 50;
     
-    public int health { get; set; } = 50;
+    public int health { get; set; } = _maxHealth;
+    public int MaxHealth => _maxHealth;
     public float speed => 120f; // В два раза быстрее базового
     public int Damage => 5;
 
