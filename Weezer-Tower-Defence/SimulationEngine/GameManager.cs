@@ -81,8 +81,8 @@ public class GameManager
             UIManager.Lives = Map.DefensePoints[0].Health;
         }
         
-        // Проверка на поражение
-        if (UIManager.Lives <= 0)
+        // Проверка на поражение или конец волн
+        if (UIManager.Lives <= 0 || (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive))
         {
             OnGameOver?.Invoke();
         }
