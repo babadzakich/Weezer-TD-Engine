@@ -13,6 +13,7 @@ public class Enemy
     public int Health => _type.health;
     public int MaxHealth => _type.MaxHealth;
     public int Damage => _type.Damage;
+    public float HitRadius => _type.HitRadius;
     public bool isAlive { get; set; } = true;
     public bool isKilled { get; set; } = false;
     

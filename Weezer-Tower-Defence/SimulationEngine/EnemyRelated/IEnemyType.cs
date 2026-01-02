@@ -9,6 +9,7 @@ namespace SimulationEngine.EnemyRelated
         public int MaxHealth { get; }
         public float speed { get; }
         public int Damage { get; } // Урон, который враг наносит базе
+        public float HitRadius { get; } // Радиус хитбокса врага
         void TakeDamage(float amount);
         public void Update(Enemy enemy, GameTime gameTime, MapRelated.Path path);
         public void Draw(Enemy enemy, SpriteBatch spriteBatch);

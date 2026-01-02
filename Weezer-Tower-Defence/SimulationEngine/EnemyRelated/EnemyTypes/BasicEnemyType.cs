@@ -17,6 +17,8 @@ public class BasicEnemyType : IEnemyType
     public float speed => 60f;
 
     public int Damage => 10; // Базовый враг наносит 10 урона
+    
+    public float HitRadius => 10f; // Радиус хитбокса базового врага - половинка высоты
 
     public BasicEnemyType(Texture2D texture = null)
     {

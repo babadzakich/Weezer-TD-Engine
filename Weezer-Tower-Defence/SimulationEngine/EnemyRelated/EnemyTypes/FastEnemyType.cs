@@ -19,6 +19,8 @@ public class FastEnemyType : IEnemyType
     public int MaxHealth => _maxHealth;
     public float speed => 120f; // В два раза быстрее базового
     public int Damage => 5;
+    
+    public float HitRadius => 8f; // Радиус хитбокса быстрого врага (меньше базового)
 
     public FastEnemyType(Texture2D texture = null)
     {

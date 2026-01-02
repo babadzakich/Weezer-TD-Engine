@@ -19,6 +19,8 @@ public class TankEnemyType : IEnemyType
     public int MaxHealth => _maxHealth;
     public float speed => 30f; // Медленнее базового
     public int Damage => 20; // Танк наносит больше урона
+    
+    public float HitRadius => 12f; // Радиус хитбокса танка (больше базового)
 
     public TankEnemyType(Texture2D texture = null)
     {
