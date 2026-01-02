@@ -55,16 +55,19 @@ public class DamageDealerController : Controller
             if (enemyController == null)
                 continue;
 
-            // Simple collision check: bullet as point, enemy as small circle
+            // Collision check: circle-circle intersection
+            // two circles intersect if distance between centers <= sum of radiuses
             foreach (var enemy in enemyController.Enemies)
             {
                 if (!enemy.isAlive)
                     continue;
 
                 float distance = Vector2.Distance(damageDealer.Position, enemy.Position);
-                const float hitRadius = 16f;
+                float bulletRadius = damageDealer.HitRadius;
+                float enemyRadius = enemy.HitRadius;
+                float combinedRadius = bulletRadius + enemyRadius;
 
-                if (distance <= hitRadius)
+                if (distance <= combinedRadius)
                 {
                     enemy.TakeDamage(damageDealer.Behavior.Damage);
 

@@ -8,28 +8,75 @@ namespace SimulationEngine.BulletRelated.Behaviors
         private float _speed;
         private float _damage;
         private float _maxDistance;
+        private float _hitRadius;
 
-        private Texture2D _texture;
-
-        public StandardBulletBehavior(float damage, float speed, float maxDistance, Texture2D texture)
+        public StandardBulletBehavior(float damage, float speed, float maxDistance, float hitRadius = 5f)
         {
             _damage = damage;
             _speed = speed;
             _maxDistance = maxDistance;
-            _texture = texture;
+            _hitRadius = hitRadius;
         }
 
         public float Damage => _damage;
+        public float HitRadius => _hitRadius;
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {
-            if (_texture == null) {
-                _texture = new Texture2D(spriteBatch.GraphicsDevice, 15, 15);
-                Color[] bulletData = new Color[15 * 15];
-                for (int i = 0; i < bulletData.Length; i++) bulletData[i] = Color.White;
-                _texture.SetData(bulletData);
+            // Используем текстуру и HitRadius из самой пули
+            // Если текстура не создана, создаём её на основе HitRadius пули
+            if (damageDealer.Texture == null)
+            {
+                CreateBulletTexture(damageDealer, spriteBatch);
             }
-            spriteBatch.Draw(_texture, damageDealer.Position, Color.White);
+            
+            // Рисуем пулю как круг белого цвета, центрированный по позиции
+            if (damageDealer.Texture != null)
+            {
+                spriteBatch.Draw(damageDealer.Texture, damageDealer.Position, null, Color.White, 0f,
+                    new Vector2(damageDealer.Texture.Width / 2f, damageDealer.Texture.Height / 2f), 1f, SpriteEffects.None, 0f);
+            }
+        }
+
+        private void CreateBulletTexture(DamageDealer damageDealer, SpriteBatch spriteBatch)
+        {
+            // Создаём текстуру круга, размер которой точно соответствует HitRadius пули
+            // Размер текстуры = диаметр круга (радиус * 2), округляем вверх для точности
+            int textureSize = (int)System.Math.Ceiling(damageDealer.HitRadius * 2);
+            if (textureSize < 1) textureSize = 1; // Минимальный размер
+                    
+            damageDealer.Texture = new Texture2D(spriteBatch.GraphicsDevice, textureSize, textureSize);
+            Color[] bulletData = new Color[textureSize * textureSize];
+            
+            // Заполняем текстуру: белый цвет внутри круга, прозрачный снаружи
+            // Центр текстуры точно в середине
+            float centerX = (textureSize - 1) / 2f;
+            float centerY = (textureSize - 1) / 2f;
+            float radius = damageDealer.HitRadius;
+            float radiusSquared = radius * radius; // Используем квадрат радиуса для оптимизации
+            
+            for (int y = 0; y < textureSize; y++)
+            {
+                for (int x = 0; x < textureSize; x++)
+                {
+                    float dx = x - centerX;
+                    float dy = y - centerY;
+                    float distanceSquared = dx * dx + dy * dy;
+                    
+                    // Если точка внутри или на границе круга - белый цвет
+                    // Используем <= для точного соответствия хитбоксу (который использует <=)
+                    if (distanceSquared <= radiusSquared)
+                    {
+                        bulletData[y * textureSize + x] = Color.White;
+                    }
+                    else
+                    {
+                        bulletData[y * textureSize + x] = Color.Transparent;
+                    }
+                }
+            }
+            
+            damageDealer.Texture.SetData(bulletData);
         }
 
         public void Update(DamageDealer bullet, GameTime gameTime)

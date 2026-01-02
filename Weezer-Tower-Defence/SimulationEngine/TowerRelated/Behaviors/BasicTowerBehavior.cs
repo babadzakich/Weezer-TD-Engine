@@ -10,8 +10,12 @@ using SimulationEngine;
 
 namespace SimulationEngine.TowerRelated.Behaviors;
 
+/// <summary>
+/// Базовое поведение башни - стреляет в ближайшего врага
+/// </summary>
 public class BasicTowerBehavior : ITowerBehavior
 {
+    // Свойства башни
     public string Id { get; }
     public string Name { get; }
     public IDamageDealerBehavior projectileConfig;
@@ -34,6 +38,7 @@ public class BasicTowerBehavior : ITowerBehavior
 
     public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
+        
         if (_currentTarget != null)
         {
             if (Vector2.Distance(_currentTarget.Position, tower.Position) > Range) 
@@ -74,9 +79,8 @@ public class BasicTowerBehavior : ITowerBehavior
         // Создаём пулю в направлении цели
         Vector2 direction = Vector2.Normalize(targetPosition - tower.Position);
         
-        var bullet = new DamageDealer(projectileConfig, tower.Position, direction);
-        var dmgController = GameManager.GetInstance().DamageDealerController;
-        dmgController?.AddDamageDealer(bullet);
+        var bullet = new DamageDealer(projectileConfig, tower.Position, direction, projectileConfig.HitRadius);
+        GameManager.GetInstance().DamageDealerController?.AddDamageDealer(bullet);
     }
 
     public void Draw(Tower tower, SpriteBatch spriteBatch, Texture2D texture)
