@@ -26,6 +26,9 @@ public static class LevelPackager
         public float Range { get; set; }
         public float FireRate { get; set; }
         public string SourceFile { get; set; }
+
+        public string AssemblyFile { get; set; }
+        public string TypeName { get; set; }
     }
 
     public class DamageDealerConfig
@@ -33,6 +36,88 @@ public static class LevelPackager
         public string Id { get; set; }
         public string Name { get; set; }
         public string SourceFile { get; set; }
+
+        public string AssemblyFile { get; set; }  // "Plugins/DamageDealers/standard.dll"
+        public string TypeName { get; set; }      // "MyPlugins.DamageDealers.StandardBulletBehavior"
+    }
+
+
+    private static void BuildPluginDllFromSingleSource(
+        string sourceCsPath,
+        string outputDllPath,
+        string assemblyName,
+        string targetFramework = "net8.0")
+    {
+        // 1) temp dir
+        var tempDir = IOPath.Combine(IOPath.GetTempPath(), "td_plugin_build_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        // 2) copy source
+        var csFileName = IOPath.GetFileName(sourceCsPath);
+        var tempCsPath = IOPath.Combine(tempDir, csFileName);
+        File.Copy(sourceCsPath, tempCsPath, true);
+
+        // 3) reference SimulationEngine assembly
+        var simAsmPath = typeof(SimulationEngine.TowerRelated.ITowerBehavior).Assembly.Location;
+        // (даже если это bullet-плагин — неважно, это одна и та же сборка SimulationEngine)
+        
+        // 4) generate csproj
+        var csprojPath = IOPath.Combine(tempDir, "Plugin.csproj");
+        File.WriteAllText(csprojPath, $@"
+    <Project Sdk=""Microsoft.NET.Sdk"">
+    <PropertyGroup>
+        <TargetFramework>{targetFramework}</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>{assemblyName}</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include=""SimulationEngine"">
+        <HintPath>{System.Security.SecurityElement.Escape(simAsmPath)}</HintPath>
+        </Reference>
+    </ItemGroup>
+    </Project>
+    ".Trim());
+
+        // 5) build
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = "build Plugin.csproj -c Release",
+            WorkingDirectory = tempDir,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var proc = System.Diagnostics.Process.Start(psi);
+        string stdout = proc.StandardOutput.ReadToEnd();
+        string stderr = proc.StandardError.ReadToEnd();
+        proc.WaitForExit();
+
+        if (proc.ExitCode != 0)
+        {
+            throw new Exception(
+                $"Plugin build failed for {sourceCsPath}\n" +
+                $"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}");
+        }
+
+        // 6) find output dll
+        var dllCandidates = Directory.GetFiles(
+            IOPath.Combine(tempDir, "bin", "Release"),
+            $"{assemblyName}.dll",
+            SearchOption.AllDirectories);
+
+        if (dllCandidates.Length == 0)
+            throw new Exception($"Built DLL not found for {assemblyName}. Build output:\n{stdout}\n{stderr}");
+
+        Directory.CreateDirectory(IOPath.GetDirectoryName(outputDllPath)!);
+        File.Copy(dllCandidates[0], outputDllPath, true);
+
+        // 7) cleanup
+        try { Directory.Delete(tempDir, true); } catch { /* ignore */ }
     }
 
     /// <summary>
@@ -40,185 +125,138 @@ public static class LevelPackager
     /// </summary>
     public static void PackLevel(GameMap map, WaveSet waveSet, string outputPath)
     {
-        // Создаём папку для уровня в Content/Levels/
+        // Создаём папку для уровня
         string levelDir = IOPath.Combine("Content", "Levels", map.Id);
-        
-        // Если папка существует, очищаем её
+
         if (Directory.Exists(levelDir))
             Directory.Delete(levelDir, true);
-            
+
         Directory.CreateDirectory(levelDir);
 
         try
         {
-            // 1. Сохраняем карту
+            // 1. Карта
             string mapJson = IOPath.Combine(levelDir, $"{map.Id}.json");
             MapSerializer.SaveMap(map, mapJson);
 
-            // 2. Сохраняем волны
+            // 2. Волны
             string wavesJson = IOPath.Combine(levelDir, $"{map.Id}.waves.json");
             WaveSerializer.Save(waveSet, wavesJson);
 
-            // 3. Создаём папку для врагов
+            // 3. Enemies (оставляем как есть)
             string enemiesDir = IOPath.Combine(levelDir, "Enemies");
             Directory.CreateDirectory(enemiesDir);
-            Console.WriteLine($"Created Enemies directory: {enemiesDir}");
 
-            // Получаем все типы врагов, используемые в волнах
             var usedEnemyTypes = GetUsedEnemyTypes(waveSet);
-            Console.WriteLine($"Found {usedEnemyTypes.Count} enemy types in waves");
-            
+
             foreach (var enemyTypeId in usedEnemyTypes)
             {
-                // Получаем конфиг врага из EnemyConfigRegistry
                 var enemyConfig = EnemyConfigRegistry.Instance.GetConfig(enemyTypeId);
-                if (enemyConfig != null)
+                if (enemyConfig == null)
+                    continue;
+
+                string configPath = IOPath.Combine(enemiesDir, $"{enemyConfig.Id}.json");
+                File.WriteAllText(
+                    configPath,
+                    JsonSerializer.Serialize(enemyConfig, new JsonSerializerOptions { WriteIndented = true })
+                );
+
+                var behavior = EnemyBehaviorRegistry.Instance.GetBehavior(enemyConfig.BehaviorId);
+                if (behavior == null)
+                    continue;
+
+                string behaviorTypeName = behavior.GetType().Name;
+                string sourcePath = IOPath.Combine(
+                    "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"
+                );
+
+                if (File.Exists(sourcePath))
                 {
-                    // Сохраняем JSON конфига напрямую в папку врагов уровня
-                    string configPath = IOPath.Combine(enemiesDir, $"{enemyConfig.Id}.json");
-                    var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-                    File.WriteAllText(configPath, JsonSerializer.Serialize(enemyConfig, jsonOptions));
-                    Console.WriteLine($"Saved enemy config: {enemyConfig.Id}");
-
-                    // Копируем исходный .cs файл поведения
-                    var behavior = EnemyBehaviorRegistry.Instance.GetBehavior(enemyConfig.BehaviorId);
-                    if (behavior != null)
-                    {
-                        string behaviorTypeName = behavior.GetType().Name;
-                        
-                        // Пытаемся найти файл в разных местах
-                        string[] possiblePaths = new[]
-                        {
-                            IOPath.Combine(Directory.GetCurrentDirectory(), "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
-                            IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
-                            IOPath.Combine("EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs")
-                        };
-
-                        string sourceFile = null;
-                        foreach (var path in possiblePaths)
-                        {
-                            if (File.Exists(path))
-                            {
-                                sourceFile = path;
-                                break;
-                            }
-                        }
-
-                        if (sourceFile != null)
-                        {
-                            string destFile = IOPath.Combine(enemiesDir, $"{behaviorTypeName}.cs");
-                            File.Copy(sourceFile, destFile, true);
-                            Console.WriteLine($"Copied enemy behavior: {behaviorTypeName}.cs");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Warning: Behavior source file not found for {behaviorTypeName}");
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Warning: Enemy config not found for {enemyTypeId}");
+                    File.Copy(
+                        sourcePath,
+                        IOPath.Combine(enemiesDir, $"{behaviorTypeName}.cs"),
+                        true
+                    );
                 }
             }
 
-            // Если в папке Enemies ничего нет, создаём файл-заглушку
-            if (Directory.GetFiles(enemiesDir).Length == 0)
-            {
-                string placeholder = IOPath.Combine(enemiesDir, ".gitkeep");
-                File.WriteAllText(placeholder, "This folder will contain enemy configurations and source files.");
-                Console.WriteLine("Created placeholder in empty Enemies folder");
-            }
+            // 4. Plugins
+            string pluginsDir = IOPath.Combine(levelDir, "Plugins");
+            string towerPluginsDir = IOPath.Combine(pluginsDir, "Towers");
+            string ddPluginsDir = IOPath.Combine(pluginsDir, "DamageDealers");
 
-            // 4. Создаём папку для башен
+            Directory.CreateDirectory(towerPluginsDir);
+            Directory.CreateDirectory(ddPluginsDir);
+
+            // 5. Towers
             string towersDir = IOPath.Combine(levelDir, "Towers");
             Directory.CreateDirectory(towersDir);
-            Console.WriteLine($"Created Towers directory: {towersDir}");
 
-            // Получаем все типы башен из TowerTypeRegistry
             var allTowerTypes = TowerTypeRegistry.Instance.GetAllTowerTypes();
-            Console.WriteLine($"Found {allTowerTypes.Count} tower types");
 
             foreach (var towerInfo in allTowerTypes)
             {
-                // Сохраняем конфиг башни
-                var config = new TowerConfig
+                string src = IOPath.Combine("PluginSources", "Towers", $"{towerInfo.Id}.cs");
+                string dllOut = IOPath.Combine(towerPluginsDir, $"{towerInfo.Id}.dll");
+
+                BuildPluginDll(src, dllOut, $"tower_{towerInfo.Id}");
+
+                var cfg = new TowerConfig
                 {
                     Id = towerInfo.Id,
                     Name = towerInfo.Name,
                     Cost = towerInfo.Cost,
                     Range = towerInfo.Range,
                     FireRate = towerInfo.FireRate,
-                    SourceFile = $"{towerInfo.Type.Name}.cs"
+                    AssemblyFile = $"Plugins/Towers/{towerInfo.Id}.dll",
+                    TypeName = $"MyPlugins.Towers.{ToPascal(towerInfo.Id)}Behavior"
                 };
 
-                string configPath = IOPath.Combine(towersDir, $"{towerInfo.Id}.json");
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
-
-                // Копируем исходный .cs файл башни
-                CopySourceFile(towerInfo.Type, towersDir, "EditorEngine", "Towers", "Types");
+                File.WriteAllText(
+                    IOPath.Combine(towersDir, $"{towerInfo.Id}.json"),
+                    JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true })
+                );
             }
 
-            // Если папка Towers пустая, создаём заглушку
-            if (Directory.GetFiles(towersDir).Length == 0)
-            {
-                string placeholder = IOPath.Combine(towersDir, ".gitkeep");
-                File.WriteAllText(placeholder, "This folder will contain tower configurations and source files.");
-                Console.WriteLine("Created placeholder in empty Towers folder");
-            }
-
-            // 5. Создаём папку для damage dealers
+            // 6. DamageDealers
             string damageDealersDir = IOPath.Combine(levelDir, "DamageDealers");
             Directory.CreateDirectory(damageDealersDir);
-            Console.WriteLine($"Created DamageDealers directory: {damageDealersDir}");
 
-            // Получаем все типы damage dealers
             var allDamageDealerTypes = DamageDealerTypeRegistry.Instance.GetAllDamageDealerTypes();
-            Console.WriteLine($"Found {allDamageDealerTypes.Count} damage dealer types");
 
             foreach (var ddInfo in allDamageDealerTypes)
             {
-                // Сохраняем конфиг
-                var config = new DamageDealerConfig
+                string src = IOPath.Combine("PluginSources", "DamageDealers", $"{ddInfo.Id}.cs");
+                string dllOut = IOPath.Combine(ddPluginsDir, $"{ddInfo.Id}.dll");
+
+                BuildPluginDll(src, dllOut, $"dd_{ddInfo.Id}");
+
+                var cfg = new DamageDealerConfig
                 {
                     Id = ddInfo.Id,
                     Name = ddInfo.Name,
-                    SourceFile = $"{ddInfo.Type.Name}.cs"
+                    AssemblyFile = $"Plugins/DamageDealers/{ddInfo.Id}.dll",
+                    TypeName = $"MyPlugins.DamageDealers.{ToPascal(ddInfo.Id)}Behavior"
                 };
 
-                string configPath = IOPath.Combine(damageDealersDir, $"{config.Id}.json");
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
-
-                // Копируем исходный .cs файл
-                CopySourceFile(ddInfo.Type, damageDealersDir, "EditorEngine", "DamageDealers", "Types");
+                File.WriteAllText(
+                    IOPath.Combine(damageDealersDir, $"{ddInfo.Id}.json"),
+                    JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true })
+                );
             }
 
-            // Если папка DamageDealers пустая, создаём заглушку
-            if (Directory.GetFiles(damageDealersDir).Length == 0)
-            {
-                string placeholder = IOPath.Combine(damageDealersDir, ".gitkeep");
-                File.WriteAllText(placeholder, "This folder will contain damage dealer configurations and source files.");
-                Console.WriteLine("Created placeholder in empty DamageDealers folder");
-            }
-
-            // 6. Создаём README
+            // 7. README
             string readme = IOPath.Combine(levelDir, "README.txt");
             File.WriteAllText(readme, GenerateReadme(map, waveSet, usedEnemyTypes));
 
-            // 5. Упаковываем всё в архив
+            // 8. Архив
             if (File.Exists(outputPath))
                 File.Delete(outputPath);
 
             ZipFile.CreateFromDirectory(levelDir, outputPath);
-
-            Console.WriteLine($"Level directory created: {levelDir}");
-            Console.WriteLine($"Level packed successfully: {outputPath}");
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error packing level: {ex.Message}");
             throw;
         }
     }
