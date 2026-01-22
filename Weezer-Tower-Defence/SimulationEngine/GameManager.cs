@@ -40,17 +40,17 @@ public class GameManager
         return _instance;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, towerController, waveController, enemyController, damageDealerController);
+        _instance = new GameManager(screenWidth, screenHeight, map, startingMoney, startingLives, towerController, waveController, enemyController, damageDealerController);
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    private GameManager(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
@@ -62,7 +62,12 @@ public class GameManager
         _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
         
         UIManager.OnStartWaveRequested += StartWave;
-        
+
+        // Existing design assume that health is the health of the first defense point
+        // So I decide to stick to that
+        UIManager.Money = startingMoney;
+        Map.DefensePoints[0].Health = startingLives;
+
         // Добавляем доступные башни в UI
         UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
     }

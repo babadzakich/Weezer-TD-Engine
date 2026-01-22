@@ -4,16 +4,19 @@ using Microsoft.Xna.Framework.Input;
 
 namespace EditorEngine.UI;
 
+// Added fix to prevent multiple characters being added
 public class UITextField
 {
     public Rectangle Bounds;
     public string Text = "";
     public bool IsActive;
+    private KeyboardState _prevKeyboard;
 
     public UITextField(Rectangle bounds, string initial = "")
     {
         Bounds = bounds;
         Text = initial;
+        _prevKeyboard = Keyboard.GetState();
     }
 
     public void Update(MouseState mouse, KeyboardState keyboard)
@@ -21,10 +24,17 @@ public class UITextField
         if (mouse.LeftButton == ButtonState.Pressed)
             IsActive = Bounds.Contains(mouse.Position);
 
-        if (!IsActive) return;
+        if (!IsActive)
+        {
+            _prevKeyboard = keyboard;
+            return;
+        }
 
         foreach (var key in keyboard.GetPressedKeys())
         {
+            if (_prevKeyboard.IsKeyDown(key))
+                continue;
+
             if (key == Keys.Back && Text.Length > 0)
                 Text = Text[..^1];
             else if (key >= Keys.A && key <= Keys.Z)
@@ -38,6 +48,8 @@ public class UITextField
             else if (key == Keys.Space)
                 Text += " ";
         }
+
+        _prevKeyboard = keyboard;
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)

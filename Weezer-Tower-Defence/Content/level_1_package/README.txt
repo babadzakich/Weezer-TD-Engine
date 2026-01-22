@@ -5,10 +5,10 @@ Level Name: Level 1
 Map Size: 3000 x 2000
 
 STATISTICS:
-- Spawn Points: 1
+- Spawn Points: 2
 - Defense Points: 1
-- Paths: 1
-- Build Zones: 6
+- Paths: 2
+- Build Zones: 16
 - Waves: 1
 - Enemy Types: 1
 
@@ -20,4 +20,4 @@ Maps/
   - Towers/                 : Tower configurations and source files
   - DamageDealers/          : Damage dealer configurations and source files
 
-Generated: 2025-12-17 14:02:48
+Generated: 2026-01-23 00:14:03

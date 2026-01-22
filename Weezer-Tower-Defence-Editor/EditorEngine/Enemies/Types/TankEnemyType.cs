@@ -17,6 +17,11 @@ public class TankEnemyType : IEnemyType
     public float speed => 30f; // Медленный
     public int Damage => 20; // Наносит больше урона
 
+    // Fix due to previous incompatibility
+    int IEnemyType.MaxHealth => throw new System.NotImplementedException();
+
+    float IEnemyType.HitRadius => throw new System.NotImplementedException();
+
     public TankEnemyType() : this(null)
     {
     }

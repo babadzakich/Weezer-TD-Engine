@@ -17,6 +17,12 @@ public class FastEnemyType : IEnemyType
     public float speed => 120f; // В два раза быстрее базового
     public int Damage => 5;
 
+
+    // Fix due to previous incompatibility
+    int IEnemyType.MaxHealth => throw new System.NotImplementedException();
+
+    float IEnemyType.HitRadius => throw new System.NotImplementedException();
+
     public FastEnemyType() : this(null)
     {
     }
