@@ -14,6 +14,7 @@ namespace EditorEngine;
 public class LevelEditor
 {
     private TowerEditorPanel towerPanel;
+    private MoneyHealthEditor moneyHealthPanel;
 
     private bool debugToggleMessage = false;
     private float debugMessageTimer = 0f;
@@ -51,6 +52,7 @@ public class LevelEditor
     public LevelEditor(ContentManager content, int screenWidth, int screenHeight)
     {
         towerPanel = new TowerEditorPanel();
+        moneyHealthPanel = new MoneyHealthEditor();
 
         // Фиксированный размер карты
         currentMap = new GameMap("level_1", "Level 1", 3000, 2000);
@@ -70,6 +72,8 @@ public class LevelEditor
 
     public void Update(GameTime gameTime, KeyboardState keyboardState, MouseState mouseState)
     {   
+        moneyHealthPanel.Update(mouseState, keyboardState);
+
         if (towerPanel.IsOpen)
         {
             towerPanel.Update(mouseState, keyboardState);
@@ -231,7 +235,6 @@ public class LevelEditor
             if (currentMode == EditorMode.DrawingPath)
             {
                 FinalizePath();
-                Console.WriteLine("Path finalized. WHAT THE FUCK");
             }
         }
 
@@ -295,6 +298,9 @@ public class LevelEditor
         DrawPaths(spriteBatch, pixel);
         DrawCurrentPath(spriteBatch, pixel);
         DrawUI(spriteBatch, pixel);
+
+
+        moneyHealthPanel.Draw(spriteBatch, defaultFont, pixel);
 
         if (towerPanel.IsOpen)
             towerPanel.Draw(spriteBatch, defaultFont, pixel);
@@ -552,6 +558,7 @@ public class LevelEditor
         spriteBatch.DrawString(defaultFont, "Defense: " + currentMap.DefensePoints.Count, new Vector2(15, 75), Color.IndianRed);
         spriteBatch.DrawString(defaultFont, "Paths: " + currentMap.Paths.Count, new Vector2(15, 95), Color.Yellow);
         spriteBatch.DrawString(defaultFont, "Build Zones: " + currentMap.BuildZones.Count, new Vector2(15, 115), Color.Cyan);
+
 
 
         if (currentMode == EditorMode.DrawingPath && currentPathPoints.Count > 0)
