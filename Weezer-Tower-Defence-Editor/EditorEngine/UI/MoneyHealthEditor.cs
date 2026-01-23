@@ -79,7 +79,7 @@ public class  MoneyHealthEditor
         var config = new
         {
             StartingMoney = money,
-            StartingHealth = health
+            StartingLives = health
         };
 
         var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };

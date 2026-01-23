@@ -195,6 +195,11 @@ public class Game1 : Game
         // Проверяем поражение
         if (gameMap.DefensePoints.Count > 0 && gameMap.DefensePoints[0].IsDestroyed)
         {
+            Console.WriteLine("Game Over: Your base has been destroyed!");
+            foreach (var defencePoint in gameMap.DefensePoints)
+            {
+                Console.WriteLine($"- Defense Point {defencePoint.Id} {defencePoint.Health} destroyed.");
+            }
             // Game Over
             Exit();
         }

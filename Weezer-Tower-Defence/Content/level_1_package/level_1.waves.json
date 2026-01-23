@@ -5,7 +5,7 @@
       "Index": 0,
       "Spawns": [
         {
-          "EnemyTypeId": "goblin",
+          "EnemyTypeId": "orc",
           "SpawnPointId": "spawn_0",
           "Count": 2
         }

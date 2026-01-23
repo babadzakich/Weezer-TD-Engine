@@ -289,9 +289,22 @@ public static class LevelPackager
 
     static private void saveMoneyHealth(string exitPath) 
     {
-        if (File.Exists(IOPath.Combine("Content", "MoneyHealth.json"))) { 
-            File.Copy(IOPath.Combine("Content", "MoneyHealth.json"), IOPath.Combine(exitPath, "MoneyHealth.json"), true);
+        if (!File.Exists(IOPath.Combine("Content", "MoneyHealth.json")))
+        {
+            string configPath = System.IO.Path.Combine("Content", "MoneyHealth.json");
+
+            var config = new
+            {
+                StartingMoney = 500,
+                StartingLives = 100
+            };
+
+            var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+            string json = System.Text.Json.JsonSerializer.Serialize(config, options);
+            System.IO.File.WriteAllText(configPath, json);
         }
+
+        File.Copy(IOPath.Combine("Content", "MoneyHealth.json"), IOPath.Combine(exitPath, "MoneyHealth.json"), true);
     }
 
     private static void CopySourceFile(Type type, string targetDir, params string[] pathSegments)
