@@ -1,14 +1,17 @@
+using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SimulationEngine.BulletRelated;
+using SimulationEngine.BulletRelated.Behaviors;
+using SimulationEngine.EnemyRelated;
 using SimulationEngine.MapRelated;
 using SimulationEngine.TowerRelated;
+using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
-using System;
-using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.WaveRelated;
-using SimulationEngine.EnemyRelated;
-using Microsoft.Xna.Framework.Graphics;
-using SimulationEngine.BulletRelated;
+using static SimulationEngine.LevelLoader;
 
 namespace SimulationEngine;
 
@@ -40,17 +43,17 @@ public class GameManager
         return _instance;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, startingMoney, startingLives, towerController, waveController, enemyController, damageDealerController);
+        _instance = new GameManager(screenWidth, screenHeight, map, startingMoney, startingLives, towerController, towerDefinitions, waveController, enemyController, damageDealerController);
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    private GameManager(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
@@ -69,6 +72,12 @@ public class GameManager
         Map.DefensePoints[0].Health = startingLives;
 
         // Добавляем доступные башни в UI
+        // Хороший сыщик всегда найдет. Здесь хардкод боже мой
+        foreach (var towerDefinition in towerDefinitions.Values)
+        {
+            UIManager.AddAvailableTower(TowerBehaviorFactory.CreateTowerBehavior(towerDefinition));
+        }
+
         UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
     }
 

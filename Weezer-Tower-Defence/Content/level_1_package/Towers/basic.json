@@ -1,8 +1,9 @@
 {
   "Id": "basic",
-  "Name": "Basic Tower",
-  "Cost": 100,
+  "Name": "Pulimet",
+  "ClassName": "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior",
+  "BulletClassName": "temp",
+  "Cost": 10,
   "Range": 150,
-  "FireRate": 1,
-  "SourceFile": "BasicTower.cs"
+  "FireRate": 100
 }
