@@ -23,7 +23,8 @@ public class EnemyConfigRegistry
 
     private void LoadConfigs()
     {
-        string configDir = Path.Combine("EditorEngine", "Enemies", "Configs");
+        // Я не понимаю, как это должно было работать. Нужно сделать это немного по-другому, но не суть
+        string configDir = Path.Combine("..", "..", "..", "EditorEngine", "Enemies", "Configs");
         
         if (!Directory.Exists(configDir))
         {

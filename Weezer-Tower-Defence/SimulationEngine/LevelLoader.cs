@@ -23,6 +23,7 @@ public class LevelLoader
         public Dictionary<string, EnemyDefinition> EnemyDefinitions { get; set; }
         public Dictionary<string, TowerDefinition> TowerDefinitions { get; set; }
         public Dictionary<string, DamageDealerDefinition> DamageDealerDefinitions { get; set; }
+        public MoneyHealthSettings MoneyHealthSettings { get; set; }
     }
 
     public class WaveData
@@ -63,6 +64,12 @@ public class LevelLoader
         public string Name { get; set; }
     }
 
+    public class MoneyHealthSettings
+    {
+        public int StartingMoney { get; set; }
+        public int StartingLives { get; set; }
+    }
+
     /// <summary>
     /// Загрузить уровень из архива
     /// </summary>
@@ -87,7 +94,7 @@ public class LevelLoader
 
             // 1. Загружаем карту
             string mapFile = Directory.GetFiles(tempDir, "*.json", SearchOption.TopDirectoryOnly)
-                .FirstOrDefault(f => !f.Contains(".waves."));
+                .FirstOrDefault(f => !f.Contains(".waves.") && !f.Contains("Money"));
             
             if (mapFile == null)
                 throw new Exception("Map file not found in archive");
@@ -106,6 +113,14 @@ public class LevelLoader
             {
                 level.Waves = new List<WaveData>();
                 Console.WriteLine("No waves file found");
+            }
+
+            // 6. Загружаем настройки денег и здоровья
+            string moneyHealthDir = IOPath.Combine(tempDir, "MoneyHealth.json");
+            if (File.Exists(moneyHealthDir))
+            {
+                level.MoneyHealthSettings = LoadMoneyHealthSettings(moneyHealthDir);
+                Console.WriteLine($"Loaded Money: {level.MoneyHealthSettings.StartingMoney}; lives: {level.MoneyHealthSettings.StartingLives}");
             }
 
             // 3. Загружаем определения врагов
@@ -131,6 +146,8 @@ public class LevelLoader
                 LoadDamageDealerDefinitions(ddDir, level.DamageDealerDefinitions);
                 Console.WriteLine($"Loaded {level.DamageDealerDefinitions.Count} damage dealer definitions");
             }
+
+
 
             return level;
         }
@@ -310,6 +327,25 @@ public class LevelLoader
                 Console.WriteLine($"Warning: Failed to load damage dealer definition from {file}: {ex.Message}");
             }
         }
+    }
+
+    // Tries to find config. Returns default if not found or failed to load.
+    private static MoneyHealthSettings LoadMoneyHealthSettings(string mhDir)
+    {
+        var settings = new MoneyHealthSettings
+        {
+            StartingMoney = 100,
+            StartingLives = 20
+        };
+
+        string json = File.ReadAllText(mhDir);
+
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        settings = JsonSerializer.Deserialize<MoneyHealthSettings>(json, options);
+        return settings;
     }
 
     // Классы для десериализации

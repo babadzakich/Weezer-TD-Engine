@@ -10,6 +10,7 @@ using EditorEngine.Enemies;
 using EditorEngine.Towers;
 using EditorEngine.DamageDealers;
 using IOPath = System.IO.Path;
+using System.Net.Http.Headers;
 
 namespace EditorEngine;
 
@@ -51,6 +52,7 @@ public static class LevelPackager
 
         try
         {
+
             // 1. Сохраняем карту
             string mapJson = IOPath.Combine(levelDir, $"{map.Id}.json");
             MapSerializer.SaveMap(map, mapJson);
@@ -207,6 +209,9 @@ public static class LevelPackager
             string readme = IOPath.Combine(levelDir, "README.txt");
             File.WriteAllText(readme, GenerateReadme(map, waveSet, usedEnemyTypes));
 
+            // 7. Копируем MoneyHealth.json если он есть
+            saveMoneyHealth(levelDir);
+
             // 5. Упаковываем всё в архив
             if (File.Exists(outputPath))
                 File.Delete(outputPath);
@@ -280,6 +285,26 @@ public static class LevelPackager
         }
 
         return types;
+    }
+
+    static private void saveMoneyHealth(string exitPath) 
+    {
+        if (!File.Exists(IOPath.Combine("Content", "MoneyHealth.json")))
+        {
+            string configPath = System.IO.Path.Combine("Content", "MoneyHealth.json");
+
+            var config = new
+            {
+                StartingMoney = 500,
+                StartingLives = 100
+            };
+
+            var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+            string json = System.Text.Json.JsonSerializer.Serialize(config, options);
+            System.IO.File.WriteAllText(configPath, json);
+        }
+
+        File.Copy(IOPath.Combine("Content", "MoneyHealth.json"), IOPath.Combine(exitPath, "MoneyHealth.json"), true);
     }
 
     private static void CopySourceFile(Type type, string targetDir, params string[] pathSegments)

@@ -51,11 +51,12 @@ public class Game1 : Game
     {
         // Загружаем уровень из архива
 
-        string levelArchivePath = "Content/level_1_package.zip";
+        string levelArchivePath = "../../../Content/level_1_package.zip";
         Console.WriteLine($"Attempting to load level from archive: {levelArchivePath}");
         if (!System.IO.File.Exists(levelArchivePath))
         {
-            Console.WriteLine($"ERROR: Level archive not found at {levelArchivePath}");
+            Console.WriteLine(System.IO.Path.GetFullPath(levelArchivePath));
+            Console.WriteLine($"ERROR:  BOJE MOY Level archive not found at {levelArchivePath}");
             Console.WriteLine("Please create a level in the editor (dotnet run -- editor) and press Ctrl+P to package it.");
             Exit();
             return;
@@ -90,12 +91,18 @@ public class Game1 : Game
                 waveController.AddWave(wave);
             }
             Console.WriteLine($"Loaded {loadedLevel.Waves.Count} waves");
-            
+
+            // Загружаем жизни и деньги из уровня
+            Console.WriteLine($"Starting Money: {loadedLevel.MoneyHealthSettings.StartingMoney}");
+            Console.WriteLine($"Starting Lives: {loadedLevel.MoneyHealthSettings.StartingLives}");
+
             // Инициализируем GameManager
             gameManager = GameManager.getInstance(
                 _graphics.PreferredBackBufferWidth, 
                 _graphics.PreferredBackBufferHeight, 
                 gameMap, 
+                loadedLevel.MoneyHealthSettings.StartingMoney,
+                loadedLevel.MoneyHealthSettings.StartingLives,
                 towerController, 
                 waveController, 
                 enemyController
@@ -188,6 +195,11 @@ public class Game1 : Game
         // Проверяем поражение
         if (gameMap.DefensePoints.Count > 0 && gameMap.DefensePoints[0].IsDestroyed)
         {
+            Console.WriteLine("Game Over: Your base has been destroyed!");
+            foreach (var defencePoint in gameMap.DefensePoints)
+            {
+                Console.WriteLine($"- Defense Point {defencePoint.Id} {defencePoint.Health} destroyed.");
+            }
             // Game Over
             Exit();
         }

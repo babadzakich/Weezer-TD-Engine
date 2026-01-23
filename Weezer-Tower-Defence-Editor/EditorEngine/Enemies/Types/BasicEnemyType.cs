@@ -15,6 +15,12 @@ public class BasicEnemyType : IEnemyType
 
     public int Damage => 10; // Базовый враг наносит 10 урона
 
+
+    // Fix due to previous incompatibility
+    int IEnemyType.MaxHealth => throw new System.NotImplementedException();
+
+    float IEnemyType.HitRadius => throw new System.NotImplementedException();
+
     public BasicEnemyType() : this(null)
     {
     }
