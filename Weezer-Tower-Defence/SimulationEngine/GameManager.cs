@@ -90,11 +90,13 @@ public class GameManager
         // Проверка на поражение
         if (UIManager.Lives <= 0)
         {
+            Console.WriteLine("Defeat detected");
             Defeat?.Invoke();
         }
         // Чекаем победу
-        if (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive)
+        if (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive && EnemyController.Enemies.Count == 0)
         {
+            Console.WriteLine("Win detected");
             Win?.Invoke();
         }
     }
