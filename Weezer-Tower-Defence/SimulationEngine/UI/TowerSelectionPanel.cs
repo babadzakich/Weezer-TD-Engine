@@ -15,8 +15,9 @@ public class TowerSelectionPanel : UIElement
     public List<TowerButton> TowerButtons { get; private set; }
     public Color BackgroundColor { get; set; }
     public ITowerBehavior SelectedTower { get; private set; }
+    public LevelLoader.TowerDefinition SelectedDefinition { get; private set; }
     
-    public event Action<ITowerBehavior> OnTowerSelected;
+    public event Action<ITowerBehavior, LevelLoader.TowerDefinition> OnTowerSelected;
 
     public TowerSelectionPanel(Vector2 position, Vector2 size) : base(position, size)
     {
@@ -24,21 +25,25 @@ public class TowerSelectionPanel : UIElement
         TowerButtons = new List<TowerButton>();
     }
 
-    public void AddTowerOption(ITowerBehavior towerBehavior, Texture2D icon = null)
+    public void AddTowerOption(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition, Texture2D icon = null)
     {
         int index = TowerButtons.Count;
-        Vector2 buttonPos = Position + new Vector2(10, 10 + index * 90);
         Vector2 buttonSize = new Vector2(Size.X - 20, 80);
+        Vector2 buttonPos = Position + new Vector2(10, 10 + index * 90);
         
-        var button = new TowerButton(buttonPos, buttonSize, towerBehavior, icon);
-        button.OnClick += () => SelectTower(towerBehavior);
+        var button = new TowerButton(buttonPos, buttonSize, towerBehavior, definition, icon);
+        button.OnClick += () => SelectTower(towerBehavior, definition);
         TowerButtons.Add(button);
+        
+        // Обновляем высоту панели в зависимости от количества башен
+        Size = new Vector2(Size.X, 20 + TowerButtons.Count * 90);
     }
 
-    private void SelectTower(ITowerBehavior towerBehavior)
+    private void SelectTower(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition)
     {
         SelectedTower = towerBehavior;
-        OnTowerSelected?.Invoke(towerBehavior);
+        SelectedDefinition = definition;
+        OnTowerSelected?.Invoke(towerBehavior, definition);
         
         // Подсвечиваем выбранную кнопку
         foreach (var btn in TowerButtons)
@@ -50,6 +55,7 @@ public class TowerSelectionPanel : UIElement
     public void DeselectTower()
     {
         SelectedTower = null;
+        SelectedDefinition = null;
         foreach (var btn in TowerButtons)
         {
             btn.IsSelected = false;
@@ -98,14 +104,16 @@ public class TowerSelectionPanel : UIElement
 public class TowerButton : Button
 {
     public ITowerBehavior TowerBehavior { get; }
+    public LevelLoader.TowerDefinition Definition { get; }
     public Texture2D Icon { get; set; }
     public bool IsSelected { get; set; }
     public Color SelectedColor { get; set; }
 
-    public TowerButton(Vector2 position, Vector2 size, ITowerBehavior towerBehavior, Texture2D icon) 
+    public TowerButton(Vector2 position, Vector2 size, ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition, Texture2D icon) 
         : base(position, size, "")
     {
         TowerBehavior = towerBehavior;
+        Definition = definition;
         Icon = icon;
         SelectedColor = new Color(100, 150, 100);
     }
@@ -127,7 +135,7 @@ public class TowerButton : Button
         if (font != null)
         {
             Vector2 textPos = Position + new Vector2(10, 10);
-            spriteBatch.DrawString(font, TowerBehavior.Id, textPos, TextColor);
+            spriteBatch.DrawString(font, Definition?.Name ?? TowerBehavior.Id, textPos, TextColor);
             textPos.Y += 20;
             spriteBatch.DrawString(font, $"Cost: ${TowerBehavior.Cost}", textPos, Color.Gold);
             textPos.Y += 20;

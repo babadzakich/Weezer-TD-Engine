@@ -20,6 +20,8 @@ public class UIManager
     
     private List<UIElement> _allElements;
     private MouseState _previousMouseState;
+    private int _screenWidth;
+    private int _screenHeight;
     
     public int Money { get => ResourcePanel.Money; set => ResourcePanel.Money = value; }
     public int Lives { get => ResourcePanel.Lives; set => ResourcePanel.Lives = value; }
@@ -31,6 +33,8 @@ public class UIManager
 
     public UIManager(int screenWidth, int screenHeight)
     {
+        _screenWidth = screenWidth;
+        _screenHeight = screenHeight;
         _allElements = new List<UIElement>();
         
         // Панель ресурсов (верх экрана)
@@ -72,9 +76,9 @@ public class UIManager
     /// <summary>
     /// Добавить доступную для постройки башню
     /// </summary>
-    public void AddAvailableTower(ITowerBehavior towerBehavior)
+    public void AddAvailableTower(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition)
     {
-        TowerSelectionPanel.AddTowerOption(towerBehavior);
+        TowerSelectionPanel.AddTowerOption(towerBehavior, definition);
     }
 
     /// <summary>
@@ -86,11 +90,13 @@ public class UIManager
         // Позиционируем панель рядом с местом клика, но чтобы не выходила за экран
         Vector2 panelPos = position + new Vector2(20, -150);
         
-        // Проверяем границы экрана (примерно)
-        if (panelPos.X + TowerSelectionPanel.Size.X > 780)
+        // Проверяем границы экрана
+        if (panelPos.X + TowerSelectionPanel.Size.X > _screenWidth - 20)
             panelPos.X = position.X - TowerSelectionPanel.Size.X - 20;
         if (panelPos.Y < 90)
             panelPos.Y = 90;
+        if (panelPos.Y + TowerSelectionPanel.Size.Y > _screenHeight - 20)
+            panelPos.Y = _screenHeight - TowerSelectionPanel.Size.Y - 20;
             
         TowerSelectionPanel.Position = panelPos;
         TowerSelectionPanel.IsVisible = true;
@@ -117,18 +123,23 @@ public class UIManager
         Vector2 panelPos = tower.Position + new Vector2(30, -95);
         
         // Проверяем границы экрана
-        if (panelPos.X + TowerControlPanel.Size.X > 780)
+        if (panelPos.X + TowerControlPanel.Size.X > _screenWidth - 20)
             panelPos.X = tower.Position.X - TowerControlPanel.Size.X - 30;
         if (panelPos.Y < 90)
             panelPos.Y = 90;
-        if (panelPos.Y + TowerControlPanel.Size.Y > 570)
-            panelPos.Y = 570 - TowerControlPanel.Size.Y;
+        if (panelPos.Y + TowerControlPanel.Size.Y > _screenHeight - 20)
+            panelPos.Y = _screenHeight - TowerControlPanel.Size.Y - 20;
             
         TowerControlPanel.Position = panelPos;
         TowerControlPanel.ShowForTower(tower);
         
         // Обновляем позиции кнопок
         TowerControlPanel.UpdateButtonPositions();
+
+        var nextCost = tower.GetNextUpgradeCost();
+        bool isMax = nextCost == null;
+        bool canAfford = nextCost.HasValue && Money >= nextCost.Value;
+        TowerControlPanel.SetUpgradeInfo(nextCost, canAfford, isMax);
     }
 
     /// <summary>
