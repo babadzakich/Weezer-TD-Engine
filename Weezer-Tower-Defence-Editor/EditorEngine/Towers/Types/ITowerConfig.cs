@@ -5,12 +5,12 @@ namespace EditorEngine.Towers.Types;
 /// </summary>
 public interface ITowerConfig
 {
-    string Id { get; }
-    string Name { get; }
-    public string ClassName { get;  }
-    public string BulletClassName { get;  }
-    int Cost { get; }
-    float Range { get; }
-    float FireRate { get; }
-    int Damage { get; }
+    string Id { get; set; }
+    string Name { get; set; }
+    public string ClassName { get; set; }
+    public string BulletClassName { get; set; }
+    int Cost { get; set; }
+    float Range { get; set; }
+    float FireRate { get; set; }
+    int Damage { get; set; }
 }

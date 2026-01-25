@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -11,12 +12,16 @@ public class UITextField
     public string Text = "";
     public bool IsActive;
     private KeyboardState _prevKeyboard;
+    private Action<String, String> onUpdate;
+    public readonly string id;
 
-    public UITextField(Rectangle bounds, string initial = "")
+    public UITextField(Rectangle bounds, Action<string, string> onUpdate, string id, string initial = "")
     {
         Bounds = bounds;
         Text = initial;
         _prevKeyboard = Keyboard.GetState();
+        this.onUpdate = onUpdate;
+        this.id = id;
     }
 
     public void Update(MouseState mouse, KeyboardState keyboard)
@@ -47,6 +52,8 @@ public class UITextField
                 Text += "-";
             else if (key == Keys.Space)
                 Text += " ";
+
+            onUpdate(Text, id);
         }
 
         _prevKeyboard = keyboard;

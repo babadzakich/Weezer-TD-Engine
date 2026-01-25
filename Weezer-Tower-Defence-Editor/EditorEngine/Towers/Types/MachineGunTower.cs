@@ -5,12 +5,15 @@ namespace EditorEngine.Towers.Types;
 /// </summary>
 public class MachineGunTower : ITowerConfig
 {
-    public string Id => "machine_gun";
-    public string Name => "Machine gun tower";
-    public string ClassName => "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
-    public string BulletClassName => "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
-    public int Cost => 100;
-    public float Range => 75f;
-    public float FireRate => 10f;
-    public int Damage => 10;
+    public string Id { get; set; } = "machine_gun";
+    public string Name { get; set; } = "Machine gun tower";
+    public string ClassName { get; set; }
+        = "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
+    public string BulletClassName { get; set; }
+        = "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
+
+    public int Cost { get; set; } = 100;
+    public float Range { get; set; } = 75f;
+    public float FireRate { get; set; } = 10f;
+    public int Damage { get; set; } = 10;
 }
