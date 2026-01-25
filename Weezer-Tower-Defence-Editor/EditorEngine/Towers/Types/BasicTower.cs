@@ -1,14 +1,17 @@
-namespace EditorEngine.Towers.Types;
+using EditorEngine.Towers.Types;
 
-/// <summary>
-/// Базовая башня для редактора
-/// </summary>
-public class BasicTower
+namespace EditorEngine.Towers.Types;
+public class BasicTower : ITowerConfig
 {
-    public string Id => "basic";
-    public string Name => "Basic Tower";
-    public int Cost => 100;
-    public float Range => 150f;
-    public float FireRate => 1f;
-    public int Damage => 10;
+    public string Id { get; set; } = "basic";
+    public string Name { get; set; } = "Basic Tower";
+    public string ClassName { get; set; }
+        = "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
+    public string BulletClassName { get; set; }
+        = "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
+
+    public int Cost { get; set; } = 100;
+    public float Range { get; set; } = 150f;
+    public float FireRate { get; set; } = 1f;
+    public int Damage { get; set; } = 10;
 }

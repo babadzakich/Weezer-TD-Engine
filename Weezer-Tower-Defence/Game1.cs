@@ -104,6 +104,7 @@ public class Game1 : Game
                 loadedLevel.MoneyHealthSettings.StartingMoney,
                 loadedLevel.MoneyHealthSettings.StartingLives,
                 towerController, 
+                loadedLevel.TowerDefinitions,
                 waveController, 
                 enemyController
             );

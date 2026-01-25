@@ -53,6 +53,8 @@ public class LevelLoader
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public string ClassName { get; set; }
+        public string BulletClassName { get; set; }
         public int Cost { get; set; }
         public float Range { get; set; }
         public float FireRate { get; set; }
