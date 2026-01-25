@@ -229,8 +229,8 @@ public class TowerEditorPanel
         var config = new {
             Id = towerConfig.Id,
             Name = towerConfig.Name,
-            className = towerConfig.ClassName,
-            bulletClassName = towerConfig.BulletClassName,
+            ClassName = towerConfig.ClassName,
+            BulletClassName = towerConfig.BulletClassName,
             Cost = towerConfig.Cost,
             Range = towerConfig.Range,
             FireRate = towerConfig.FireRate,

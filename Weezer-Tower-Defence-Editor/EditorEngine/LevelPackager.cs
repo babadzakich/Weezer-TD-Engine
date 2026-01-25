@@ -133,41 +133,17 @@ public static class LevelPackager
             }
 
             // 4. Создаём папку для башен
-            string towersDir = IOPath.Combine(levelDir, "Towers");
+            var savedTowersDir = IOPath.Combine("Content", "Towers");
+            var towersDir = IOPath.Combine(levelDir, "Towers");
+
             Directory.CreateDirectory(towersDir);
-            Console.WriteLine($"Created Towers directory: {towersDir}");
 
-            // Получаем все типы башен из TowerTypeRegistry
-            var allTowerTypes = TowerTypeRegistry.Instance.GetAllTowerTypes();
-            Console.WriteLine($"Found {allTowerTypes.Count} tower types");
-
-            foreach (var towerInfo in allTowerTypes)
+            foreach (var file in Directory.GetFiles(savedTowersDir, "*.json"))
             {
-                // Сохраняем конфиг башни
-                var config = new TowerConfig
-                {
-                    Id = towerInfo.Id,
-                    Name = towerInfo.Name,
-                    Cost = towerInfo.Cost,
-                    Range = towerInfo.Range,
-                    FireRate = towerInfo.FireRate,
-                    SourceFile = $"{towerInfo.Type.Name}.cs"
-                };
+                var fileName = IOPath.GetFileName(file);
+                var destPath = IOPath.Combine(towersDir, fileName);
 
-                string configPath = IOPath.Combine(towersDir, $"{towerInfo.Id}.json");
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
-
-                // Копируем исходный .cs файл башни
-                CopySourceFile(towerInfo.Type, towersDir, "EditorEngine", "Towers", "Types");
-            }
-
-            // Если папка Towers пустая, создаём заглушку
-            if (Directory.GetFiles(towersDir).Length == 0)
-            {
-                string placeholder = IOPath.Combine(towersDir, ".gitkeep");
-                File.WriteAllText(placeholder, "This folder will contain tower configurations and source files.");
-                Console.WriteLine("Created placeholder in empty Towers folder");
+                File.Copy(file, destPath, overwrite: true);
             }
 
             // 5. Создаём папку для damage dealers

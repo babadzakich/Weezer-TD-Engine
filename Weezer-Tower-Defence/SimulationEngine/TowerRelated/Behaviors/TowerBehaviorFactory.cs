@@ -16,6 +16,9 @@ class TowerBehaviorFactory
 {
     public static ITowerBehavior CreateTowerBehavior(LevelLoader.TowerDefinition towerDefinition)
     {
+        Console.WriteLine("CREATION");
+        Console.WriteLine(towerDefinition.ToString());
+        Console.WriteLine(towerDefinition.ClassName);
         var type = Type.GetType(towerDefinition.ClassName)
             ?? throw new Exception($"Class specified for tower behaviour is not found {towerDefinition.ClassName}");
 
