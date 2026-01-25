@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using EditorEngine.Towers;
+using System.Collections.Generic;
+using EditorEngine.Towers.Types;
 
 namespace EditorEngine.UI;
 
@@ -10,6 +12,8 @@ public class TowerEditorPanel
 {
     private string id = "new_tower";
     private string name = "New Tower";
+    private string className;
+    private string bulletClassName;
     private int cost = 100;
     private float range = 150f;
     private float fireRate = 1f;
@@ -19,6 +23,7 @@ public class TowerEditorPanel
     private readonly UITextField costField;
     private readonly UITextField rangeField;
     private readonly UITextField fireRateField;
+    private readonly SelectorField selectorField;
 
     private readonly UIButton saveButton;
 
@@ -27,12 +32,25 @@ public class TowerEditorPanel
     public TowerEditorPanel()
     {
         int x = 20, y = 20, w = 220, h = 26, gap = 34;
+        List<string> options = new List<string>();
+        options.Add("basic");
+        options.Add("machine gun");
+        options.Add("sniper");
+        selectorField = new SelectorField(20, 20, options, onClick: setFromDefault);
+        selectorField.Show();
 
+        x += 100;
+        y += 500;
         idField       = new(new Rectangle(x, y, w, h), id);
         nameField     = new(new Rectangle(x, y += gap, w, h), name);
         costField     = new(new Rectangle(x, y += gap, w, h), cost.ToString());
         rangeField    = new(new Rectangle(x, y += gap, w, h), range.ToString());
         fireRateField = new(new Rectangle(x, y += gap, w, h), fireRate.ToString());
+
+
+        
+
+        
 
         saveButton = new UIButton(
             new Rectangle(x, y + gap + 10, w, h),
@@ -45,10 +63,42 @@ public class TowerEditorPanel
         IsOpen = !IsOpen;
     }
 
+    private void setFromDefault(string defaultName)
+    {
+        ITowerConfig defaultTower = null;
+        if (defaultName == "basic")
+        {
+            defaultTower = new Towers.Types.BasicTower();
+        }
+        else if (defaultName == "machine gun")
+        {
+            defaultTower = new Towers.Types.MachineGunTower();
+        }
+        else if (defaultName == "sniper")
+        {
+            defaultTower = new Towers.Types.SniperTower();
+        }
+
+        id = defaultTower.Id;
+        name = defaultTower.Name;
+        cost = defaultTower.Cost;
+        range = defaultTower.Range;
+        fireRate = defaultTower.FireRate;
+        bulletClassName = defaultTower.BulletClassName;
+        className = defaultTower.ClassName;
+
+        idField.Text = id;
+        nameField.Text = name;
+        costField.Text = cost.ToString();
+        rangeField.Text = range.ToString();
+        fireRateField.Text = fireRate.ToString();
+    }
+
     public void Update(MouseState mouse, KeyboardState keyboard)
     {
         if (!IsOpen) return;
 
+        selectorField.Update(mouse);
         idField.Update(mouse, keyboard);
         nameField.Update(mouse, keyboard);
         costField.Update(mouse, keyboard);
@@ -61,6 +111,7 @@ public class TowerEditorPanel
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)
     {
         if (!IsOpen) return;
+        selectorField.Draw(sb, font, pixel);
 
         int panelWidth = 260;
         int panelHeight = 280;

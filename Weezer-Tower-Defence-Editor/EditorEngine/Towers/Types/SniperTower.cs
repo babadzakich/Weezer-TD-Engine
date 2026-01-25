@@ -3,12 +3,14 @@ namespace EditorEngine.Towers.Types;
 /// <summary>
 /// Снайперская башня - дальняя атака, медленная перезарядка
 /// </summary>
-public class SniperTower
+public class SniperTower : ITowerConfig 
 {
-    public string Id => "sniper";
-    public string Name => "Sniper Tower";
-    public int Cost => 250;
-    public float Range => 300f;
-    public float FireRate => 0.5f;
-    public int Damage => 50;
+    public string Id => "sniper_tower";
+    public string Name => "Sniper tower";
+    public string ClassName => "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
+    public string BulletClassName => "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
+    public int Cost => 100;
+    public float Range => 900f;
+    public float FireRate => 1f;
+    public int Damage => 1000;
 }
