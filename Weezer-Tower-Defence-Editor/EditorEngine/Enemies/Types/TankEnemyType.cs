@@ -21,6 +21,11 @@ public class TankEnemyType : IEnemyType
     public int Damage { get; set; } = 20; // Наносит больше урона
     public float HitRadius { get; set; } = 15f; // Радиус хитбокса (больше, так как танк)
 
+    // Fix due to previous incompatibility
+    int IEnemyType.MaxHealth => throw new System.NotImplementedException();
+
+    float IEnemyType.HitRadius => throw new System.NotImplementedException();
+
     public TankEnemyType() : this(null)
     {
         health = 300;

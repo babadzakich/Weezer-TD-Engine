@@ -1,0 +1,29 @@
+{
+    "name": "Basic tower",
+    "args": [
+        {
+            "name": "id",
+            "type": "string"
+        },
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "projectileConfig",
+            "type": "IDamageDealerBehavior"
+        },
+        {
+            "name": "cost",
+            "type": "float"
+        },
+        {
+            "name": "range",
+            "type": "float"
+        },
+        {
+            "name": "fireRate",
+            "type": "float"
+        }
+    ]
+}

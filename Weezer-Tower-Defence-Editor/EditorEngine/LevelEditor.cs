@@ -15,6 +15,7 @@ public class LevelEditor
 {
     private TowerEditorPanel towerPanel;
     private UITextField levelNameField;
+    private MoneyHealthEditor moneyHealthPanel;
 
     private bool debugToggleMessage = false;
     private string statusMessage = "";
@@ -54,6 +55,7 @@ public class LevelEditor
     {
         towerPanel = new TowerEditorPanel();
         levelNameField = new UITextField(new Rectangle(320, 10, 150, 30), "level_1");
+        moneyHealthPanel = new MoneyHealthEditor();
 
         // Фиксированный размер карты
         currentMap = new GameMap("level_1", "Level 1", 3000, 2000);
@@ -72,7 +74,9 @@ public class LevelEditor
     }
 
     public void Update(GameTime gameTime, KeyboardState keyboardState, MouseState mouseState)
-    {
+    {   
+        moneyHealthPanel.Update(mouseState, keyboardState);
+
         if (keyboardState.IsKeyDown(Keys.T) && previousKeyboardState.IsKeyUp(Keys.T)){
             towerPanel.Toggle();
         }    
@@ -113,6 +117,29 @@ public class LevelEditor
                 enemySelectionPanel.Open();
             }
         }
+
+        // Logical fix: moved mode selection to keyboard controls section
+        // Logical fix: allowed user to toggle modes off by pressing the same key again
+        if (keyboardState.IsKeyDown(Keys.D1) && previousKeyboardState.IsKeyUp(Keys.D1))
+            if (currentMode != EditorMode.PlacingSpawn)
+                currentMode = EditorMode.PlacingSpawn;
+            else 
+                currentMode = EditorMode.None;
+        else if (keyboardState.IsKeyDown(Keys.D2) && previousKeyboardState.IsKeyUp(Keys.D2))
+            if (currentMode != EditorMode.PlacingDefense)
+                currentMode = EditorMode.PlacingDefense;
+            else 
+                currentMode = EditorMode.None;
+        else if (keyboardState.IsKeyDown(Keys.D3) && previousKeyboardState.IsKeyUp(Keys.D3))
+            if (currentMode != EditorMode.DrawingPath)
+                currentMode = EditorMode.DrawingPath;
+            else 
+                currentMode = EditorMode.None;
+        else if (keyboardState.IsKeyDown(Keys.D4) && previousKeyboardState.IsKeyUp(Keys.D4))
+            if (currentMode != EditorMode.PlacingBuildZone)
+                currentMode = EditorMode.PlacingBuildZone;
+            else
+                currentMode = EditorMode.None;
 
         // Save on Ctrl+S
         if (keyboardState.IsKeyDown(Keys.LeftControl) && 
@@ -240,16 +267,6 @@ public class LevelEditor
             }
         }
 
-        // Mode selection
-        if (previousKeyboardState.IsKeyDown(Keys.D1) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
-            currentMode = EditorMode.PlacingSpawn;
-        else if (previousKeyboardState.IsKeyDown(Keys.D2) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
-            currentMode = EditorMode.PlacingDefense;
-        else if (previousKeyboardState.IsKeyDown(Keys.D3) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
-            currentMode = EditorMode.DrawingPath;
-        else if (previousKeyboardState.IsKeyDown(Keys.D4) && !previousMouseState.LeftButton.Equals(ButtonState.Pressed))
-            currentMode = EditorMode.PlacingBuildZone;
-
         // Left click actions
         if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
         {
@@ -339,6 +356,9 @@ public class LevelEditor
         DrawPaths(spriteBatch, pixel);
         DrawCurrentPath(spriteBatch, pixel);
         DrawUI(spriteBatch, pixel);
+
+
+        moneyHealthPanel.Draw(spriteBatch, defaultFont, pixel);
 
         if (towerPanel.IsOpen)
             towerPanel.Draw(spriteBatch, defaultFont, pixel);
@@ -618,6 +638,7 @@ public class LevelEditor
         spriteBatch.DrawString(defaultFont, "Map ID: " + currentMap.Id, new Vector2(15, infoY + 85), Color.White);
         spriteBatch.DrawString(defaultFont, "Hotkeys: Ctrl+S (Save), Ctrl+P (Pack)", new Vector2(15, infoY + 115), Color.LightGray);
         spriteBatch.DrawString(defaultFont, "        T (Towers), M (Waves)", new Vector2(15, infoY + 135), Color.LightGray);
+
 
 
         if (currentMode == EditorMode.DrawingPath && currentPathPoints.Count > 0)

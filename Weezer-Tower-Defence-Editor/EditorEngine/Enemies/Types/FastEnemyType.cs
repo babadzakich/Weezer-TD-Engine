@@ -21,6 +21,12 @@ public class FastEnemyType : IEnemyType
     public int Damage { get; set; } = 5;
     public float HitRadius { get; set; } = 8f; // Радиус хитбокса (меньше, так как быстрый враг)
 
+
+    // Fix due to previous incompatibility
+    int IEnemyType.MaxHealth => throw new System.NotImplementedException();
+
+    float IEnemyType.HitRadius => throw new System.NotImplementedException();
+
     public FastEnemyType() : this(null)
     {
         health = 50;

@@ -68,6 +68,7 @@ public class Game1 : Game
         Console.WriteLine($"Attempting to load level from archive: {levelArchivePath}");
         if (!System.IO.File.Exists(levelArchivePath))
         {
+            Console.WriteLine(System.IO.Path.GetFullPath(levelArchivePath));
             Console.WriteLine($"ERROR: Level archive not found at {levelArchivePath}");
             return;
         }
@@ -110,17 +111,24 @@ public class Game1 : Game
                 var wave = ConvertWaveDataToWave(waveData, gameMap);
                 waveController.AddWave(wave);
             }
-            
+            Console.WriteLine($"Loaded {loadedLevel.Waves.Count} waves");
+
+            // Загружаем жизни и деньги из уровня
+            Console.WriteLine($"Starting Money: {loadedLevel.MoneyHealthSettings.StartingMoney}");
+            Console.WriteLine($"Starting Lives: {loadedLevel.MoneyHealthSettings.StartingLives}");
+
             // Инициализируем GameManager
             gameManager = GameManager.getInstance(
                 _graphics.PreferredBackBufferWidth, 
                 _graphics.PreferredBackBufferHeight, 
                 gameMap, 
+                loadedLevel.MoneyHealthSettings.StartingMoney,
+                loadedLevel.MoneyHealthSettings.StartingLives,
                 towerController, 
+                loadedLevel.TowerDefinitions,
                 waveController, 
                 enemyController,
-                damageDealerController,
-                loadedLevel.TowerDefinitions
+                damageDealerController
             );
             
             // Передаем стандартные текстуры

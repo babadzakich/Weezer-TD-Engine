@@ -1,2 +1,7 @@
 *.bak*
 .useCases.vpp.lck
+*.vs
+*.vscode
+Weezer-Tower-Defence/Content
+Weezer-Tower-Defence-Editor/Properties
+Weezer-Tower-Defence/Content/

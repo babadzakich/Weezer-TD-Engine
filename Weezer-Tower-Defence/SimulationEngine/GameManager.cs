@@ -1,15 +1,17 @@
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
-using SimulationEngine.MapRelated;
-using SimulationEngine.TowerRelated;
-using SimulationEngine.UI;
 using System;
 using System.Collections.Generic;
-using SimulationEngine.BulletRelated.Behaviors;
-using SimulationEngine.WaveRelated;
-using SimulationEngine.EnemyRelated;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated;
+using SimulationEngine.BulletRelated.Behaviors;
+using SimulationEngine.EnemyRelated;
+using SimulationEngine.MapRelated;
+using SimulationEngine.TowerRelated;
+using SimulationEngine.TowerRelated.Behaviors;
+using SimulationEngine.UI;
+using SimulationEngine.WaveRelated;
+using static SimulationEngine.LevelLoader;
 
 namespace SimulationEngine;
 
@@ -50,17 +52,17 @@ public class GameManager
         _instance = null;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions = null)
+    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, towerController, waveController, enemyController, damageDealerController, towerDefinitions);
+        _instance = new GameManager(screenWidth, screenHeight, map, startingMoney, startingLives, towerController, towerDefinitions, waveController, enemyController, damageDealerController);
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions = null)
+    private GameManager(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
@@ -72,8 +74,19 @@ public class GameManager
         _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
         
         UIManager.OnStartWaveRequested += StartWave;
-        
+
+        // Existing design assume that health is the health of the first defense point
+        // So I decide to stick to that
+        UIManager.Money = startingMoney;
+        Map.DefensePoints[0].Health = startingLives;
+
         // Добавляем доступные башни в UI
+        // Хороший сыщик всегда найдет. Здесь хардкод боже мой
+        foreach (var towerDefinition in towerDefinitions.Values)
+        {
+            UIManager.AddAvailableTower(TowerBehaviorFactory.CreateTowerBehavior(towerDefinition));
+        }
+
         UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
 
         if (towerDefinitions != null)
@@ -104,11 +117,13 @@ public class GameManager
         // Проверка на поражение
         if (UIManager.Lives <= 0)
         {
+            Console.WriteLine("Defeat detected");
             Defeat?.Invoke();
         }
         // Чекаем победу
-        if (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive)
+        if (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive && EnemyController.Enemies.Count == 0)
         {
+            Console.WriteLine("Win detected");
             Win?.Invoke();
         }
     }

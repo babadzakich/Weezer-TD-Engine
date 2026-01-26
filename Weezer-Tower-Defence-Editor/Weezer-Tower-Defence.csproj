@@ -25,6 +25,11 @@
     </EmbeddedResource>
   </ItemGroup>
 
+	<ItemGroup>
+		<Compile Remove ="EmbeddedBehaviors/**/*" />
+		<EmbeddedResource Include="EmbeddedBehaviors/**/*" />
+	</ItemGroup>  	
+	
   <ItemGroup>
     <!-- Исключаем Content из компиляции - там лежат архивы уровней и их файлы -->
     <Compile Remove="Content/**/*.cs" />
@@ -45,5 +50,6 @@
 
   <ItemGroup>
     <Folder Include="Content\Maps\" />
+    <Folder Include="EmbeddedBehaviors\" />
   </ItemGroup>
 </Project>

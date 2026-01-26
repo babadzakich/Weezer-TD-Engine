@@ -6,12 +6,13 @@ using Microsoft.Xna.Framework.Input;
 namespace EditorEngine.UI;
 
 
-
+// fix: only one click per press
 public class UIButton
 {
     public Rectangle Bounds;
     public string Text;
     public Action OnClick;
+    private bool _prevClickState = false;
 
     public UIButton(Rectangle bounds, string text, Action onClick)
     {
@@ -20,18 +21,17 @@ public class UIButton
         OnClick = onClick;
     }
 
-    private bool _wasPressed;
     public void Update(MouseState mouse)
     {
-        bool isHovered = Bounds.Contains(mouse.Position);
-        bool isPressed = isHovered && mouse.LeftButton == ButtonState.Pressed;
+        bool isHover = Bounds.Contains(mouse.Position);
+        bool isPressed = mouse.LeftButton == ButtonState.Pressed;
 
-        if (isPressed && !_wasPressed)
+        if (isHover && isPressed && !_prevClickState)
         {
             OnClick?.Invoke();
         }
 
-        _wasPressed = mouse.LeftButton == ButtonState.Pressed;
+        _prevClickState = isPressed;
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)

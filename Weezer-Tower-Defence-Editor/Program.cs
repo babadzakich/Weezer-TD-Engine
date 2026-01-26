@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using EditorEngine;
-using SimulationEngine;
 using System;
 
 namespace Weezer_Tower_Defence
@@ -12,18 +11,9 @@ namespace Weezer_Tower_Defence
         static void Main(string[] args)
         {
             Console.WriteLine("Starting Weezer Tower Defence...");
-            bool editorMode = args.Length > 0 && args[0] == "--editor";
-            
-            if (editorMode)
-            {
-                using var game = new Editor();
-                game.Run();
-            }
-            else
-            {
-                using var game = new Game1();
-                game.Run();
-            }
+            Register.setup();
+            using var game = new Editor();
+            game.Run();
         }
     }
 
@@ -52,6 +42,7 @@ namespace Weezer_Tower_Defence
             
             // Разрешаем изменение размера окна
             Window.AllowUserResizing = true;
+
         }
 
 
