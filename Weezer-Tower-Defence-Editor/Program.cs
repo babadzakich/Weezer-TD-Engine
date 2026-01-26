@@ -11,13 +11,9 @@ namespace Weezer_Tower_Defence
         static void Main(string[] args)
         {
             Console.WriteLine("Starting Weezer Tower Defence...");
-            bool editorMode = args.Length > 0 && args[0] == "--editor";
-            
-            if (editorMode)
-            {
-                using var game = new Editor();
-                game.Run();
-            }
+            Register.setup();
+            using var game = new Editor();
+            game.Run();
         }
     }
 
@@ -46,6 +42,7 @@ namespace Weezer_Tower_Defence
             
             // Разрешаем изменение размера окна
             Window.AllowUserResizing = true;
+
         }
 
 
