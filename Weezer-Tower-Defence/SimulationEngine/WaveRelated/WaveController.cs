@@ -43,6 +43,11 @@ namespace SimulationEngine.WaveRelated
             return _instance;
         }
 
+        public static void ResetInstance()
+        {
+            _instance = null;
+        }
+
         public void SetEnemyTexture(Texture2D texture)
         {
             _enemyTexture = texture;

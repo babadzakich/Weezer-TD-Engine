@@ -27,6 +27,11 @@ public class DamageDealerController : Controller
         return _instance;
     }
 
+    public static void ResetInstance()
+    {
+        _instance = null;
+    }
+
     public void AddDamageDealer(DamageDealer damageDealer)
     {
         damageDealers.Add(damageDealer);
