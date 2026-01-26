@@ -72,14 +72,31 @@ public class LevelLoader
         public float FireRate { get; set; }
         [JsonPropertyName("damage")]
         public float Damage { get; set; }
+        
+        // Editor saves as "Upgrades", old levels might use "upgradeLevels"
+        [JsonPropertyName("upgrades")]
+        public List<TowerUpgradeDefinition> Upgrades { get; set; } = new();
+
         [JsonPropertyName("upgradeLevels")]
-        public List<TowerUpgradeDefinition> UpgradeLevels { get; set; } = new();
+        public List<TowerUpgradeDefinition> UpgradeLevels 
+        { 
+            get => Upgrades; 
+            set => Upgrades = value; 
+        }
     }
 
     public class TowerUpgradeDefinition
     {
+        [JsonPropertyName("cost")]
+        public int Cost { get; set; }
+
         [JsonPropertyName("upgradeCost")]
-        public int UpgradeCost { get; set; }
+        public int UpgradeCost 
+        { 
+            get => Cost; 
+            set => Cost = value; 
+        }
+
         [JsonPropertyName("range")]
         public float Range { get; set; }
         [JsonPropertyName("fireRate")]
@@ -157,6 +174,16 @@ public class LevelLoader
             {
                 level.MoneyHealthSettings = LoadMoneyHealthSettings(moneyHealthDir);
                 Console.WriteLine($"Loaded Money: {level.MoneyHealthSettings.StartingMoney}; lives: {level.MoneyHealthSettings.StartingLives}");
+            }
+            else
+            {
+                // Дефолтные значения если файл отсутствует
+                level.MoneyHealthSettings = new MoneyHealthSettings
+                {
+                    StartingMoney = 100,
+                    StartingLives = 20
+                };
+                Console.WriteLine("MoneyHealth.json not found, using defaults (100 money, 20 lives)");
             }
 
             // 3. Загружаем определения врагов

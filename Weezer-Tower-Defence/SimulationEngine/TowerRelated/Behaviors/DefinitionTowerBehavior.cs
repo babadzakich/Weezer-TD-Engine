@@ -12,26 +12,42 @@ namespace SimulationEngine.TowerRelated.Behaviors;
 /// </summary>
 public class DefinitionTowerBehavior : ITowerBehavior
 {
-    private readonly LevelLoader.TowerDefinition _definition;
+    private LevelLoader.TowerDefinition _definition;
     private readonly IDamageDealerBehavior _projectileConfig;
 
     private float _range;
     private float _fireRate;
     private float _damage;
 
-    public string Id => _definition.Id;
-    public string Name => _definition.Name;
-    public int Cost => _definition.Cost;
+    public string Id => _definition?.Id ?? "";
+    public string Name => _definition?.Name ?? "";
+    public int Cost => _definition?.Cost ?? 0;
     public float Range => _range;
     public float FireRate => _fireRate;
     public float Damage => _damage;
-    public LevelLoader.TowerDefinition Definition => _definition;
+    
+    public LevelLoader.TowerDefinition Definition 
+    { 
+        get => _definition; 
+        set { _definition = value; if (_definition != null) ApplyLevel(0); }
+    }
 
     public DefinitionTowerBehavior(LevelLoader.TowerDefinition definition, IDamageDealerBehavior projectileConfig)
     {
         _definition = definition;
         _projectileConfig = projectileConfig;
         ApplyLevel(0);
+    }
+
+    // Дополнительный конструктор для совместимости с TowerBehaviorFactory
+    public DefinitionTowerBehavior(string id, string name, IDamageDealerBehavior projectileConfig, int cost, float range, float fireRate)
+    {
+        _projectileConfig = projectileConfig;
+        // Мы не можем создать полноценный Definition здесь без самого объекта Definition,
+        // но TowerBehaviorFactory установит свойство Definition сразу после создания.
+        _range = range;
+        _fireRate = fireRate;
+        _damage = projectileConfig?.Damage ?? 25f;
     }
 
     /// <summary>

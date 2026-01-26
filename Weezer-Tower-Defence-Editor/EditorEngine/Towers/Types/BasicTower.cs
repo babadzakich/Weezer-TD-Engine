@@ -6,7 +6,7 @@ public class BasicTower : ITowerConfig
     public string Id { get; set; } = "basic";
     public string Name { get; set; } = "Basic Tower";
     public string ClassName { get; set; }
-        = "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
+        = "SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior";
     public string BulletClassName { get; set; }
         = "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
 

@@ -20,7 +20,7 @@ public class Tower
         Position = position;
         UpgradeLevel = 0;
         Behavior = behavior;
-        Definition = definition;
+        Definition = definition ?? behavior.Definition;
         ApplyLevelStats();
     }
 
@@ -61,6 +61,11 @@ public class Tower
         if (Behavior is SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior defBehavior)
         {
             defBehavior.ApplyLevel(UpgradeLevel);
+            return true;
+        }
+        if (Behavior is SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior basicBehavior)
+        {
+            basicBehavior.ApplyLevel(UpgradeLevel);
             return true;
         }
         return false;

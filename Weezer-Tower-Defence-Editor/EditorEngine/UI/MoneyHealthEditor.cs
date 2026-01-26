@@ -43,6 +43,11 @@ public class  MoneyHealthEditor
         saveButton.Update(mouse);
     }
 
+    public bool IsAnyFieldActive()
+    {
+        return moneyField.IsActive || healthField.IsActive;
+    }
+
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)
     {
         int x = x_offset+10;

@@ -25,7 +25,8 @@ class Register {
     private static void copyInbuilt()
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var rootNamespace = $"{assembly.GetName().Name!}.EmbeddedBehaviors";
+        var assemblyName = assembly.GetName().Name!.Replace("-", "_");
+        var rootNamespace = $"{assemblyName}.EmbeddedBehaviors";
 
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var targetRoot = Path.Combine(
@@ -34,6 +35,8 @@ class Register {
             "Editor",
             "custom"
         );
+
+        Directory.CreateDirectory(targetRoot);
 
         foreach (var resourceName in assembly.GetManifestResourceNames())
         {
@@ -130,6 +133,12 @@ class Register {
                 "WeezerTowerDefence",
                 "DLLs"
             );
+
+        if (!Directory.Exists(editorCustomPath))
+        {
+            Console.WriteLine($"Directory not found: {editorCustomPath}");
+            return;
+        }
 
         var csFiles = Directory.GetFiles(editorCustomPath, "*.cs", SearchOption.AllDirectories);
 

@@ -81,21 +81,16 @@ public class GameManager
         Map.DefensePoints[0].Health = startingLives;
 
         // Добавляем доступные башни в UI
-        // Хороший сыщик всегда найдет. Здесь хардкод боже мой
-        foreach (var towerDefinition in towerDefinitions.Values)
-        {
-            UIManager.AddAvailableTower(TowerBehaviorFactory.CreateTowerBehavior(towerDefinition));
-        }
-
-        UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
-
         if (towerDefinitions != null)
         {
-            foreach (var def in towerDefinitions.Values)
+            foreach (var towerDefinition in towerDefinitions.Values)
             {
-                UIManager.AddAvailableTower(new TowerRelated.Behaviors.DefinitionTowerBehavior(def, new StandardBulletBehavior(25f, 300f, 500f)));
+                UIManager.AddAvailableTower(TowerBehaviorFactory.CreateTowerBehavior(towerDefinition));
             }
         }
+
+        // Добавляем стандартную базовую башню
+        UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
     }
 
     public void Update(GameTime gameTime)
@@ -121,7 +116,7 @@ public class GameManager
             Defeat?.Invoke();
         }
         // Чекаем победу
-        if (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive && EnemyController.Enemies.Count == 0)
+        if (WaveController != null && WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive && EnemyController.Enemies.Count == 0)
         {
             Console.WriteLine("Win detected");
             Win?.Invoke();
@@ -138,7 +133,7 @@ public class GameManager
         UIManager.Draw(spriteBatch, pixelTexture, font);
     }
 
-    private void StartWave()
+    public void StartWave()
     {
         if (WaveController != null && !WaveController.IsWaveActive && WaveController.CurrentWaveIndex < WaveController.TotalWaves)
         {

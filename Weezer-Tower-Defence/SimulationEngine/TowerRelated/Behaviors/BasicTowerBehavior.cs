@@ -20,8 +20,9 @@ public class BasicTowerBehavior : ITowerBehavior
     public string Name { get; }
     public IDamageDealerBehavior projectileConfig;
     public int Cost { get; }
-    public float Range { get; }
-    public float FireRate { get; }
+    public float Range { get; private set; }
+    public float FireRate { get; private set; }
+    public LevelLoader.TowerDefinition Definition { get; set; }
     private SimulationEngine.EnemyRelated.Enemy _currentTarget;
 
     public BasicTowerBehavior(string id, string name, IDamageDealerBehavior projectileConfig, int cost, float range, float fireRate)
@@ -32,6 +33,22 @@ public class BasicTowerBehavior : ITowerBehavior
         Cost = cost;
         Range = range;
         FireRate = fireRate;
+    }
+
+    public void ApplyLevel(int level)
+    {
+        if (Definition == null || Definition.UpgradeLevels == null || level <= 0 || level > Definition.UpgradeLevels.Count)
+        {
+            Range = Definition?.Range ?? Range;
+            FireRate = Definition?.FireRate ?? FireRate;
+            if (projectileConfig != null) projectileConfig.Damage = Definition?.Damage ?? (projectileConfig?.Damage ?? 25f);
+            return;
+        }
+
+        var up = Definition.UpgradeLevels[level - 1];
+        Range = up.Range > 0 ? up.Range : Definition.Range;
+        FireRate = up.FireRate > 0 ? up.FireRate : Definition.FireRate;
+        if (projectileConfig != null) projectileConfig.Damage = up.Damage > 0 ? up.Damage : (Definition.Damage > 0 ? Definition.Damage : 25f);
     }
 
     

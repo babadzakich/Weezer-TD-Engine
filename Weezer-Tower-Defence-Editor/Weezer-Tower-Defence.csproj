@@ -49,7 +49,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Content\Maps\" />
     <Folder Include="EmbeddedBehaviors\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="EditorEngine\Enemies\Configs\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\Enemies\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

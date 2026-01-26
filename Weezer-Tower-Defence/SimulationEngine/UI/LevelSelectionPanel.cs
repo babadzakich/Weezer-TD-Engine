@@ -69,7 +69,8 @@ public class LevelSelectionPanel
             _selectedIndex++;
             if (_selectedIndex >= _levels.Count) _selectedIndex = 0;
         }
-        if (ks.IsKeyDown(Keys.Enter) && prevKs.IsKeyUp(Keys.Enter))
+        if ((ks.IsKeyDown(Keys.Enter) && prevKs.IsKeyUp(Keys.Enter)) ||
+            (ks.IsKeyDown(Keys.Space) && prevKs.IsKeyUp(Keys.Space)))
         {
             _isOpen = false;
             OnLevelSelected?.Invoke(Path.Combine("Content", _levels[_selectedIndex]));
@@ -82,6 +83,8 @@ public class LevelSelectionPanel
 
         // Фон на весь экран
         spriteBatch.Draw(_pixel, new Rectangle(0, 0, _screenWidth, _screenHeight), Color.Black * 0.8f);
+
+        if (_font == null) return;
 
         string title = "SELECT LEVEL";
         Vector2 titleSize = _font.MeasureString(title);

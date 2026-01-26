@@ -115,13 +115,13 @@ public class TowerEditorPanel
         levelsCountField = new(new Rectangle(x, y += inputHeight, w, h), "0", updateTextField, "levelsCount");
 
         newTowerButton = new UIButton(
-            new Rectangle(left, y + inputHeight + 10, w, 50),
+            new Rectangle(x + w + 50, top + dropListHeight, 200, 50),
             "New Tower",
             ClearFields
         );
 
         saveButton = new UIButton(
-            new Rectangle(left, y + (inputHeight + 10) * 2, w, 50),
+            new Rectangle(x + w + 50, top + dropListHeight + 60, 200, 50),
             "Save Tower",
             SaveTower
         );
@@ -131,6 +131,8 @@ public class TowerEditorPanel
     {
         idField.Text = "new_tower";
         nameField.Text = "New Tower";
+        classField.Text = "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
+        bulletClassField.Text = "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
         costField.Text = "100";
         rangeField.Text = "150";
         fireRateField.Text = "1";
@@ -224,6 +226,8 @@ public class TowerEditorPanel
             if (data == null) return;
             idField.Text = data.Id;
             nameField.Text = data.Name;
+            classField.Text = data.ClassName ?? "SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior";
+            bulletClassField.Text = data.BulletClassName ?? "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
             costField.Text = data.Cost.ToString();
             rangeField.Text = data.Range.ToString();
             fireRateField.Text = data.FireRate.ToString();
@@ -280,8 +284,27 @@ public class TowerEditorPanel
         foreach (var u in upgradeLevels) u.Update(mouse, keyboard);
         newTowerButton.Update(mouse);
         saveButton.Update(mouse);
-        foreach (var btn in towerSelectionButtons) btn.Update(mouse);
-        foreach (var btn in towerDeleteButtons) btn.Update(mouse);
+        foreach (var btn in towerSelectionButtons.ToList()) btn.Update(mouse);
+        foreach (var btn in towerDeleteButtons.ToList()) btn.Update(mouse);
+    }
+
+    public bool IsAnyFieldActive()
+    {
+        if (!IsOpen) return false;
+
+        bool anyUpgradeFieldActive = false;
+        foreach (var u in upgradeLevels)
+        {
+            if (u.CostField.IsActive || u.RangeField.IsActive || u.FireRateField.IsActive || u.DamageField.IsActive)
+            {
+                anyUpgradeFieldActive = true;
+                break;
+            }
+        }
+
+        return idField.IsActive || nameField.IsActive || classField.IsActive || bulletClassField.IsActive ||
+               costField.IsActive || rangeField.IsActive || fireRateField.IsActive || damageField.IsActive ||
+               levelsCountField.IsActive || anyUpgradeFieldActive;
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)

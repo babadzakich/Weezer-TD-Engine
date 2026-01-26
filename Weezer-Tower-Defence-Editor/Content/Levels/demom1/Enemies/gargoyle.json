@@ -1,8 +1,0 @@
-{
-  "Id": "gargoyle",
-  "DisplayName": "Gargoyle",
-  "BehaviorId": "flying",
-  "BaseHealth": 80,
-  "BaseSpeed": 80,
-  "Damage": 15
-}

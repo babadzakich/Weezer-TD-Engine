@@ -31,6 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <MonoGameContentReference Include="Content\Content.mgcb" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Зависимости MonoGame -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="MonoGame.Extended" Version="3.8.0" />

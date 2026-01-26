@@ -21,36 +21,62 @@ public class EnemyConfigRegistry
         LoadConfigs();
     }
 
+    private string _activeConfigDir;
+
     private void LoadConfigs()
     {
-        // Я не понимаю, как это должно было работать. Нужно сделать это немного по-другому, но не суть
-        string configDir = Path.Combine("..", "..", "..", "EditorEngine", "Enemies", "Configs");
-        
-        if (!Directory.Exists(configDir))
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string[] possiblePaths = new[]
         {
-            Directory.CreateDirectory(configDir);
-            Console.WriteLine($"Created enemy configs directory: {configDir}");
+            Path.Combine("Content", "Enemies"),
+            Path.Combine("Weezer-Tower-Defence-Editor", "Content", "Enemies"),
+            Path.Combine("EditorEngine", "Enemies", "Configs"),
+            Path.Combine("Weezer-Tower-Defence-Editor", "EditorEngine", "Enemies", "Configs"),
+            Path.Combine(baseDir, "Content", "Enemies"),
+            Path.Combine("..", "..", "..", "EditorEngine", "Enemies", "Configs")
+        };
+
+        _activeConfigDir = possiblePaths.FirstOrDefault(Directory.Exists);
+
+        if (_activeConfigDir == null)
+        {
+            // Попробуем еще один вариант для Rider/Visual Studio
+            string projectRoot = Path.Combine(baseDir, "..", "..", "..");
+            string studioPath = Path.Combine(projectRoot, "Weezer-Tower-Defence-Editor", "Content", "Enemies");
+            if (Directory.Exists(studioPath))
+            {
+                _activeConfigDir = studioPath;
+            }
+        }
+
+        if (_activeConfigDir == null)
+        {
+            _activeConfigDir = Path.Combine("Content", "Enemies"); // fallback
+            Directory.CreateDirectory(_activeConfigDir);
+            Console.WriteLine($"[DEBUG_LOG] Created enemy configs directory: {Path.GetFullPath(_activeConfigDir)}");
             return;
         }
 
-        var jsonFiles = Directory.GetFiles(configDir, "*.json");
+        Console.WriteLine($"[DEBUG_LOG] Loading enemy configs from: {Path.GetFullPath(_activeConfigDir)}");
+        var jsonFiles = Directory.GetFiles(_activeConfigDir, "*.json");
         
         foreach (var filePath in jsonFiles)
         {
             try
             {
                 string json = File.ReadAllText(filePath);
-                var config = JsonSerializer.Deserialize<EnemyConfig>(json);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var config = JsonSerializer.Deserialize<EnemyConfig>(json, options);
                 
                 if (config != null && !string.IsNullOrEmpty(config.Id))
                 {
                     configs[config.Id] = config;
-                    Console.WriteLine($"Loaded enemy config: {config.DisplayName} (ID: {config.Id}, Behavior: {config.BehaviorId})");
+                    Console.WriteLine($"[DEBUG_LOG] Loaded enemy config: {config.DisplayName} (ID: {config.Id}, Behavior: {config.BehaviorId})");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to load enemy config from {filePath}: {ex.Message}");
+                Console.WriteLine($"[DEBUG_LOG] Failed to load enemy config from {filePath}: {ex.Message}");
             }
         }
     }
@@ -61,15 +87,17 @@ public class EnemyConfigRegistry
     
     public void SaveConfig(EnemyConfig config)
     {
-        string configDir = Path.Combine("EditorEngine", "Enemies", "Configs");
-        Directory.CreateDirectory(configDir);
+        if (string.IsNullOrEmpty(_activeConfigDir))
+            _activeConfigDir = Path.Combine("Content", "Enemies");
+
+        Directory.CreateDirectory(_activeConfigDir);
         
-        string filePath = Path.Combine(configDir, $"{config.Id}.json");
+        string filePath = Path.Combine(_activeConfigDir, $"{config.Id}.json");
         var options = new JsonSerializerOptions { WriteIndented = true };
         string json = JsonSerializer.Serialize(config, options);
         File.WriteAllText(filePath, json);
         
         configs[config.Id] = config;
-        Console.WriteLine($"Saved enemy config: {config.DisplayName}");
+        Console.WriteLine($"[DEBUG_LOG] Saved enemy config: {config.DisplayName}");
     }
 }

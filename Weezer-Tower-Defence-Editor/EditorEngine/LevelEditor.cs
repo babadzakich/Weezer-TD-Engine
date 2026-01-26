@@ -76,97 +76,101 @@ public class LevelEditor
     public void Update(GameTime gameTime, KeyboardState keyboardState, MouseState mouseState)
     {   
         moneyHealthPanel.Update(mouseState, keyboardState);
-
-        if (keyboardState.IsKeyDown(Keys.T) && previousKeyboardState.IsKeyUp(Keys.T)){
-            towerPanel.Toggle();
-        }    
-
-        if (keyboardState.IsKeyDown(Keys.M) && previousKeyboardState.IsKeyUp(Keys.M)) {
-            wavesPanel.Toggle();
-            currentMode = EditorMode.WavesEditing;
-            debugToggleMessage = true;
-            debugMessageTimer = 2f;
-        }
-        if (wavesPanel.IsOpen)
-        {
-            if (keyboardState.IsKeyDown(Keys.N) &&
-                previousKeyboardState.IsKeyUp(Keys.N))
-            {
-                wavesPanel.AddWave();
-            }
-
-            if (keyboardState.IsKeyDown(Keys.D) &&
-                previousKeyboardState.IsKeyUp(Keys.D))
-            {
-                wavesPanel.RemoveWave(wavesPanel.SelectedWaveIndex);
-            }
-
-            if (keyboardState.IsKeyDown(Keys.Up) &&
-                previousKeyboardState.IsKeyUp(Keys.Up))
-                wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex - 1);
-
-            if (keyboardState.IsKeyDown(Keys.Down) &&
-                previousKeyboardState.IsKeyUp(Keys.Down))
-                wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex + 1);
-
-            // Открыть панель добавления врага (клавиша E)
-            if (keyboardState.IsKeyDown(Keys.E) &&
-                previousKeyboardState.IsKeyUp(Keys.E) &&
-                wavesPanel.SelectedWaveIndex >= 0)
-            {
-                enemySelectionPanel.Open();
-            }
-        }
-
-        // Logical fix: moved mode selection to keyboard controls section
-        // Logical fix: allowed user to toggle modes off by pressing the same key again
-        if (keyboardState.IsKeyDown(Keys.D1) && previousKeyboardState.IsKeyUp(Keys.D1))
-            if (currentMode != EditorMode.PlacingSpawn)
-                currentMode = EditorMode.PlacingSpawn;
-            else 
-                currentMode = EditorMode.None;
-        else if (keyboardState.IsKeyDown(Keys.D2) && previousKeyboardState.IsKeyUp(Keys.D2))
-            if (currentMode != EditorMode.PlacingDefense)
-                currentMode = EditorMode.PlacingDefense;
-            else 
-                currentMode = EditorMode.None;
-        else if (keyboardState.IsKeyDown(Keys.D3) && previousKeyboardState.IsKeyUp(Keys.D3))
-            if (currentMode != EditorMode.DrawingPath)
-                currentMode = EditorMode.DrawingPath;
-            else 
-                currentMode = EditorMode.None;
-        else if (keyboardState.IsKeyDown(Keys.D4) && previousKeyboardState.IsKeyUp(Keys.D4))
-            if (currentMode != EditorMode.PlacingBuildZone)
-                currentMode = EditorMode.PlacingBuildZone;
-            else
-                currentMode = EditorMode.None;
-
-        // Save on Ctrl+S
-        if (keyboardState.IsKeyDown(Keys.LeftControl) && 
-            keyboardState.IsKeyDown(Keys.S) && 
-            previousKeyboardState.IsKeyUp(Keys.S))
-        {
-            SaveAll();
-        }
-
-        // Pack level on Ctrl+P
-        if (keyboardState.IsKeyDown(Keys.LeftControl) && 
-            keyboardState.IsKeyDown(Keys.P) && 
-            previousKeyboardState.IsKeyUp(Keys.P))
-        {
-            PackLevel();
-        }
-
-        camera.Update(gameTime, keyboardState, mouseState);
-        HandleMouseInput(mouseState);
-        
         levelNameField.Update(mouseState, keyboardState);
 
-        // Обновляем панель башен
         if (towerPanel.IsOpen)
         {
             towerPanel.Update(mouseState, keyboardState, previousMouseState);
         }
+
+        if (!IsAnyTextFieldActive())
+        {
+            if (keyboardState.IsKeyDown(Keys.T) && previousKeyboardState.IsKeyUp(Keys.T))
+            {
+                towerPanel.Toggle();
+            }
+
+            if (keyboardState.IsKeyDown(Keys.M) && previousKeyboardState.IsKeyUp(Keys.M))
+            {
+                wavesPanel.Toggle();
+                currentMode = EditorMode.WavesEditing;
+                debugToggleMessage = true;
+                debugMessageTimer = 2f;
+            }
+
+            if (wavesPanel.IsOpen)
+            {
+                if (keyboardState.IsKeyDown(Keys.N) &&
+                    previousKeyboardState.IsKeyUp(Keys.N))
+                {
+                    wavesPanel.AddWave();
+                }
+
+                if (keyboardState.IsKeyDown(Keys.D) &&
+                    previousKeyboardState.IsKeyUp(Keys.D))
+                {
+                    wavesPanel.RemoveWave(wavesPanel.SelectedWaveIndex);
+                }
+
+                if (keyboardState.IsKeyDown(Keys.Up) &&
+                    previousKeyboardState.IsKeyUp(Keys.Up))
+                    wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex - 1);
+
+                if (keyboardState.IsKeyDown(Keys.Down) &&
+                    previousKeyboardState.IsKeyUp(Keys.Down))
+                    wavesPanel.SelectWave(wavesPanel.SelectedWaveIndex + 1);
+
+                // Открыть панель добавления врага (клавиша E)
+                if (keyboardState.IsKeyDown(Keys.E) &&
+                    previousKeyboardState.IsKeyUp(Keys.E) &&
+                    wavesPanel.SelectedWaveIndex >= 0)
+                {
+                    enemySelectionPanel.Open();
+                }
+            }
+
+            // Logical fix: moved mode selection to keyboard controls section
+            // Logical fix: allowed user to toggle modes off by pressing the same key again
+            if (keyboardState.IsKeyDown(Keys.D1) && previousKeyboardState.IsKeyUp(Keys.D1))
+                if (currentMode != EditorMode.PlacingSpawn)
+                    currentMode = EditorMode.PlacingSpawn;
+                else
+                    currentMode = EditorMode.None;
+            else if (keyboardState.IsKeyDown(Keys.D2) && previousKeyboardState.IsKeyUp(Keys.D2))
+                if (currentMode != EditorMode.PlacingDefense)
+                    currentMode = EditorMode.PlacingDefense;
+                else
+                    currentMode = EditorMode.None;
+            else if (keyboardState.IsKeyDown(Keys.D3) && previousKeyboardState.IsKeyUp(Keys.D3))
+                if (currentMode != EditorMode.DrawingPath)
+                    currentMode = EditorMode.DrawingPath;
+                else
+                    currentMode = EditorMode.None;
+            else if (keyboardState.IsKeyDown(Keys.D4) && previousKeyboardState.IsKeyUp(Keys.D4))
+                if (currentMode != EditorMode.PlacingBuildZone)
+                    currentMode = EditorMode.PlacingBuildZone;
+                else
+                    currentMode = EditorMode.None;
+
+            // Save on Ctrl+S
+            if (keyboardState.IsKeyDown(Keys.LeftControl) &&
+                keyboardState.IsKeyDown(Keys.S) &&
+                previousKeyboardState.IsKeyUp(Keys.S))
+            {
+                SaveAll();
+            }
+
+            // Pack level on Ctrl+P
+            if (keyboardState.IsKeyDown(Keys.LeftControl) &&
+                keyboardState.IsKeyDown(Keys.P) &&
+                previousKeyboardState.IsKeyUp(Keys.P))
+            {
+                PackLevel();
+            }
+        }
+
+        camera.Update(gameTime, keyboardState, mouseState);
+        HandleMouseInput(mouseState);
 
         previousKeyboardState = keyboardState;
         previousMouseState = mouseState;
@@ -176,6 +180,11 @@ public class LevelEditor
             if (debugMessageTimer <= 0f)
                 debugToggleMessage = false;
         }
+    }
+
+    private bool IsAnyTextFieldActive()
+    {
+        return levelNameField.IsActive || moneyHealthPanel.IsAnyFieldActive() || towerPanel.IsAnyFieldActive();
     }
 
     private void HandleMouseInput(MouseState mouseState)

@@ -8,7 +8,7 @@ public class MachineGunTower : ITowerConfig
     public string Id { get; set; } = "machine_gun";
     public string Name { get; set; } = "Machine gun tower";
     public string ClassName { get; set; }
-        = "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
+        = "SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior";
     public string BulletClassName { get; set; }
         = "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
 

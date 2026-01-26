@@ -35,6 +35,7 @@ public class Game1 : Game
 
     private LevelSelectionPanel _levelSelectionPanel;
     private GameState _currentState = GameState.LevelSelection;
+    private bool _showInstructions = false;
     private KeyboardState _previousKeyboardState;
 
     public enum GameState
@@ -70,6 +71,7 @@ public class Game1 : Game
         {
             Console.WriteLine(System.IO.Path.GetFullPath(levelArchivePath));
             Console.WriteLine($"ERROR: Level archive not found at {levelArchivePath}");
+            ReturnToMenu();
             return;
         }
 
@@ -77,10 +79,10 @@ public class Game1 : Game
         {
             // Сброс предыдущего состояния
             GameManager.ResetInstance();
-            TowerController.ResetInstance();
-            EnemyController.ResetInstance();
-            DamageDealerController.ResetInstance();
-            WaveController.ResetInstance();
+            if (TowerController.GetInstance(this) != null) TowerController.ResetInstance();
+            if (EnemyController.GetInstance(this, null) != null) EnemyController.ResetInstance();
+            if (DamageDealerController.GetInstance(this) != null) DamageDealerController.ResetInstance();
+            if (WaveController.GetInstance(null, null) != null) WaveController.ResetInstance();
 
             Console.WriteLine($"Loading level from: {levelArchivePath}");
             var loadedLevel = LevelLoader.LoadFromArchive(levelArchivePath);
@@ -114,16 +116,25 @@ public class Game1 : Game
             Console.WriteLine($"Loaded {loadedLevel.Waves.Count} waves");
 
             // Загружаем жизни и деньги из уровня
-            Console.WriteLine($"Starting Money: {loadedLevel.MoneyHealthSettings.StartingMoney}");
-            Console.WriteLine($"Starting Lives: {loadedLevel.MoneyHealthSettings.StartingLives}");
+            int startingMoney = 100;
+            int startingLives = 20;
+
+            if (loadedLevel.MoneyHealthSettings != null)
+            {
+                startingMoney = loadedLevel.MoneyHealthSettings.StartingMoney;
+                startingLives = loadedLevel.MoneyHealthSettings.StartingLives;
+            }
+
+            Console.WriteLine($"Starting Money: {startingMoney}");
+            Console.WriteLine($"Starting Lives: {startingLives}");
 
             // Инициализируем GameManager
             gameManager = GameManager.getInstance(
                 _graphics.PreferredBackBufferWidth, 
                 _graphics.PreferredBackBufferHeight, 
                 gameMap, 
-                loadedLevel.MoneyHealthSettings.StartingMoney,
-                loadedLevel.MoneyHealthSettings.StartingLives,
+                startingMoney,
+                startingLives,
                 towerController, 
                 loadedLevel.TowerDefinitions,
                 waveController, 
@@ -140,6 +151,7 @@ public class Game1 : Game
             gameManager.Win += () => ReturnToMenu();
             
             _currentState = GameState.Playing;
+            _showInstructions = true;
             Console.WriteLine("Level loaded successfully!");
         }
         catch (Exception ex)
@@ -203,11 +215,28 @@ public class Game1 : Game
         }
         else
         {
-            gameManager?.Update(gameTime);
-            
-            if (ks.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
+            if (_showInstructions)
             {
-                ReturnToMenu();
+                if ((ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter)) ||
+                    (ks.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space)))
+                {
+                    _showInstructions = false;
+                }
+            }
+            else
+            {
+                gameManager?.Update(gameTime);
+                
+                // Запуск волны по Enter
+                if (ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter))
+                {
+                    gameManager?.StartWave();
+                }
+
+                if (ks.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
+                {
+                    ReturnToMenu();
+                }
             }
         }
 
@@ -228,6 +257,11 @@ public class Game1 : Game
         else if (gameManager != null)
         {
             gameManager.Draw(_spriteBatch, _pixel, _font);
+            
+            if (_showInstructions)
+            {
+                DrawInstructions();
+            }
         }
 
         _spriteBatch.End();
@@ -237,6 +271,8 @@ public class Game1 : Game
 
     private void DrawInstructions()
     {
+        if (_font == null) return;
+
         int screenWidth = GraphicsDevice.Viewport.Width;
         int screenHeight = GraphicsDevice.Viewport.Height;
         

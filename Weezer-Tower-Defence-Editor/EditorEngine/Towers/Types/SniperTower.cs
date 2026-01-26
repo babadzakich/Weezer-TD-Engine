@@ -8,7 +8,7 @@ public class SniperTower : ITowerConfig
     public string Id { get; set; } = "sniper_tower";
     public string Name { get; set; } = "Sniper tower";
     public string ClassName { get; set; }
-        = "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
+        = "SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior";
     public string BulletClassName { get; set; }
         = "SimulationEngine.BulletRelated.Behaviors.BasicBulletBehavior";
 
