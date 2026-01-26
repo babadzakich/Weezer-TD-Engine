@@ -27,7 +27,9 @@
 
 	<ItemGroup>
 		<Compile Remove ="EmbeddedBehaviors/**/*" />
+		<Compile Remove ="PrecompiledDLLs/**/*" />
 		<EmbeddedResource Include="EmbeddedBehaviors/**/*" />
+		<EmbeddedResource Include="PrecompiledDLLs/**/*" />
 	</ItemGroup>  	
 	
   <ItemGroup>
@@ -44,20 +46,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Ссылка на проект симуляции для доступа к SimulationEngine -->
-    <ProjectReference Include="..\Weezer-Tower-Defence\Weezer-Tower-Defence.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="EmbeddedBehaviors\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="EditorEngine\Enemies\Configs\*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\Enemies\*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 </Project>

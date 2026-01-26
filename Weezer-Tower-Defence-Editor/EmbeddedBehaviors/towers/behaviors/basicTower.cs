@@ -8,7 +8,10 @@ using System.Collections.Generic;
 using System.Linq;
 using SimulationEngine;
 
-namespace SimulationEngine.TowerRelated.Behaviors;
+using SimulationEngine.TowerRelated.Behaviors;
+using SimulationEngine.TowerRelated;
+using SimulationEngine.EnemyRelated;
+using SimulationEngine.BulletRelated;
 
 /// <summary>
 /// Базовое поведение башни - стреляет в ближайшего врага

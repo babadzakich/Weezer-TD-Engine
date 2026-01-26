@@ -24,11 +24,8 @@ class Register {
     /// </summary>
     private static void copyInbuilt()
     {
-        var assembly = Assembly.GetExecutingAssembly();
-        var assemblyName = assembly.GetName().Name!.Replace("-", "_");
-        var rootNamespace = $"{assemblyName}.EmbeddedBehaviors";
-
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
         var targetRoot = Path.Combine(
             appData,
             "WeezerTowerDefence",
@@ -36,26 +33,49 @@ class Register {
             "custom"
         );
 
-        Directory.CreateDirectory(targetRoot);
+        recursiveCopy(
+            sourceDir: "EmbeddedBehaviors",
+            targetDir: targetRoot
+        );
+    }
+
+    private static void copyDlls()     {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var targetRoot = Path.Combine(
+            appData,
+            "WeezerTowerDefence",
+            "Editor",
+            "DLLs"
+        );
+        recursiveCopy(
+            sourceDir: "PrecompiledDLLs",
+            targetDir: targetRoot
+        );
+        Console.WriteLine("NU I GDE");
+    }
+
+    private static void recursiveCopy(string sourceDir, string targetDir)
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var assemblyName = assembly.GetName().Name!;
+
+        var resourceRoot = $"{assemblyName}.{sourceDir}.";
 
         foreach (var resourceName in assembly.GetManifestResourceNames())
         {
-            if (!resourceName.StartsWith(rootNamespace + "."))
+            Console.WriteLine($"{resourceName};   {resourceRoot}");
+            if (!resourceName.StartsWith(resourceRoot))
                 continue;
 
-            // убираем "WeezerTowerDefence.EmbeddedBehaviors."
-            var trimmed = resourceName.Substring(rootNamespace.Length + 1);
+            Console.WriteLine("WOW");
+            var relative = resourceName.Substring(resourceRoot.Length);
 
-            // разбиваем по точкам
-            var parts = trimmed.Split('.');
+            var parts = relative.Split('.');
 
-            // последний элемент — расширение
-            var extension = parts[^1];
+            if (parts.Length < 2)
+                continue;
 
-            // предпоследний — имя файла
-            var fileName = parts[^2] + "." + extension;
-
-            // всё до имени файла — путь
+            var fileName = $"{parts[^2]}.{parts[^1]}";
             var directories = parts.Take(parts.Length - 2);
 
             var relativePath = Path.Combine(
@@ -63,13 +83,14 @@ class Register {
                 fileName
             );
 
-            var targetPath = Path.Combine(targetRoot, relativePath);
+            var targetPath = Path.Combine(targetDir, relativePath);
 
             Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
-            using var stream = assembly.GetManifestResourceStream(resourceName)!;
-            using var file = File.Create(targetPath);
+            using var stream = assembly.GetManifestResourceStream(resourceName)
+                ?? throw new InvalidOperationException($"Resource not found: {resourceName}");
 
+            using var file = File.Create(targetPath);
             stream.CopyTo(file);
         }
     }
@@ -85,15 +106,16 @@ class Register {
         void CompileSingleFileToDll(string sourcePath, string outputDllPath)
         {
             string code = File.ReadAllText(sourcePath);
-
             var syntaxTree = CSharpSyntaxTree.ParseText(code);
 
-            var references = new List<MetadataReference>
-            {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-            };
+            var references = AppDomain.CurrentDomain
+                .GetAssemblies()
+                .Where(a =>
+                    !a.IsDynamic &&
+                    !string.IsNullOrEmpty(a.Location))
+                .Select(a => MetadataReference.CreateFromFile(a.Location))
+                .Cast<MetadataReference>()
+                .ToList();
 
             var compilation = CSharpCompilation.Create(
                 Path.GetFileNameWithoutExtension(outputDllPath),
@@ -102,9 +124,9 @@ class Register {
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             );
 
-            using var fs = new FileStream(outputDllPath, FileMode.Create);
+            Directory.CreateDirectory(Path.GetDirectoryName(outputDllPath)!);
 
-            var result = compilation.Emit(fs);
+            var result = compilation.Emit(outputDllPath);
 
             if (!result.Success)
             {
@@ -119,28 +141,24 @@ class Register {
             }
         }
 
-        string editorCustomPath =
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "WeezerTowerDefence",
-                "Editor",
-                "custom"
-            );
+        string editorCustomPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "WeezerTowerDefence",
+            "Editor",
+            "custom"
+        );
 
-        string dllRootPath =
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "WeezerTowerDefence",
-                "DLLs"
-            );
+        string dllRootPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "WeezerTowerDefence",
+            "DLLs"
+        );
 
-        if (!Directory.Exists(editorCustomPath))
-        {
-            Console.WriteLine($"Directory not found: {editorCustomPath}");
-            return;
-        }
-
-        var csFiles = Directory.GetFiles(editorCustomPath, "*.cs", SearchOption.AllDirectories);
+        var csFiles = Directory.GetFiles(
+            editorCustomPath,
+            "*.cs",
+            SearchOption.AllDirectories
+        );
 
         foreach (var csFile in csFiles)
         {
@@ -155,12 +173,10 @@ class Register {
                     continue;
                 }
 
-                string entityType = parts[0]; 
+                string entityType = parts[0];
                 string fileName = Path.GetFileNameWithoutExtension(csFile);
 
                 string outputDir = Path.Combine(dllRootPath, entityType);
-                Directory.CreateDirectory(outputDir);
-
                 string outputDllPath = Path.Combine(outputDir, $"{fileName}.dll");
 
                 CompileSingleFileToDll(csFile, outputDllPath);
