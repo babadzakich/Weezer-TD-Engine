@@ -19,10 +19,10 @@ public class GameManager
 {
     public UIManager UIManager { get; private set; }
     public GameMap Map { get; private set; }
-    internal TowerController TowerController { get; private set; }
-    internal WaveController WaveController { get; private set; }
-    internal EnemyController EnemyController { get; private set; }
-    internal DamageDealerController DamageDealerController { get; private set; }
+    public TowerController TowerController { get; private set; }
+    public WaveController WaveController { get; private set; }
+    public EnemyController EnemyController { get; private set; }
+    public DamageDealerController DamageDealerController { get; private set; }
     
     private GameInputHandler _inputHandler;
 

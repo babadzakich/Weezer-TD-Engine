@@ -25,7 +25,9 @@
 
 	<ItemGroup>
 		<Compile Remove ="EmbeddedBehaviors/**/*" />
+		<Compile Remove ="PrecompiledDLLs/**/*" />
 		<EmbeddedResource Include="EmbeddedBehaviors/**/*" />
+		<EmbeddedResource Include="PrecompiledDLLs/**/*" />
 	</ItemGroup>  	
 	
   <ItemGroup>
