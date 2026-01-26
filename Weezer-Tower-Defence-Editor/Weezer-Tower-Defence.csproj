@@ -23,6 +23,11 @@
     </EmbeddedResource>
   </ItemGroup>
 
+	<ItemGroup>
+		<Compile Remove ="EmbeddedBehaviors/**/*" />
+		<EmbeddedResource Include="EmbeddedBehaviors/**/*" />
+	</ItemGroup>  	
+	
   <ItemGroup>
     <!-- Исключаем Content из компиляции - там лежат архивы уровней и их файлы -->
     <Compile Remove="Content/**/*.cs" />
@@ -34,5 +39,9 @@
     <PackageReference Include="MonoGame.Extended" Version="3.8.0" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="EmbeddedBehaviors\" />
   </ItemGroup>
 </Project>
