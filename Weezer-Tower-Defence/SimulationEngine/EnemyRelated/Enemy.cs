@@ -16,6 +16,8 @@ public class Enemy
     public float HitRadius => _type.HitRadius;
     public bool isAlive { get; set; } = true;
     public bool isKilled { get; set; } = false;
+    public Vector2 Velocity { get; private set; }
+    private Vector2 _lastPosition;
     
     public string GetDefensePointId() => _path.DefensePointId;
     
@@ -23,6 +25,7 @@ public class Enemy
     {
         _type = enemyType;
         Position = position;
+        _lastPosition = position;
         _path = path;
     }
 
@@ -31,7 +34,14 @@ public class Enemy
     */
     public void Update(GameTime gameTime)
     {
+        _lastPosition = Position;
         _type.Update(this, gameTime, _path);
+        
+        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (dt > 0)
+        {
+            Velocity = (Position - _lastPosition) / dt;
+        }
     }
     public void Draw(SpriteBatch sb)
     {

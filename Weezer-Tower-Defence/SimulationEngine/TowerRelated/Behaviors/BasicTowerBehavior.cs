@@ -38,40 +38,66 @@ public class BasicTowerBehavior : ITowerBehavior
 
     public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
-        
         if (_currentTarget != null)
         {
-            if (Vector2.Distance(_currentTarget.Position, tower.Position) > Range) 
+            if (Vector2.Distance(_currentTarget.Position, tower.Position) > Range || !_currentTarget.isAlive) 
                 _currentTarget = null;
-            else
-                return _currentTarget.Position;
         }
         
-        Enemy furthestEnemy = null;
-        float smallestDistanceToGoal = float.MaxValue;
-
-        foreach (var enemy in enemies.Enemies)
+        if (_currentTarget == null)
         {
-            float distanceToTower = Vector2.Distance(tower.Position, enemy.Position);
-            if (distanceToTower <= Range)
-            {
-                // Prefer enemy closest to the goal (furthest along the path)
-                float distanceToGoal = float.MaxValue;
-                var enemyController = GameManager.GetInstance().EnemyController;
-                if (enemyController != null)
-                {
-                    distanceToGoal = enemyController.GetDistanceToGoal(enemy);
-                }
+            Enemy furthestEnemy = null;
+            float smallestDistanceToGoal = float.MaxValue;
 
-                if (distanceToGoal < smallestDistanceToGoal)
+            foreach (var enemy in enemies.Enemies)
+            {
+                float distanceToTower = Vector2.Distance(tower.Position, enemy.Position);
+                if (distanceToTower <= Range)
                 {
-                    smallestDistanceToGoal = distanceToGoal;
-                    furthestEnemy = enemy;
+                    float distanceToGoal = enemies.GetDistanceToGoal(enemy);
+                    if (distanceToGoal < smallestDistanceToGoal)
+                    {
+                        smallestDistanceToGoal = distanceToGoal;
+                        furthestEnemy = enemy;
+                    }
                 }
+            }
+            _currentTarget = furthestEnemy;
+        }
+
+        if (_currentTarget == null) return null;
+
+        // Расчет упреждения
+        Vector2 relativePos = _currentTarget.Position - tower.Position;
+        Vector2 targetVelocity = _currentTarget.Velocity;
+        float projectileSpeed = projectileConfig.Speed;
+
+        if (targetVelocity == Vector2.Zero || projectileSpeed <= 0)
+            return _currentTarget.Position;
+
+        float a = Vector2.Dot(targetVelocity, targetVelocity) - projectileSpeed * projectileSpeed;
+        float b = 2f * Vector2.Dot(relativePos, targetVelocity);
+        float c = Vector2.Dot(relativePos, relativePos);
+
+        float discriminant = b * b - 4f * a * c;
+
+        if (discriminant >= 0)
+        {
+            float t1 = (-b + (float)Math.Sqrt(discriminant)) / (2f * a);
+            float t2 = (-b - (float)Math.Sqrt(discriminant)) / (2f * a);
+
+            float t = -1;
+            if (t1 > 0 && t2 > 0) t = Math.Min(t1, t2);
+            else if (t1 > 0) t = t1;
+            else if (t2 > 0) t = t2;
+
+            if (t > 0)
+            {
+                return _currentTarget.Position + targetVelocity * t;
             }
         }
         
-        return furthestEnemy?.Position;
+        return _currentTarget.Position;
     }
 
     public void Fire(Tower tower, Vector2 targetPosition)

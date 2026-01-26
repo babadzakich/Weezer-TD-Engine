@@ -20,6 +20,7 @@ namespace SimulationEngine.BulletRelated.Behaviors
 
         public float Damage => _damage;
         public float HitRadius => _hitRadius;
+        public float Speed => _speed;
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {
