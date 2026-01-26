@@ -10,7 +10,7 @@ namespace EditorEngine.Enemies;
 /// </summary>
 public class EnemyBehaviorRegistry
 {
-    private static EnemyBehaviorRegistry? _instance;
+    private static EnemyBehaviorRegistry _instance;
     public static EnemyBehaviorRegistry Instance => _instance ??= new EnemyBehaviorRegistry();
 
     private Dictionary<string, IEnemyBehavior> behaviors = new();
@@ -45,7 +45,7 @@ public class EnemyBehaviorRegistry
         }
     }
 
-    public IEnemyBehavior? GetBehavior(string behaviorId) => behaviors.GetValueOrDefault(behaviorId);
+    public IEnemyBehavior GetBehavior(string behaviorId) => behaviors.GetValueOrDefault(behaviorId);
     public List<IEnemyBehavior> GetAllBehaviors() => behaviors.Values.ToList();
     public List<string> GetAllBehaviorIds() => behaviors.Keys.ToList();
 }

@@ -11,7 +11,7 @@ namespace EditorEngine.Enemies;
 /// </summary>
 public class EnemyConfigRegistry
 {
-    private static EnemyConfigRegistry? _instance;
+    private static EnemyConfigRegistry _instance;
     public static EnemyConfigRegistry Instance => _instance ??= new EnemyConfigRegistry();
 
     private Dictionary<string, EnemyConfig> configs = new();
@@ -54,7 +54,7 @@ public class EnemyConfigRegistry
         }
     }
 
-    public EnemyConfig? GetConfig(string id) => configs.GetValueOrDefault(id);
+    public EnemyConfig GetConfig(string id) => configs.GetValueOrDefault(id);
     public List<EnemyConfig> GetAllConfigs() => configs.Values.ToList();
     public List<string> GetAllConfigIds() => configs.Keys.ToList();
     

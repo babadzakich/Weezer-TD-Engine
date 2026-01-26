@@ -119,13 +119,27 @@ public class EnemyTypeFactory
             return null;
         }
         
-        // TODO: Применить кастомные параметры из definition (BaseHealth, BaseSpeed)
-        // Сейчас используются дефолтные значения из типа врага
+        // Применяем параметры из определения
+        if (definition.BaseHealth > 0)
+        {
+            enemyTypeInstance.MaxHealth = definition.BaseHealth;
+            enemyTypeInstance.health = definition.BaseHealth;
+        }
+        
+        if (definition.BaseSpeed > 0)
+        {
+            enemyTypeInstance.speed = definition.BaseSpeed;
+        }
+        
+        if (definition.Damage > 0)
+        {
+            enemyTypeInstance.Damage = definition.Damage;
+        }
         
         // Создаём врага
         var enemy = new Enemy(enemyTypeInstance, position, path);
 
-        Console.WriteLine($"Created enemy: {enemyId} at {position} (using default type parameters)");
+        Console.WriteLine($"Created enemy: {enemyId} at {position} (HP: {enemyTypeInstance.MaxHealth}, Speed: {enemyTypeInstance.speed}, Damage: {enemyTypeInstance.Damage})");
         
         return enemy;
     }

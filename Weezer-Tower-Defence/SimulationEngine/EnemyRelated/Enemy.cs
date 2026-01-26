@@ -8,6 +8,8 @@ namespace SimulationEngine.EnemyRelated;
 public class Enemy
 {
     public Vector2 Position { get; set; }
+    public Vector2 Velocity { get; set; }
+    private Vector2 _previousPosition;
     private IEnemyType _type;
     private readonly MapRelated.Path _path;
     public int Health => _type.health;
@@ -23,6 +25,7 @@ public class Enemy
     {
         _type = enemyType;
         Position = position;
+        _previousPosition = position;
         _path = path;
     }
 
@@ -31,7 +34,14 @@ public class Enemy
     */
     public void Update(GameTime gameTime)
     {
+        _previousPosition = Position;
         _type.Update(this, gameTime, _path);
+        
+        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (deltaTime > 0)
+        {
+            Velocity = (Position - _previousPosition) / deltaTime;
+        }
     }
     public void Draw(SpriteBatch sb)
     {

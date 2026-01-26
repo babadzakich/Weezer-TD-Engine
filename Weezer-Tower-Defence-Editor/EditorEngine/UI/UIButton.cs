@@ -20,13 +20,18 @@ public class UIButton
         OnClick = onClick;
     }
 
+    private bool _wasPressed;
     public void Update(MouseState mouse)
     {
-        if (Bounds.Contains(mouse.Position) &&
-            mouse.LeftButton == ButtonState.Pressed)
+        bool isHovered = Bounds.Contains(mouse.Position);
+        bool isPressed = isHovered && mouse.LeftButton == ButtonState.Pressed;
+
+        if (isPressed && !_wasPressed)
         {
             OnClick?.Invoke();
         }
+
+        _wasPressed = mouse.LeftButton == ButtonState.Pressed;
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)

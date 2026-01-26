@@ -1,13 +1,13 @@
 {
-  "MapId": "level_1",
+  "MapId": "demom1",
   "Waves": [
     {
       "Index": 0,
       "Spawns": [
         {
-          "EnemyTypeId": "goblin",
+          "EnemyTypeId": "gargoyle",
           "SpawnPointId": "spawn_0",
-          "Count": 6
+          "Count": 8
         }
       ]
     }

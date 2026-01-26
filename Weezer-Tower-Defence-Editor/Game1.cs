@@ -98,9 +98,11 @@ public class Game1 : Game
                 gameMap, 
                 towerController, 
                 waveController, 
-                enemyController
+                enemyController,
+                damageDealerController,
+                loadedLevel.TowerDefinitions
             );
-            gameManager.OnGameOver += () => Exit();
+            gameManager.Defeat += () => Exit();
             
             Console.WriteLine("Level loaded successfully!");
         }
@@ -154,16 +156,22 @@ public class Game1 : Game
         _enemyTexture.SetData(enemyData);
 
         // Присваиваем текстуру всем пулям в контроллере
-        foreach (var bullet in damageDealerController.damageDealers)
+        if (damageDealerController != null)
         {
-            bullet.Texture = _bulletTexture;
+            foreach (var bullet in damageDealerController.damageDealers)
+            {
+                bullet.Texture = _bulletTexture;
+            }
         }
         
         // Присваиваем текстуру WaveController для врагов
-        waveController.SetEnemyTexture(_enemyTexture);
+        if (waveController != null)
+        {
+            waveController.SetEnemyTexture(_enemyTexture);
         
-        // Запускаем первую волну
-        waveController.StartNextWave();
+            // Запускаем первую волну
+            waveController.StartNextWave();
+        }
     }
 
     protected override void Update(GameTime gameTime)
@@ -173,17 +181,20 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyState.IsKeyDown(Keys.Escape))
             Exit();
 
-        damageDealerController.Update(gameTime);
-        towerController.Update(gameTime);
-        enemyController.Update(gameTime);
-        waveController.Update(gameTime);
-        gameManager.Update(gameTime);
+        damageDealerController?.Update(gameTime);
+        towerController?.Update(gameTime);
+        enemyController?.Update(gameTime);
+        waveController?.Update(gameTime);
+        gameManager?.Update(gameTime);
         
         // Обновляем UI информацию
-        gameManager.UIManager.Wave = waveController.CurrentWaveIndex + 1;
+        if (gameManager != null && waveController != null)
+        {
+            gameManager.UIManager.Wave = waveController.CurrentWaveIndex + 1;
+        }
         
         // Проверяем поражение
-        if (gameMap.DefensePoints.Count > 0 && gameMap.DefensePoints[0].IsDestroyed)
+        if (gameMap != null && gameMap.DefensePoints.Count > 0 && gameMap.DefensePoints[0].IsDestroyed)
         {
             // Game Over
             Exit();
@@ -196,12 +207,14 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
+        if (gameMap == null || gameManager == null) return;
+
         _spriteBatch.Begin();
         gameMap.Draw(_spriteBatch, _pixel);
-        towerController.Draw(_spriteBatch);
-        damageDealerController.Draw(_spriteBatch);
-        enemyController.Draw(_spriteBatch);
-        waveController.Draw(_spriteBatch);
+        towerController?.Draw(_spriteBatch);
+        damageDealerController?.Draw(_spriteBatch);
+        enemyController?.Draw(_spriteBatch);
+        waveController?.Draw(_spriteBatch);
         gameManager.UIManager.Draw(_spriteBatch, _pixel, _font);
         _spriteBatch.End();
 

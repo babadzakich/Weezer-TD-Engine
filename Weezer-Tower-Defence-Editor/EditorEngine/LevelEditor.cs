@@ -14,8 +14,10 @@ namespace EditorEngine;
 public class LevelEditor
 {
     private TowerEditorPanel towerPanel;
+    private UITextField levelNameField;
 
     private bool debugToggleMessage = false;
+    private string statusMessage = "";
     private float debugMessageTimer = 0f;
 
     private WaveSet waveSet;
@@ -51,6 +53,7 @@ public class LevelEditor
     public LevelEditor(ContentManager content, int screenWidth, int screenHeight)
     {
         towerPanel = new TowerEditorPanel();
+        levelNameField = new UITextField(new Rectangle(320, 10, 150, 30), "level_1");
 
         // Фиксированный размер карты
         currentMap = new GameMap("level_1", "Level 1", 3000, 2000);
@@ -129,6 +132,14 @@ public class LevelEditor
 
         camera.Update(gameTime, keyboardState, mouseState);
         HandleMouseInput(mouseState);
+        
+        levelNameField.Update(mouseState, keyboardState);
+
+        // Обновляем панель башен
+        if (towerPanel.IsOpen)
+        {
+            towerPanel.Update(mouseState, keyboardState, previousMouseState);
+        }
 
         previousKeyboardState = keyboardState;
         previousMouseState = mouseState;
@@ -142,6 +153,58 @@ public class LevelEditor
 
     private void HandleMouseInput(MouseState mouseState)
     {
+        // Если панель редактора башен открыта и мышь над ней - игнорируем ввод для карты
+        if (towerPanel.IsOpen && towerPanel.GetBounds().Contains(mouseState.Position))
+        {
+            return;
+        }
+
+        // Toolbar buttons click handling
+        int toolbarX = 10;
+        int toolbarY = 10;
+        int buttonSize = 40;
+        int buttonSpacing = 10;
+
+        if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
+        {
+            // Spawn point button
+            if (new Rectangle(toolbarX, toolbarY, buttonSize, buttonSize).Contains(mouseState.Position))
+            {
+                currentMode = EditorMode.PlacingSpawn;
+                return;
+            }
+            // Defense point button
+            if (new Rectangle(toolbarX + buttonSize + buttonSpacing, toolbarY, buttonSize, buttonSize).Contains(mouseState.Position))
+            {
+                currentMode = EditorMode.PlacingDefense;
+                return;
+            }
+            // Path drawing button
+            if (new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 2, toolbarY, buttonSize, buttonSize).Contains(mouseState.Position))
+            {
+                currentMode = EditorMode.DrawingPath;
+                return;
+            }
+            // Build zone button
+            if (new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 3, toolbarY, buttonSize, buttonSize).Contains(mouseState.Position))
+            {
+                currentMode = EditorMode.PlacingBuildZone;
+                return;
+            }
+            // Save button
+            if (new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 4, toolbarY, buttonSize, buttonSize).Contains(mouseState.Position))
+            {
+                SaveAll();
+                return;
+            }
+            // Pack button
+            if (new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 5, toolbarY, buttonSize, buttonSize).Contains(mouseState.Position))
+            {
+                PackLevel();
+                return;
+            }
+        }
+
         Vector2 worldMousePos = camera.ScreenToWorld(mouseState.Position.ToVector2());
 
         // Обработка клика по панели выбора врагов
@@ -395,15 +458,22 @@ public class LevelEditor
         if (currentMode != EditorMode.DrawingPath || currentPathPoints.Count == 0)
             return;
 
-        // Draw lines between points
-        for (int i = 0; i < currentPathPoints.Count - 1; i++)
+        if (currentPathPoints.Count >= 2)
         {
-            var start = camera.WorldToScreen(currentPathPoints[i]);
-            var end = camera.WorldToScreen(currentPathPoints[i + 1]);
-            DrawLine(spriteBatch, pixel, start, end, Color.Cyan, (int)(2 * camera.Zoom));
+            // Создаем временный путь для предпросмотра сплайна
+            var tempPath = new SimulationEngine.MapRelated.Path("temp", "", true, 20);
+            foreach (var p in currentPathPoints) tempPath.AddWaypoint(p);
+            
+            var smoothPoints = tempPath.GetSmoothPath();
+            for (int i = 0; i < smoothPoints.Count - 1; i++)
+            {
+                var start = camera.WorldToScreen(smoothPoints[i]);
+                var end = camera.WorldToScreen(smoothPoints[i + 1]);
+                DrawLine(spriteBatch, pixel, start, end, Color.Cyan * 0.7f, (int)(2 * camera.Zoom));
+            }
         }
 
-        // Draw points
+        // Отрисовка контрольных точек (узлов)
         foreach (var point in currentPathPoints)
         {
             var screenPos = camera.WorldToScreen(point);
@@ -502,7 +572,7 @@ public class LevelEditor
         int buttonSpacing = 10;
 
         DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX - 5, toolbarY - 5, 
-            (buttonSize + buttonSpacing) * 3 + 5, buttonSize + 10), Color.Black * 0.7f);
+            (buttonSize + buttonSpacing) * 5 + buttonSize + 10 + 170, buttonSize + 10), Color.Black * 0.7f);
 
         // Spawn Point
         Color spawnColor = currentMode == EditorMode.PlacingSpawn ? Color.LimeGreen : Color.Gray;
@@ -526,13 +596,28 @@ public class LevelEditor
         Rectangle buildRect = new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 3 + 10, toolbarY + 10, 20, 20);
         DrawRectangle(spriteBatch, pixel, buildRect, Color.Blue * 0.5f);
 
+        // Save button
+        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 4, toolbarY, buttonSize, buttonSize), Color.Gray);
+        spriteBatch.DrawString(defaultFont, "S", new Vector2(toolbarX + (buttonSize + buttonSpacing) * 4 + 12, toolbarY + 8), Color.White);
+
+        // Pack button
+        DrawRectangle(spriteBatch, pixel, new Rectangle(toolbarX + (buttonSize + buttonSpacing) * 5, toolbarY, buttonSize, buttonSize), Color.DarkGoldenrod);
+        spriteBatch.DrawString(defaultFont, "P", new Vector2(toolbarX + (buttonSize + buttonSpacing) * 5 + 12, toolbarY + 8), Color.White);
+
+        // Level Name Field
+        levelNameField.Draw(spriteBatch, defaultFont, pixel);
+        spriteBatch.DrawString(defaultFont, "Level name:", new Vector2(320, 42), Color.White * 0.8f);
+
         // --- Status Panel ---
         int infoY = toolbarY + buttonSize + 20;
-        DrawRectangle(spriteBatch, pixel, new Rectangle(10, infoY, 300, 120), Color.Black * 0.7f);
-        spriteBatch.DrawString(defaultFont, "Spawns: " + currentMap.SpawnPoints.Count, new Vector2(15, 55), Color.LimeGreen);
-        spriteBatch.DrawString(defaultFont, "Defense: " + currentMap.DefensePoints.Count, new Vector2(15, 75), Color.IndianRed);
-        spriteBatch.DrawString(defaultFont, "Paths: " + currentMap.Paths.Count, new Vector2(15, 95), Color.Yellow);
-        spriteBatch.DrawString(defaultFont, "Build Zones: " + currentMap.BuildZones.Count, new Vector2(15, 115), Color.Cyan);
+        DrawRectangle(spriteBatch, pixel, new Rectangle(10, infoY, 300, 160), Color.Black * 0.7f);
+        spriteBatch.DrawString(defaultFont, "Spawns: " + currentMap.SpawnPoints.Count, new Vector2(15, infoY + 5), Color.LimeGreen);
+        spriteBatch.DrawString(defaultFont, "Defense: " + currentMap.DefensePoints.Count, new Vector2(15, infoY + 25), Color.IndianRed);
+        spriteBatch.DrawString(defaultFont, "Paths: " + currentMap.Paths.Count, new Vector2(15, infoY + 45), Color.Yellow);
+        spriteBatch.DrawString(defaultFont, "Build Zones: " + currentMap.BuildZones.Count, new Vector2(15, infoY + 65), Color.Cyan);
+        spriteBatch.DrawString(defaultFont, "Map ID: " + currentMap.Id, new Vector2(15, infoY + 85), Color.White);
+        spriteBatch.DrawString(defaultFont, "Hotkeys: Ctrl+S (Save), Ctrl+P (Pack)", new Vector2(15, infoY + 115), Color.LightGray);
+        spriteBatch.DrawString(defaultFont, "        T (Towers), M (Waves)", new Vector2(15, infoY + 135), Color.LightGray);
 
 
         if (currentMode == EditorMode.DrawingPath && currentPathPoints.Count > 0)
@@ -541,6 +626,10 @@ public class LevelEditor
                                 new Vector2(15, infoY + 85), Color.Cyan);
         }
 
+        if (debugToggleMessage)
+        {
+            spriteBatch.DrawString(defaultFont, statusMessage, new Vector2(toolbarX + (buttonSize + buttonSpacing) * 6 + 10, toolbarY + 10), Color.Yellow);
+        }
     }
 
     private void DrawRectangle(SpriteBatch spriteBatch, Texture2D pixel, Rectangle rect, Color color)
@@ -562,22 +651,45 @@ public class LevelEditor
 
     public void SaveAll()
     {
+        string levelId = levelNameField.Text.Trim();
+        if (string.IsNullOrEmpty(levelId)) levelId = "level_1";
+        
+        currentMap.Id = levelId;
+        currentMap.Name = levelId;
+        waveSet.MapId = levelId;
+
         MapSerializer.SaveMap(currentMap, $"Content/Maps/{currentMap.Id}.json");
         WaveSerializer.Save(waveSet, $"Content/Maps/{currentMap.Id}.waves.json");
-        Console.WriteLine("Level saved successfully!");
+        Console.WriteLine($"Level {currentMap.Id} saved successfully!");
+        statusMessage = $"Level {currentMap.Id} saved!";
+        debugToggleMessage = true;
+        debugMessageTimer = 3f;
     }
 
     public void PackLevel()
     {
         try
         {
-            string outputPath = $"Content/{currentMap.Id}_package.zip";
+            string levelId = levelNameField.Text.Trim();
+            if (string.IsNullOrEmpty(levelId)) levelId = "level_1";
+
+            currentMap.Id = levelId;
+            currentMap.Name = levelId;
+            waveSet.MapId = levelId;
+
+            string outputPath = $"Content/{currentMap.Id}.zip";
             LevelPackager.PackLevel(currentMap, waveSet, outputPath);
             Console.WriteLine($"Level packed successfully to: {outputPath}");
+            statusMessage = $"Level packed to {currentMap.Id}.zip!";
+            debugToggleMessage = true;
+            debugMessageTimer = 3f;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error packing level: {ex.Message}");
+            statusMessage = "Error packing level!";
+            debugToggleMessage = true;
+            debugMessageTimer = 3f;
         }
     }
 

@@ -18,8 +18,7 @@ namespace SimulationEngine.WaveRelated
         private bool _waveActive = false;
         private float _spawnTimer = 20f;
         private float _spawnInterval = 5f; // Интервал между спавнами врагов (в секундах)
-        private Dictionary<System.Type, int> _remainingEnemies; // Оставшиеся враги для спавна в текущей волне
-        private Dictionary<System.Type, SpawnPoint> _enemySpawnPoints;
+        private List<Wave.EnemyGroup> _remainingEnemies; // Оставшиеся враги для спавна в текущей волне
         private EnemyController _enemyController;
         private GameMap _gameMap;
         private Texture2D _enemyTexture;
@@ -30,8 +29,7 @@ namespace SimulationEngine.WaveRelated
             _waves = new List<Wave>();
             _enemyController = enemyController;
             _gameMap = gameMap;
-            _remainingEnemies = new Dictionary<System.Type, int>();
-            _enemySpawnPoints = new Dictionary<System.Type, SpawnPoint>();
+            _remainingEnemies = new List<Wave.EnemyGroup>();
         }
 
         public static WaveController GetInstance(EnemyController enemyController, GameMap gameMap)
@@ -41,6 +39,11 @@ namespace SimulationEngine.WaveRelated
                 _instance = new WaveController(enemyController, gameMap);
             }
             return _instance;
+        }
+
+        public static void ResetInstance()
+        {
+            _instance = null;
         }
 
         public void SetEnemyTexture(Texture2D texture)
@@ -68,15 +71,19 @@ namespace SimulationEngine.WaveRelated
             
             Wave currentWave = _waves[_currentWaveIndex];
             _remainingEnemies.Clear();
-            _enemySpawnPoints.Clear();
             
-            Console.WriteLine($"Starting wave {_currentWaveIndex}: {currentWave.Enemies.Count} enemy types");
+            Console.WriteLine($"Starting wave {_currentWaveIndex}: {currentWave.EnemyGroups.Count} enemy groups");
             
-            foreach (var enemyEntry in currentWave.Enemies)
+            foreach (var group in currentWave.EnemyGroups)
             {
-                _remainingEnemies[enemyEntry.Key] = enemyEntry.Value.count;
-                _enemySpawnPoints[enemyEntry.Key] = enemyEntry.Value.spawnPoint;
-                Console.WriteLine($"  - {enemyEntry.Key.Name}: {enemyEntry.Value.count} enemies at spawn {enemyEntry.Value.spawnPoint.Id}");
+                // Создаем копию группы для отслеживания остатка
+                _remainingEnemies.Add(new Wave.EnemyGroup {
+                    Type = group.Type,
+                    Count = group.Count,
+                    SpawnPoint = group.SpawnPoint,
+                    EnemyStringId = group.EnemyStringId
+                });
+                Console.WriteLine($"  - {group.EnemyStringId ?? group.Type.Name}: {group.Count} enemies at spawn {group.SpawnPoint.Id}");
             }
         }
 
@@ -100,9 +107,9 @@ namespace SimulationEngine.WaveRelated
 
             // Проверяем, закончилась ли волна
             bool allSpawned = true;
-            foreach (var count in _remainingEnemies.Values)
+            foreach (var group in _remainingEnemies)
             {
-                if (count > 0)
+                if (group.Count > 0)
                 {
                     allSpawned = false;
                     break;
@@ -118,14 +125,14 @@ namespace SimulationEngine.WaveRelated
 
         private void SpawnNextEnemy()
         {
-            Console.WriteLine($"SpawnNextEnemy called: {_remainingEnemies.Count} enemy types remaining");
+            Console.WriteLine($"SpawnNextEnemy called: {_remainingEnemies.Count} enemy groups remaining");
             
-            foreach (var enemyType in _remainingEnemies.Keys)
+            foreach (var group in _remainingEnemies)
             {
-                if (_remainingEnemies[enemyType] > 0)
+                if (group.Count > 0)
                 {
-                    SpawnPoint spawnPoint = _enemySpawnPoints[enemyType];
-                    Console.WriteLine($"Trying to spawn {enemyType.Name} at spawn point {spawnPoint.Id}, pathId={spawnPoint.PathId}");
+                    SpawnPoint spawnPoint = group.SpawnPoint;
+                    Console.WriteLine($"Trying to spawn {group.EnemyStringId ?? group.Type.Name} at spawn point {spawnPoint.Id}, pathId={spawnPoint.PathId}");
                     
                     var path = _gameMap.GetPathById(spawnPoint.PathId);
                     
@@ -139,17 +146,17 @@ namespace SimulationEngine.WaveRelated
                         Enemy enemy = null;
                         
                         // Проверяем, есть ли строковый ID врага (загружен из уровня)
-                        Wave currentWave = _waves[_currentWaveIndex];
-                        if (currentWave.EnemyStringIds.TryGetValue(enemyType, out string enemyStringId))
+                        if (!string.IsNullOrEmpty(group.EnemyStringId))
                         {
-                            Console.WriteLine($"Using factory to create enemy: {enemyStringId}");
+                            Console.WriteLine($"Using factory to create enemy: {group.EnemyStringId}");
                             // Используем фабрику для создания врага по строковому ID
-                            enemy = EnemyTypeFactory.Instance.CreateEnemy(enemyStringId, spawnPoint.Position, path);
+                            enemy = EnemyTypeFactory.Instance.CreateEnemy(group.EnemyStringId, spawnPoint.Position, path);
                         }
                         else
                         {
                             // Старый метод через рефлексию (для совместимости)
                             IEnemyType newEnemyType = null;
+                            System.Type enemyType = group.Type;
                             
                             var constructor = enemyType.GetConstructor(new[] { typeof(Texture2D) });
                             if (constructor != null)
@@ -176,7 +183,7 @@ namespace SimulationEngine.WaveRelated
                             _enemyController.AddEnemy(enemy);
                         }
                         
-                        _remainingEnemies[enemyType]--;
+                        group.Count--;
                     }
                     return; // Спавним по одному врагу за раз
                 }

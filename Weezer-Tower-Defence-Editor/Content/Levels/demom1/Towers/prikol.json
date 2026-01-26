@@ -1,0 +1,22 @@
+{
+  "id": "prikol",
+  "name": "prikol",
+  "cost": 100,
+  "range": 150,
+  "fireRate": 1,
+  "damage": 25,
+  "upgradeLevels": [
+    {
+      "upgradeCost": 70,
+      "range": 170,
+      "fireRate": 1.2,
+      "damage": 30
+    },
+    {
+      "upgradeCost": 200,
+      "range": 170,
+      "fireRate": 1.4,
+      "damage": 35
+    }
+  ]
+}

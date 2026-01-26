@@ -91,7 +91,8 @@ public static class LevelPackager
                         {
                             IOPath.Combine(Directory.GetCurrentDirectory(), "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
                             IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
-                            IOPath.Combine("EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs")
+                            IOPath.Combine("EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
+                            IOPath.Combine(Directory.GetCurrentDirectory(), "Weezer-Tower-Defence-Editor", "EditorEngine", "Enemies", "Behaviors", $"{behaviorTypeName}.cs"),
                         };
 
                         string sourceFile = null;
@@ -135,27 +136,24 @@ public static class LevelPackager
             Directory.CreateDirectory(towersDir);
             Console.WriteLine($"Created Towers directory: {towersDir}");
 
-            // Получаем все типы башен из TowerTypeRegistry
+            // А) Сначала копируем все JSON конфиги из Content/Towers
+            string sourceTowersDir = "Content/Towers";
+            if (Directory.Exists(sourceTowersDir))
+            {
+                foreach (var jsonFile in Directory.GetFiles(sourceTowersDir, "*.json"))
+                {
+                    string destFile = IOPath.Combine(towersDir, IOPath.GetFileName(jsonFile));
+                    File.Copy(jsonFile, destFile, true);
+                    Console.WriteLine($"Copied tower config: {IOPath.GetFileName(jsonFile)}");
+                }
+            }
+
+            // Б) Получаем все типы башен из TowerTypeRegistry для копирования исходников
             var allTowerTypes = TowerTypeRegistry.Instance.GetAllTowerTypes();
-            Console.WriteLine($"Found {allTowerTypes.Count} tower types");
+            Console.WriteLine($"Found {allTowerTypes.Count} tower types in registry");
 
             foreach (var towerInfo in allTowerTypes)
             {
-                // Сохраняем конфиг башни
-                var config = new TowerConfig
-                {
-                    Id = towerInfo.Id,
-                    Name = towerInfo.Name,
-                    Cost = towerInfo.Cost,
-                    Range = towerInfo.Range,
-                    FireRate = towerInfo.FireRate,
-                    SourceFile = $"{towerInfo.Type.Name}.cs"
-                };
-
-                string configPath = IOPath.Combine(towersDir, $"{towerInfo.Id}.json");
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
-
                 // Копируем исходный .cs файл башни
                 CopySourceFile(towerInfo.Type, towersDir, "EditorEngine", "Towers", "Types");
             }
@@ -294,7 +292,9 @@ public static class LevelPackager
             // Рядом с exe
             IOPath.Combine(new[] { AppDomain.CurrentDomain.BaseDirectory }.Concat(pathSegments).Concat(new[] { fileName }).ToArray()),
             // Относительно рабочей директории
-            IOPath.Combine(pathSegments.Concat(new[] { fileName }).ToArray())
+            IOPath.Combine(pathSegments.Concat(new[] { fileName }).ToArray()),
+            // С учетом корневой папки проекта
+            IOPath.Combine(new[] { Directory.GetCurrentDirectory(), "Weezer-Tower-Defence-Editor" }.Concat(pathSegments).Concat(new[] { fileName }).ToArray()),
         };
 
         string sourceFile = null;

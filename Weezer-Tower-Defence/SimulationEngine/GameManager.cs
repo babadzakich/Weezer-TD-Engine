@@ -4,6 +4,7 @@ using SimulationEngine.MapRelated;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.UI;
 using System;
+using System.Collections.Generic;
 using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.WaveRelated;
 using SimulationEngine.EnemyRelated;
@@ -24,6 +25,10 @@ public class GameManager
     internal EnemyController EnemyController { get; private set; }
     internal DamageDealerController DamageDealerController { get; private set; }
     
+    public Texture2D DefaultTowerTexture { get; set; }
+    public Texture2D DefaultEnemyTexture { get; set; }
+    public Texture2D DefaultBulletTexture { get; set; }
+
     private GameInputHandler _inputHandler;
 
     public event Action Defeat;
@@ -40,17 +45,22 @@ public class GameManager
         return _instance;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    public static void ResetInstance()
+    {
+        _instance = null;
+    }
+
+    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, towerController, waveController, enemyController, damageDealerController);
+        _instance = new GameManager(screenWidth, screenHeight, map, towerController, waveController, enemyController, damageDealerController, towerDefinitions);
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    private GameManager(int screenWidth, int screenHeight, GameMap map, TowerController towerController, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
@@ -65,6 +75,14 @@ public class GameManager
         
         // Добавляем доступные башни в UI
         UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
+
+        if (towerDefinitions != null)
+        {
+            foreach (var def in towerDefinitions.Values)
+            {
+                UIManager.AddAvailableTower(new TowerRelated.Behaviors.DefinitionTowerBehavior(def, new StandardBulletBehavior(25f, 300f, 500f)));
+            }
+        }
     }
 
     public void Update(GameTime gameTime)
@@ -73,6 +91,7 @@ public class GameManager
         _inputHandler.Update();
 
         TowerController.Update(gameTime);
+        WaveController?.Update(gameTime);
         EnemyController?.Update(gameTime);
         DamageDealerController?.Update(gameTime);
         

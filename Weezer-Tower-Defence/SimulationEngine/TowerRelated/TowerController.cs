@@ -25,6 +25,11 @@ public class TowerController : Controller
         return _instance;
     }
 
+    public static void ResetInstance()
+    {
+        _instance = null;
+    }
+
     public void AddTower(Tower tower)
     {
         towers.Add(tower);

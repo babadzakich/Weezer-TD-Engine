@@ -1,0 +1,79 @@
+{
+  "id": "demom1",
+  "name": "demom1",
+  "width": 3000,
+  "height": 2000,
+  "spawnPoints": [
+    {
+      "id": "spawn_0",
+      "x": 544.0001,
+      "y": 509
+    }
+  ],
+  "defensePoints": [
+    {
+      "id": "defense_0",
+      "x": 1329.0001,
+      "y": 506,
+      "maxHealth": 100
+    }
+  ],
+  "paths": [
+    {
+      "id": "path_0",
+      "defensePointId": "defense_0",
+      "useSmoothPath": true,
+      "splineResolution": 20,
+      "waypoints": [
+        {
+          "x": 541.0001,
+          "y": 505
+        },
+        {
+          "x": 630.0001,
+          "y": 386
+        },
+        {
+          "x": 705.0001,
+          "y": 410
+        },
+        {
+          "x": 786.0001,
+          "y": 509
+        },
+        {
+          "x": 903.0001,
+          "y": 594
+        },
+        {
+          "x": 1024.0001,
+          "y": 589
+        },
+        {
+          "x": 1122.0001,
+          "y": 556
+        },
+        {
+          "x": 1319.0001,
+          "y": 502
+        }
+      ]
+    }
+  ],
+  "buildZones": [
+    {
+      "id": "build_0",
+      "x": 656.0001,
+      "y": 506,
+      "sizeX": 50,
+      "sizeY": 50
+    },
+    {
+      "id": "build_1",
+      "x": 931.0001,
+      "y": 532,
+      "sizeX": 50,
+      "sizeY": 50
+    }
+  ]
+}

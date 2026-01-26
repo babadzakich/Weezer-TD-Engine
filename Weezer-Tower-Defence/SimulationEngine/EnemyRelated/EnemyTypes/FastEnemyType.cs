@@ -13,14 +13,14 @@ public class FastEnemyType : IEnemyType
     private Texture2D _texture;
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
-    private const int _maxHealth = 50;
+    private int _maxHealth = 50;
     
-    public int health { get; set; } = _maxHealth;
-    public int MaxHealth => _maxHealth;
-    public float speed => 120f; // В два раза быстрее базового
-    public int Damage => 5;
+    public int health { get; set; } = 50;
+    public int MaxHealth { get; set; } = 50;
+    public float speed { get; set; } = 120f; // В два раза быстрее базового
+    public int Damage { get; set; } = 5;
     
-    public float HitRadius => 8f; // Радиус хитбокса быстрого врага (меньше базового)
+    public float HitRadius { get; set; } = 8f; // Радиус хитбокса быстрого врага (меньше базового)
 
     public FastEnemyType(Texture2D texture = null)
     {
@@ -67,10 +67,12 @@ public class FastEnemyType : IEnemyType
         {
             enemy.Position = target;
             _currentWaypointIndex++;
+            enemy.Velocity = Vector2.Zero;
         }
         else
         {
             Vector2 direction = Vector2.Normalize(target - enemy.Position);
+            enemy.Velocity = direction * speed;
             enemy.Position += direction * moveAmount;
         }
     }

@@ -10,7 +10,7 @@ namespace EditorEngine.Towers;
 /// </summary>
 public class TowerTypeRegistry
 {
-    private static TowerTypeRegistry? _instance;
+    private static TowerTypeRegistry _instance;
     public static TowerTypeRegistry Instance => _instance ??= new TowerTypeRegistry();
 
     public class TowerTypeInfo
@@ -76,6 +76,6 @@ public class TowerTypeRegistry
     }
 
     public List<TowerTypeInfo> GetAllTowerTypes() => towers.Values.ToList();
-    public TowerTypeInfo? GetTowerInfo(string id) => towers.GetValueOrDefault(id);
+    public TowerTypeInfo GetTowerInfo(string id) => towers.GetValueOrDefault(id);
     public List<string> GetAllTowerTypeIds() => towers.Keys.ToList();
 }

@@ -7,6 +7,8 @@
     <TieredCompilation>false</TieredCompilation>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Weezer-Tower-Defence-Editor</AssemblyName>
+    <RootNamespace>Weezer_Tower_Defence_Editor</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,5 +36,14 @@
     <PackageReference Include="MonoGame.Extended" Version="3.8.0" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ссылка на проект симуляции для доступа к SimulationEngine -->
+    <ProjectReference Include="..\Weezer-Tower-Defence\Weezer-Tower-Defence.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Content\Maps\" />
   </ItemGroup>
 </Project>

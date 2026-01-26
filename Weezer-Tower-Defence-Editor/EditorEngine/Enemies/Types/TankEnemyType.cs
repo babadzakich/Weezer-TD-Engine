@@ -12,18 +12,24 @@ public class TankEnemyType : IEnemyType
 {
     private Texture2D _texture;
     private int _currentWaypointIndex = 0;
+    private int _maxHealth = 300;
+    private int _health;
     
     public int health { get; set; } = 300;
-    public float speed => 30f; // Медленный
-    public int Damage => 20; // Наносит больше урона
+    public int MaxHealth { get; set; } = 300;
+    public float speed { get; set; } = 30f; // Медленный
+    public int Damage { get; set; } = 20; // Наносит больше урона
+    public float HitRadius { get; set; } = 15f; // Радиус хитбокса (больше, так как танк)
 
     public TankEnemyType() : this(null)
     {
+        health = 300;
     }
 
     public TankEnemyType(Texture2D texture)
     {
         _texture = texture;
+        health = 300;
     }
 
     public void SetTexture(Texture2D texture)

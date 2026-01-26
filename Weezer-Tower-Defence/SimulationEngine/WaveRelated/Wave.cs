@@ -6,27 +6,39 @@ namespace SimulationEngine.WaveRelated;
 
 public class Wave
 {
+    public class EnemyGroup
+    {
+        public System.Type Type { get; set; }
+        public int Count { get; set; }
+        public SpawnPoint SpawnPoint { get; set; }
+        public string EnemyStringId { get; set; }
+    }
+
     public string Id { get; set; }
-    public Dictionary<System.Type, (int count, SpawnPoint spawnPoint)> Enemies { get; private set; }
-    
-    // Дополнительная информация для загрузки врагов из уровней
-    public Dictionary<System.Type, string> EnemyStringIds { get; private set; }
+    public List<EnemyGroup> EnemyGroups { get; private set; }
 
     public Wave(string id)
     {
         Id = id;
-        Enemies = new Dictionary<System.Type, (int count, SpawnPoint spawnPoint)>();
-        EnemyStringIds = new Dictionary<System.Type, string>();
+        EnemyGroups = new List<EnemyGroup>();
     }
 
     public void AddEnemy(System.Type enemyType, int count, SpawnPoint spawnPoint)
     {
-        Enemies.Add(enemyType, (count, spawnPoint));
+        EnemyGroups.Add(new EnemyGroup { 
+            Type = enemyType, 
+            Count = count, 
+            SpawnPoint = spawnPoint 
+        });
     }
     
     public void AddEnemy(System.Type enemyType, int count, SpawnPoint spawnPoint, string enemyStringId)
     {
-        Enemies.Add(enemyType, (count, spawnPoint));
-        EnemyStringIds[enemyType] = enemyStringId;
+        EnemyGroups.Add(new EnemyGroup { 
+            Type = enemyType, 
+            Count = count, 
+            SpawnPoint = spawnPoint, 
+            EnemyStringId = enemyStringId 
+        });
     }
 }

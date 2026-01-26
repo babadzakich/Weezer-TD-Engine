@@ -12,18 +12,24 @@ public class FastEnemyType : IEnemyType
 {
     private Texture2D _texture;
     private int _currentWaypointIndex = 0;
+    private int _maxHealth = 50;
+    private int _health;
     
     public int health { get; set; } = 50;
-    public float speed => 120f; // В два раза быстрее базового
-    public int Damage => 5;
+    public int MaxHealth { get; set; } = 50;
+    public float speed { get; set; } = 120f; // В два раза быстрее базового
+    public int Damage { get; set; } = 5;
+    public float HitRadius { get; set; } = 8f; // Радиус хитбокса (меньше, так как быстрый враг)
 
     public FastEnemyType() : this(null)
     {
+        health = 50;
     }
 
     public FastEnemyType(Texture2D texture)
     {
         _texture = texture;
+        health = 50;
     }
 
     public void SetTexture(Texture2D texture)
