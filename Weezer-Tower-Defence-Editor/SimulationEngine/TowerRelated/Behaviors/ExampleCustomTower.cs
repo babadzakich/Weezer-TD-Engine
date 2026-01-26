@@ -21,6 +21,7 @@ public class ExampleCustomTower : ITowerBehavior
     public int Cost => 150;
     public float Range => 200f;
     public float FireRate => 2f;
+    public LevelLoader.TowerDefinition Definition { get; set; }
     
     // Можно добавить свои поля для внутренней логики
     private float _cooldown;

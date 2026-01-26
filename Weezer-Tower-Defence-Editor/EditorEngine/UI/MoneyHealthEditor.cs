@@ -25,8 +25,8 @@ public class  MoneyHealthEditor
     public MoneyHealthEditor()
     {
         int x = x_offset+ 10, y = y_offset + 10, w = 50, h = 30;
-        moneyField = new(new Rectangle(x_offset + label_offset, y_offset, w, h), (string x, string y) => { }, "money", money.ToString());
-        healthField = new(new Rectangle(x_offset + label_offset, y_offset + field_offset, w, h), (x, y) => { }, "health", health.ToString());
+        moneyField = new(new Rectangle(x_offset + label_offset, y_offset, w, h), money.ToString(), (string x, string y) => { }, "money");
+        healthField = new(new Rectangle(x_offset + label_offset, y_offset + field_offset, w, h), health.ToString(), (x, y) => { }, "health");
 
         saveButton = new UIButton(
             new Rectangle(x_offset, y_offset + field_offset * 2, 350, h),
@@ -41,6 +41,11 @@ public class  MoneyHealthEditor
         healthField.Update(mouse, keyboard);
 
         saveButton.Update(mouse);
+    }
+
+    public bool IsAnyFieldActive()
+    {
+        return moneyField.IsActive || healthField.IsActive;
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)

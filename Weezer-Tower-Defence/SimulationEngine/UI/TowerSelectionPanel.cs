@@ -33,6 +33,10 @@ public class TowerSelectionPanel : UIElement
         var button = new TowerButton(buttonPos, buttonSize, towerBehavior, icon);
         button.OnClick += () => SelectTower(towerBehavior);
         TowerButtons.Add(button);
+        
+        // Динамическое изменение высоты панели
+        float newHeight = 20 + TowerButtons.Count * 90;
+        Size = new Vector2(Size.X, newHeight);
     }
 
     private void SelectTower(ITowerBehavior towerBehavior)

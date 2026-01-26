@@ -2,6 +2,8 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
+using System.Linq;
 
 namespace EditorEngine.UI;
 
@@ -12,10 +14,10 @@ public class UITextField
     public string Text = "";
     public bool IsActive;
     private KeyboardState _prevKeyboard;
-    private Action<String, String> onUpdate;
+    private Action<string, string> onUpdate;
     public readonly string id;
 
-    public UITextField(Rectangle bounds, Action<string, string> onUpdate, string id, string initial = "")
+    public UITextField(Rectangle bounds, string initial = "", Action<string, string> onUpdate = null, string id = null)
     {
         Bounds = bounds;
         Text = initial;
@@ -46,14 +48,16 @@ public class UITextField
                 Text += key.ToString().ToLower();
             else if (key >= Keys.D0 && key <= Keys.D9)
                 Text += (key - Keys.D0).ToString();
-            else if (key == Keys.OemPeriod)
+            else if (key >= Keys.NumPad0 && key <= Keys.NumPad9)
+                Text += (key - Keys.NumPad0).ToString();
+            else if (key == Keys.OemPeriod || key == Keys.Decimal)
                 Text += ".";
-            else if (key == Keys.OemMinus)
+            else if (key == Keys.OemMinus || key == Keys.Subtract)
                 Text += "-";
             else if (key == Keys.Space)
                 Text += " ";
-
-            onUpdate(Text, id);
+            
+            onUpdate?.Invoke(Text, id);
         }
 
         _prevKeyboard = keyboard;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Linq;
 using SimulationEngine.MapRelated;
 using SimulationEngine.WaveRelated;
@@ -41,23 +42,67 @@ public class LevelLoader
 
     public class EnemyDefinition
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+        [JsonPropertyName("displayName")]
         public string DisplayName { get; set; }
+        [JsonPropertyName("behaviorId")]
         public string BehaviorId { get; set; }
+        [JsonPropertyName("baseHealth")]
         public int BaseHealth { get; set; }
+        [JsonPropertyName("baseSpeed")]
         public float BaseSpeed { get; set; }
+        [JsonPropertyName("damage")]
         public int Damage { get; set; }
     }
 
     public class TowerDefinition
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+        [JsonPropertyName("name")]
         public string Name { get; set; }
         public string ClassName { get; set; }
         public string BulletClassName { get; set; }
+        [JsonPropertyName("cost")]
         public int Cost { get; set; }
+        [JsonPropertyName("range")]
         public float Range { get; set; }
+        [JsonPropertyName("fireRate")]
         public float FireRate { get; set; }
+        [JsonPropertyName("damage")]
+        public float Damage { get; set; }
+        
+        // Editor saves as "Upgrades", old levels might use "upgradeLevels"
+        [JsonPropertyName("upgrades")]
+        public List<TowerUpgradeDefinition> Upgrades { get; set; } = new();
+
+        [JsonPropertyName("upgradeLevels")]
+        public List<TowerUpgradeDefinition> UpgradeLevels 
+        { 
+            get => Upgrades; 
+            set => Upgrades = value; 
+        }
+    }
+
+    public class TowerUpgradeDefinition
+    {
+        [JsonPropertyName("cost")]
+        public int Cost { get; set; }
+
+        [JsonPropertyName("upgradeCost")]
+        public int UpgradeCost 
+        { 
+            get => Cost; 
+            set => Cost = value; 
+        }
+
+        [JsonPropertyName("range")]
+        public float Range { get; set; }
+        [JsonPropertyName("fireRate")]
+        public float FireRate { get; set; }
+        [JsonPropertyName("damage")]
+        public float Damage { get; set; }
     }
 
     public class DamageDealerDefinition
@@ -106,10 +151,16 @@ public class LevelLoader
 
             // 2. Загружаем волны
             string wavesFile = IOPath.Combine(tempDir, $"{level.Map.Id}.waves.json");
-            if (File.Exists(wavesFile))
+            if (!File.Exists(wavesFile))
+            {
+                // Попытка найти любой файл .waves.json если именной не найден
+                wavesFile = Directory.GetFiles(tempDir, "*.waves.json", SearchOption.TopDirectoryOnly).FirstOrDefault();
+            }
+
+            if (wavesFile != null && File.Exists(wavesFile))
             {
                 level.Waves = LoadWaves(wavesFile);
-                Console.WriteLine($"Loaded {level.Waves.Count} waves");
+                Console.WriteLine($"Loaded {level.Waves.Count} waves from {IOPath.GetFileName(wavesFile)}");
             }
             else
             {
@@ -123,6 +174,16 @@ public class LevelLoader
             {
                 level.MoneyHealthSettings = LoadMoneyHealthSettings(moneyHealthDir);
                 Console.WriteLine($"Loaded Money: {level.MoneyHealthSettings.StartingMoney}; lives: {level.MoneyHealthSettings.StartingLives}");
+            }
+            else
+            {
+                // Дефолтные значения если файл отсутствует
+                level.MoneyHealthSettings = new MoneyHealthSettings
+                {
+                    StartingMoney = 100,
+                    StartingLives = 20
+                };
+                Console.WriteLine("MoneyHealth.json not found, using defaults (100 money, 20 lives)");
             }
 
             // 3. Загружаем определения врагов
@@ -203,9 +264,12 @@ public class LevelLoader
         foreach (var p in serializedMap.Paths)
         {
             var points = p.Waypoints.Select(pt => new Microsoft.Xna.Framework.Vector2(pt.X, pt.Y)).ToList();
+            if (points.Count == 0) continue;
+
+            // Пытаемся привязать путь к точке спавна по координатам
+            var spawnPoint = map.SpawnPoints.FirstOrDefault(sp => Microsoft.Xna.Framework.Vector2.Distance(sp.Position, points[0]) < 1f);
+            if (spawnPoint == null) spawnPoint = map.SpawnPoints.FirstOrDefault(); // fallback
             
-            // Находим соответствующий SpawnPoint (используем первый для простоты)
-            var spawnPoint = map.SpawnPoints.FirstOrDefault();
             string spawnPointId = spawnPoint?.Id ?? "";
             
             var path = new GamePath(spawnPointId, p.DefensePointId, useSmoothPath: p.UseSmoothPath);
@@ -221,7 +285,7 @@ public class LevelLoader
             if (spawnPoint != null)
             {
                 spawnPoint.PathId = path.Id;
-                Console.WriteLine($"Linked SpawnPoint {spawnPoint.Id} to Path {path.Id}");
+                Console.WriteLine($"Linked SpawnPoint {spawnPoint.Id} to Path {path.Id} (dist: {Microsoft.Xna.Framework.Vector2.Distance(spawnPoint.Position, points[0])})");
             }
         }
 
@@ -244,7 +308,8 @@ public class LevelLoader
     private static List<WaveData> LoadWaves(string wavesFilePath)
     {
         string json = File.ReadAllText(wavesFilePath);
-        var waveSet = JsonSerializer.Deserialize<WaveSet>(json);
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        var waveSet = JsonSerializer.Deserialize<WaveSet>(json, options);
         
         if (waveSet?.Waves == null)
             return new List<WaveData>();
@@ -265,13 +330,14 @@ public class LevelLoader
     private static void LoadEnemyDefinitions(string enemiesDir, Dictionary<string, EnemyDefinition> definitions)
     {
         var jsonFiles = Directory.GetFiles(enemiesDir, "*.json");
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         
         foreach (var file in jsonFiles)
         {
             try
             {
                 string json = File.ReadAllText(file);
-                var def = JsonSerializer.Deserialize<EnemyDefinition>(json);
+                var def = JsonSerializer.Deserialize<EnemyDefinition>(json, options);
                 
                 if (def != null && !string.IsNullOrEmpty(def.Id))
                 {
@@ -288,13 +354,14 @@ public class LevelLoader
     private static void LoadTowerDefinitions(string towersDir, Dictionary<string, TowerDefinition> definitions)
     {
         var jsonFiles = Directory.GetFiles(towersDir, "*.json");
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         
         foreach (var file in jsonFiles)
         {
             try
             {
                 string json = File.ReadAllText(file);
-                var def = JsonSerializer.Deserialize<TowerDefinition>(json);
+                var def = JsonSerializer.Deserialize<TowerDefinition>(json, options);
                 
                 if (def != null && !string.IsNullOrEmpty(def.Id))
                 {
@@ -311,13 +378,14 @@ public class LevelLoader
     private static void LoadDamageDealerDefinitions(string ddDir, Dictionary<string, DamageDealerDefinition> definitions)
     {
         var jsonFiles = Directory.GetFiles(ddDir, "*.json");
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         
         foreach (var file in jsonFiles)
         {
             try
             {
                 string json = File.ReadAllText(file);
-                var def = JsonSerializer.Deserialize<DamageDealerDefinition>(json);
+                var def = JsonSerializer.Deserialize<DamageDealerDefinition>(json, options);
                 
                 if (def != null && !string.IsNullOrEmpty(def.Id))
                 {
@@ -353,70 +421,103 @@ public class LevelLoader
     // Классы для десериализации
     private class SerializedMap
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+        [JsonPropertyName("name")]
         public string Name { get; set; }
+        [JsonPropertyName("width")]
         public int Width { get; set; }
+        [JsonPropertyName("height")]
         public int Height { get; set; }
+        [JsonPropertyName("spawnPoints")]
         public List<SerializedSpawnPoint> SpawnPoints { get; set; } = new();
+        [JsonPropertyName("defensePoints")]
         public List<SerializedDefensePoint> DefensePoints { get; set; } = new();
+        [JsonPropertyName("paths")]
         public List<SerializedPath> Paths { get; set; } = new();
+        [JsonPropertyName("buildZones")]
         public List<SerializedBuildZone> BuildZones { get; set; } = new();
     }
 
     private class SerializedSpawnPoint
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+        [JsonPropertyName("x")]
         public float X { get; set; }
+        [JsonPropertyName("y")]
         public float Y { get; set; }
     }
 
     private class SerializedDefensePoint
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+        [JsonPropertyName("x")]
         public float X { get; set; }
+        [JsonPropertyName("y")]
         public float Y { get; set; }
     }
 
     private class SerializedPath
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+        [JsonPropertyName("defensePointId")]
         public string DefensePointId { get; set; }
+        [JsonPropertyName("useSmoothPath")]
         public bool UseSmoothPath { get; set; }
+        [JsonPropertyName("splineResolution")]
         public int SplineResolution { get; set; }
+        [JsonPropertyName("waypoints")]
         public List<SerializedPoint> Waypoints { get; set; } = new();
     }
 
     private class SerializedPoint
     {
+        [JsonPropertyName("x")]
         public float X { get; set; }
+        [JsonPropertyName("y")]
         public float Y { get; set; }
     }
 
     private class SerializedBuildZone
     {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+        [JsonPropertyName("x")]
         public float X { get; set; }
+        [JsonPropertyName("y")]
         public float Y { get; set; }
+        [JsonPropertyName("sizeX")]
         public float SizeX { get; set; }
+        [JsonPropertyName("sizeY")]
         public float SizeY { get; set; }
     }
 
     private class WaveSet
     {
+        [JsonPropertyName("mapId")]
         public string MapId { get; set; }
+        [JsonPropertyName("waves")]
         public List<SerializedWave> Waves { get; set; } = new();
     }
 
     private class SerializedWave
     {
+        [JsonPropertyName("index")]
         public int Index { get; set; }
+        [JsonPropertyName("spawns")]
         public List<SerializedEnemySpawn> Spawns { get; set; } = new();
     }
 
     private class SerializedEnemySpawn
     {
+        [JsonPropertyName("enemyTypeId")]
         public string EnemyTypeId { get; set; }
+        [JsonPropertyName("spawnPointId")]
         public string SpawnPointId { get; set; }
+        [JsonPropertyName("count")]
         public int Count { get; set; }
     }
 }

@@ -68,19 +68,27 @@ public class EnemySelectionPanel
         sb.DrawString(font, "Enemy Type:", new Vector2(panelRect.X + 10, y), Color.White);
         y += 25;
 
-        foreach (var config in enemyConfigs)
+        if (enemyConfigs.Count == 0)
         {
-            Color buttonColor = selectedEnemyTypeId == config.Id ? Color.Green : Color.Gray;
-            Rectangle enemyRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 35);
-            sb.Draw(pixel, enemyRect, buttonColor * 0.6f);
-            
-            // Информация о враге с его поведением
-            var behavior = EnemyBehaviorRegistry.Instance.GetBehavior(config.BehaviorId);
-            string behaviorName = behavior?.BehaviorName ?? config.BehaviorId;
-            string info = $"{config.DisplayName} [{behaviorName}] (HP:{config.BaseHealth} SPD:{config.BaseSpeed:F0} DMG:{config.Damage})";
-            sb.DrawString(font, info, new Vector2(enemyRect.X + 5, enemyRect.Y + 8), Color.White);
-            
-            y += 40;
+            sb.DrawString(font, "No enemies found in Content/Enemies!", new Vector2(panelRect.X + 10, y), Color.Red);
+            y += 30;
+        }
+        else
+        {
+            foreach (var config in enemyConfigs)
+            {
+                Color buttonColor = selectedEnemyTypeId == config.Id ? Color.Green : Color.Gray;
+                Rectangle enemyRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 35);
+                sb.Draw(pixel, enemyRect, buttonColor * 0.6f);
+                
+                // Информация о враге с его поведением
+                var behavior = EnemyBehaviorRegistry.Instance.GetBehavior(config.BehaviorId);
+                string behaviorName = behavior?.BehaviorName ?? config.BehaviorId;
+                string info = $"{config.DisplayName} [{behaviorName}] (HP:{config.BaseHealth} SPD:{config.BaseSpeed:F0} DMG:{config.Damage})";
+                sb.DrawString(font, info, new Vector2(enemyRect.X + 5, enemyRect.Y + 8), Color.White);
+                
+                y += 40;
+            }
         }
 
         y += 10;

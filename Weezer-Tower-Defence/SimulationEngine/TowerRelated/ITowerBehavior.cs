@@ -13,8 +13,9 @@ public interface ITowerBehavior
     int Cost { get; }
     float Range { get; }
     float FireRate { get; }
+    LevelLoader.TowerDefinition Definition { get; set; }
 
-      Vector2? FindTarget(Tower tower, EnemyController enemies);
+    Vector2? FindTarget(Tower tower, EnemyController enemies);
     
     void Fire(Tower tower, Vector2 targetPosition);
    

@@ -7,6 +7,8 @@
     <TieredCompilation>false</TieredCompilation>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Weezer-Tower-Defence-Editor</AssemblyName>
+    <RootNamespace>Weezer_Tower_Defence_Editor</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

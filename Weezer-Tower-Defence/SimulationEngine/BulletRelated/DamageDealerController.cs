@@ -7,6 +7,7 @@ namespace SimulationEngine.BulletRelated;
 
 public class DamageDealerController : Controller
 {
+    public List<DamageDealer> DamageDealers => damageDealers;
     public readonly List<DamageDealer> damageDealers;
     private static DamageDealerController _instance;
 
@@ -25,6 +26,11 @@ public class DamageDealerController : Controller
             _instance = new DamageDealerController(engine);
         }
         return _instance;
+    }
+
+    public static void ResetInstance()
+    {
+        _instance = null;
     }
 
     public void AddDamageDealer(DamageDealer damageDealer)

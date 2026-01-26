@@ -13,14 +13,14 @@ public class TankEnemyType : IEnemyType
     private Texture2D _texture;
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
-    private const int _maxHealth = 300;
+    private int _maxHealth = 300;
     
-    public int health { get; set; } = _maxHealth;
-    public int MaxHealth => _maxHealth;
-    public float speed => 30f; // Медленнее базового
-    public int Damage => 20; // Танк наносит больше урона
+    public int health { get; set; } = 300;
+    public int MaxHealth { get; set; } = 300;
+    public float speed { get; set; } = 30f; // Медленнее базового
+    public int Damage { get; set; } = 20; // Танк наносит больше урона
     
-    public float HitRadius => 12f; // Радиус хитбокса танка (больше базового)
+    public float HitRadius { get; set; } = 12f; // Радиус хитбокса танка (больше базового)
 
     public TankEnemyType(Texture2D texture = null)
     {
@@ -67,10 +67,12 @@ public class TankEnemyType : IEnemyType
         {
             enemy.Position = target;
             _currentWaypointIndex++;
+            enemy.Velocity = Vector2.Zero;
         }
         else
         {
             Vector2 direction = Vector2.Normalize(target - enemy.Position);
+            enemy.Velocity = direction * speed;
             enemy.Position += direction * moveAmount;
         }
     }

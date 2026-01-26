@@ -4,6 +4,7 @@ using SimulationEngine.MapRelated;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.UI;
 using System;
+using SimulationEngine.BulletRelated.Behaviors;
 
 namespace SimulationEngine;
 
@@ -118,7 +119,20 @@ public class GameInputHandler
         }
         
         // Создаём башню с выбранным поведением
-        var tower = new Tower(towerBehavior, _selectedBuildZone.Position);
+        ITowerBehavior behaviorInstance = towerBehavior;
+        LevelLoader.TowerDefinition definition = null;
+
+        if (towerBehavior is SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior defBehavior)
+        {
+            definition = defBehavior.Definition;
+            // новый экземпляр, чтобы состояния не пересекались
+            behaviorInstance = new SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior(
+                definition,
+                new StandardBulletBehavior(25f, 300f, 500f));
+        }
+
+        var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, definition);
+        tower.Texture = GameManager.GetInstance().DefaultTowerTexture;
         _towerController.AddTower(tower);
         
         // Списываем деньги и занимаем зону
@@ -178,7 +192,23 @@ public class GameInputHandler
 
     private void UpgradeTower(Tower tower)
     {
-        // TODO: Реализовать систему апгрейдов
-        // Пока заглушка
+        if (tower == null) return;
+
+        var def = tower.Definition;
+        if (def == null || def.UpgradeLevels == null || def.UpgradeLevels.Count == 0) return;
+
+        int nextIndex = tower.UpgradeLevel;
+        if (nextIndex < 0 || nextIndex >= def.UpgradeLevels.Count) return; // достигнут максимум
+
+        var next = def.UpgradeLevels[nextIndex];
+        int cost = next.UpgradeCost;
+        if (_uiManager.Money < cost) return;
+
+        _uiManager.Money -= cost;
+        tower.UpgradeLevel += 1;
+        tower.ApplyLevelStats();
+
+        // обновляем UI панели управления
+        _uiManager.ShowTowerControl(tower);
     }
 }

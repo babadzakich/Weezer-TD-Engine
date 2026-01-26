@@ -10,15 +10,15 @@ public class BasicEnemyType : IEnemyType
     private Texture2D _texture;
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
-    private const int _maxHealth = 100;
-    public int health { get; set; } = _maxHealth;
-    public int MaxHealth => _maxHealth;
+    private int _maxHealth = 100;
+    public int health { get; set; } = 100;
+    public int MaxHealth { get; set; } = 100;
 
-    public float speed => 60f;
+    public float speed { get; set; } = 60f;
 
-    public int Damage => 10; // Базовый враг наносит 10 урона
+    public int Damage { get; set; } = 10; // Базовый враг наносит 10 урона
     
-    public float HitRadius => 10f; // Радиус хитбокса базового врага - половинка высоты
+    public float HitRadius { get; set; } = 10f; // Радиус хитбокса базового врага - половинка высоты
 
     public BasicEnemyType(Texture2D texture = null)
     {
@@ -68,11 +68,13 @@ public class BasicEnemyType : IEnemyType
             // Мы достигли точки
             enemy.Position = target;
             _currentWaypointIndex++;
+            enemy.Velocity = Vector2.Zero;
         }
         else
         {
             // Двигаемся к точке
             Vector2 direction = Vector2.Normalize(target - enemy.Position);
+            enemy.Velocity = direction * speed;
             enemy.Position += direction * moveAmount;
         }
     }

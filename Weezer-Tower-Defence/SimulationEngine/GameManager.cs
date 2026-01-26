@@ -27,6 +27,10 @@ public class GameManager
     internal EnemyController EnemyController { get; private set; }
     internal DamageDealerController DamageDealerController { get; private set; }
     
+    public Texture2D DefaultTowerTexture { get; set; }
+    public Texture2D DefaultEnemyTexture { get; set; }
+    public Texture2D DefaultBulletTexture { get; set; }
+
     private GameInputHandler _inputHandler;
 
     public event Action Defeat;
@@ -41,6 +45,11 @@ public class GameManager
             throw new InvalidOperationException("GameManager is not initialized. Call getInstance with parameters first.");
         }
         return _instance;
+    }
+
+    public static void ResetInstance()
+    {
+        _instance = null;
     }
 
     public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
@@ -72,12 +81,15 @@ public class GameManager
         Map.DefensePoints[0].Health = startingLives;
 
         // Добавляем доступные башни в UI
-        // Хороший сыщик всегда найдет. Здесь хардкод боже мой
-        foreach (var towerDefinition in towerDefinitions.Values)
+        if (towerDefinitions != null)
         {
-            UIManager.AddAvailableTower(TowerBehaviorFactory.CreateTowerBehavior(towerDefinition));
+            foreach (var towerDefinition in towerDefinitions.Values)
+            {
+                UIManager.AddAvailableTower(TowerBehaviorFactory.CreateTowerBehavior(towerDefinition));
+            }
         }
 
+        // Добавляем стандартную базовую башню
         UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
     }
 
@@ -87,6 +99,7 @@ public class GameManager
         _inputHandler.Update();
 
         TowerController.Update(gameTime);
+        WaveController?.Update(gameTime);
         EnemyController?.Update(gameTime);
         DamageDealerController?.Update(gameTime);
         
@@ -103,7 +116,7 @@ public class GameManager
             Defeat?.Invoke();
         }
         // Чекаем победу
-        if (WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive && EnemyController.Enemies.Count == 0)
+        if (WaveController != null && WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive && EnemyController.Enemies.Count == 0)
         {
             Console.WriteLine("Win detected");
             Win?.Invoke();
@@ -120,7 +133,7 @@ public class GameManager
         UIManager.Draw(spriteBatch, pixelTexture, font);
     }
 
-    private void StartWave()
+    public void StartWave()
     {
         if (WaveController != null && !WaveController.IsWaveActive && WaveController.CurrentWaveIndex < WaveController.TotalWaves)
         {

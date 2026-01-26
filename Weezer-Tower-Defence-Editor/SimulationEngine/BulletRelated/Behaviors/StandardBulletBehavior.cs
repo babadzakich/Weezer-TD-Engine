@@ -18,8 +18,23 @@ namespace SimulationEngine.BulletRelated.Behaviors
             _hitRadius = hitRadius;
         }
 
-        public float Damage => _damage;
-        public float HitRadius => _hitRadius;
+        public float Damage 
+        { 
+            get => _damage; 
+            set => _damage = value; 
+        }
+
+        public float HitRadius 
+        { 
+            get => _hitRadius; 
+            set => _hitRadius = value; 
+        }
+
+        public float Speed 
+        { 
+            get => _speed; 
+            set => _speed = value; 
+        }
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {

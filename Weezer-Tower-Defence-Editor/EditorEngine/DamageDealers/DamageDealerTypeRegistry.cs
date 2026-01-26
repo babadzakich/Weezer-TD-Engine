@@ -10,7 +10,7 @@ namespace EditorEngine.DamageDealers;
 /// </summary>
 public class DamageDealerTypeRegistry
 {
-    private static DamageDealerTypeRegistry? _instance;
+    private static DamageDealerTypeRegistry _instance;
     public static DamageDealerTypeRegistry Instance => _instance ??= new DamageDealerTypeRegistry();
 
     public class DamageDealerTypeInfo
@@ -58,6 +58,6 @@ public class DamageDealerTypeRegistry
     }
 
     public List<DamageDealerTypeInfo> GetAllDamageDealerTypes() => damageDealers.Values.ToList();
-    public DamageDealerTypeInfo? GetDamageDealerInfo(string id) => damageDealers.GetValueOrDefault(id);
+    public DamageDealerTypeInfo GetDamageDealerInfo(string id) => damageDealers.GetValueOrDefault(id);
     public List<string> GetAllDamageDealerTypeIds() => damageDealers.Keys.ToList();
 }

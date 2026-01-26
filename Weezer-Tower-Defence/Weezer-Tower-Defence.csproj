@@ -7,6 +7,8 @@
     <TieredCompilation>false</TieredCompilation>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Weezer-Tower-Defence</AssemblyName>
+    <RootNamespace>Weezer_Tower_Defence</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +28,10 @@
   <ItemGroup>
     <!-- Исключаем Content из компиляции - там лежат архивы уровней и их файлы -->
     <Compile Remove="Content/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MonoGameContentReference Include="Content\Content.mgcb" />
   </ItemGroup>
 
   <ItemGroup>

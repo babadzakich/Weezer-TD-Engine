@@ -33,6 +33,17 @@ public class Game1 : Game
     private GameManager gameManager;
     private GameMap gameMap;
 
+    private LevelSelectionPanel _levelSelectionPanel;
+    private GameState _currentState = GameState.LevelSelection;
+    private bool _showInstructions = false;
+    private KeyboardState _previousKeyboardState;
+
+    public enum GameState
+    {
+        LevelSelection,
+        Playing
+    }
+
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
@@ -43,46 +54,58 @@ public class Game1 : Game
         
         // Разрешаем изменение размера окна
         Window.AllowUserResizing = true;
-        _graphics.PreferredBackBufferWidth = 1600;
-        _graphics.PreferredBackBufferHeight = 900;
     }
 
     protected override void Initialize()
     {
-        // Загружаем уровень из архива
+        _levelSelectionPanel = new LevelSelectionPanel(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
+        _levelSelectionPanel.OnLevelSelected += (path) => LoadLevel(path);
 
-        string levelArchivePath = "../../../Content/level_1_package.zip";
+        base.Initialize();
+    }
+
+    private void LoadLevel(string levelArchivePath)
+    {
         Console.WriteLine($"Attempting to load level from archive: {levelArchivePath}");
         if (!System.IO.File.Exists(levelArchivePath))
         {
             Console.WriteLine(System.IO.Path.GetFullPath(levelArchivePath));
-            Console.WriteLine($"ERROR:  BOJE MOY Level archive not found at {levelArchivePath}");
-            Console.WriteLine("Please create a level in the editor (dotnet run -- editor) and press Ctrl+P to package it.");
-            Exit();
+            Console.WriteLine($"ERROR: Level archive not found at {levelArchivePath}");
+            ReturnToMenu();
             return;
         }
 
         try
         {
+            // Сброс предыдущего состояния
+            GameManager.ResetInstance();
+            if (TowerController.GetInstance(this) != null) TowerController.ResetInstance();
+            if (EnemyController.GetInstance(this, null) != null) EnemyController.ResetInstance();
+            if (DamageDealerController.GetInstance(this) != null) DamageDealerController.ResetInstance();
+            if (WaveController.GetInstance(null, null) != null) WaveController.ResetInstance();
+
             Console.WriteLine($"Loading level from: {levelArchivePath}");
             var loadedLevel = LevelLoader.LoadFromArchive(levelArchivePath);
             
             gameMap = loadedLevel.Map;
-            Console.WriteLine($"Loaded map: {gameMap.Name} ({gameMap.Width}x{gameMap.Height})");
-            Console.WriteLine($"- Spawn points: {gameMap.SpawnPoints.Count}");
-            Console.WriteLine($"- Defense points: {gameMap.DefensePoints.Count}");
-            Console.WriteLine($"- Paths: {gameMap.Paths.Count}");
-            Console.WriteLine($"- Build zones: {gameMap.BuildZones.Count}");
-            
-            // Загружаем определения врагов в фабрику
-            EnemyTypeFactory.Instance.LoadEnemyTypesFromLevel(loadedLevel.EnemyDefinitions);
-            Console.WriteLine($"Loaded {loadedLevel.EnemyDefinitions.Count} enemy definitions into factory");
             
             // Инициализируем контроллеры
             damageDealerController = DamageDealerController.GetInstance(this);
             towerController = TowerController.GetInstance(this);
             enemyController = EnemyController.GetInstance(this, gameMap);
             waveController = WaveController.GetInstance(enemyController, gameMap);
+
+            // Назначаем текстуры пулям (важно сделать это после инициализации контроллера)
+            if (damageDealerController != null)
+            {
+                foreach (var bullet in damageDealerController.DamageDealers)
+                {
+                    bullet.Texture = _pixel;
+                }
+            }
+            
+            // Загружаем определения врагов в фабрику
+            EnemyTypeFactory.Instance.LoadEnemyTypesFromLevel(loadedLevel.EnemyDefinitions);
             
             // Загружаем волны из уровня
             foreach (var waveData in loadedLevel.Waves)
@@ -93,35 +116,56 @@ public class Game1 : Game
             Console.WriteLine($"Loaded {loadedLevel.Waves.Count} waves");
 
             // Загружаем жизни и деньги из уровня
-            Console.WriteLine($"Starting Money: {loadedLevel.MoneyHealthSettings.StartingMoney}");
-            Console.WriteLine($"Starting Lives: {loadedLevel.MoneyHealthSettings.StartingLives}");
+            int startingMoney = 100;
+            int startingLives = 20;
+
+            if (loadedLevel.MoneyHealthSettings != null)
+            {
+                startingMoney = loadedLevel.MoneyHealthSettings.StartingMoney;
+                startingLives = loadedLevel.MoneyHealthSettings.StartingLives;
+            }
+
+            Console.WriteLine($"Starting Money: {startingMoney}");
+            Console.WriteLine($"Starting Lives: {startingLives}");
 
             // Инициализируем GameManager
             gameManager = GameManager.getInstance(
                 _graphics.PreferredBackBufferWidth, 
                 _graphics.PreferredBackBufferHeight, 
                 gameMap, 
-                loadedLevel.MoneyHealthSettings.StartingMoney,
-                loadedLevel.MoneyHealthSettings.StartingLives,
+                startingMoney,
+                startingLives,
                 towerController, 
                 loadedLevel.TowerDefinitions,
                 waveController, 
-                enemyController
+                enemyController,
+                damageDealerController
             );
-            gameManager.Defeat += () => Exit();
-            gameManager.Win += () => Exit();
             
+            // Передаем стандартные текстуры
+            gameManager.DefaultTowerTexture = _towerTexture;
+            gameManager.DefaultEnemyTexture = _enemyTexture;
+            gameManager.DefaultBulletTexture = _pixel;
+
+            gameManager.Defeat += () => ReturnToMenu();
+            gameManager.Win += () => ReturnToMenu();
+            
+            _currentState = GameState.Playing;
+            _showInstructions = true;
             Console.WriteLine("Level loaded successfully!");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"ERROR loading level: {ex.Message}");
             Console.WriteLine(ex.StackTrace);
-            Exit();
-            return;
+            ReturnToMenu();
         }
+    }
 
-        base.Initialize();
+    private void ReturnToMenu()
+    {
+        _currentState = GameState.LevelSelection;
+        _levelSelectionPanel.RefreshLevelList();
     }
 
     protected override void LoadContent()
@@ -129,10 +173,8 @@ public class Game1 : Game
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
         // Создаём пиксельную текстуру для отрисовки линий/прямоугольников
-        _pixel = new Texture2D(GraphicsDevice, 10, 10);
-        Color[] pixeldata = new Color[10 * 10];
-        for (int i = 0; i < pixeldata.Length; i++) pixeldata[i] = Color.White;
-        _pixel.SetData(pixeldata);
+        _pixel = new Texture2D(GraphicsDevice, 1, 1);
+        _pixel.SetData(new[] { Color.White });
         
         // Загружаем шрифт
         try
@@ -146,11 +188,7 @@ public class Game1 : Game
             _font = null;
         }
 
-        // Создаём временную текстуру для пули (красный квадрат 10x10)
-        _bulletTexture = new Texture2D(GraphicsDevice, 100, 100);
-        Color[] bulletData = new Color[100 * 100];
-        for (int i = 0; i < bulletData.Length; i++) bulletData[i] = Color.Red;
-        _bulletTexture.SetData(bulletData);
+        _levelSelectionPanel.LoadContent(_font, GraphicsDevice);
 
         // Создаём временную текстуру для башни (синий квадрат 40x40)
         _towerTexture = new Texture2D(GraphicsDevice, 40, 40);
@@ -163,48 +201,46 @@ public class Game1 : Game
         Color[] enemyData = new Color[30 * 30];
         for (int i = 0; i < enemyData.Length; i++) enemyData[i] = Color.Green;
         _enemyTexture.SetData(enemyData);
-
-        // Присваиваем текстуру всем пулям в контроллере
-        foreach (var bullet in damageDealerController.damageDealers)
-        {
-            bullet.Texture = _bulletTexture;
-        }
-        
-        // Присваиваем текстуру WaveController для врагов
-        waveController.SetEnemyTexture(_enemyTexture);
-        
-        // Запускаем первую волну
-        waveController.StartNextWave();
     }
 
     protected override void Update(GameTime gameTime)
     {
-        var currentKeyState = Keyboard.GetState();
-        
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyState.IsKeyDown(Keys.Escape))
+        KeyboardState ks = Keyboard.GetState();
+        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || ks.IsKeyDown(Keys.Escape))
             Exit();
 
-        damageDealerController.Update(gameTime);
-        towerController.Update(gameTime);
-        enemyController.Update(gameTime);
-        waveController.Update(gameTime);
-        gameManager.Update(gameTime);
-        
-        // Обновляем UI информацию
-        gameManager.UIManager.Wave = waveController.CurrentWaveIndex + 1;
-        
-        // Проверяем поражение
-        if (gameMap.DefensePoints.Count > 0 && gameMap.DefensePoints[0].IsDestroyed)
+        if (_currentState == GameState.LevelSelection)
         {
-            Console.WriteLine("Game Over: Your base has been destroyed!");
-            foreach (var defencePoint in gameMap.DefensePoints)
+            _levelSelectionPanel.Update(ks, _previousKeyboardState);
+        }
+        else
+        {
+            if (_showInstructions)
             {
-                Console.WriteLine($"- Defense Point {defencePoint.Id} {defencePoint.Health} destroyed.");
+                if ((ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter)) ||
+                    (ks.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space)))
+                {
+                    _showInstructions = false;
+                }
             }
-            // Game Over
-            Exit();
+            else
+            {
+                gameManager?.Update(gameTime);
+                
+                // Запуск волны по Enter
+                if (ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter))
+                {
+                    gameManager?.StartWave();
+                }
+
+                if (ks.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
+                {
+                    ReturnToMenu();
+                }
+            }
         }
 
+        _previousKeyboardState = ks;
         base.Update(gameTime);
     }
 
@@ -213,12 +249,21 @@ public class Game1 : Game
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
         _spriteBatch.Begin();
-        gameMap.Draw(_spriteBatch, _pixel);
-        towerController.Draw(_spriteBatch);
-        damageDealerController.Draw(_spriteBatch);
-        enemyController.Draw(_spriteBatch);
-        waveController.Draw(_spriteBatch);
-        gameManager.UIManager.Draw(_spriteBatch, _pixel, _font);
+
+        if (_currentState == GameState.LevelSelection)
+        {
+            _levelSelectionPanel.Draw(_spriteBatch);
+        }
+        else if (gameManager != null)
+        {
+            gameManager.Draw(_spriteBatch, _pixel, _font);
+            
+            if (_showInstructions)
+            {
+                DrawInstructions();
+            }
+        }
+
         _spriteBatch.End();
 
         base.Draw(gameTime);
@@ -226,6 +271,8 @@ public class Game1 : Game
 
     private void DrawInstructions()
     {
+        if (_font == null) return;
+
         int screenWidth = GraphicsDevice.Viewport.Width;
         int screenHeight = GraphicsDevice.Viewport.Height;
         

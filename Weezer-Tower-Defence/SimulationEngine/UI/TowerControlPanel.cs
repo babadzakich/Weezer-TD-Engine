@@ -16,6 +16,10 @@ public class TowerControlPanel : UIElement
     
     private Button _sellButton;
     private Button _upgradeButton;
+
+    private int? _nextUpgradeCost;
+    private bool _isMaxLevel;
+    private bool _canAfford;
     
     public event Action<Tower> OnSellTower;
     public event Action<Tower> OnUpgradeTower;
@@ -52,6 +56,26 @@ public class TowerControlPanel : UIElement
         IsVisible = true;
     }
 
+    public void SetUpgradeInfo(int? nextCost, bool canAfford, bool isMaxLevel)
+    {
+        _nextUpgradeCost = nextCost;
+        _canAfford = canAfford;
+        _isMaxLevel = isMaxLevel;
+
+        if (_isMaxLevel)
+        {
+            _upgradeButton.IsVisible = false;
+        }
+        else
+        {
+            _upgradeButton.IsVisible = true;
+            _upgradeButton.Text = nextCost.HasValue ? $"Upgrade (${nextCost.Value})" : "Upgrade";
+            _upgradeButton.IsEnabled = canAfford;
+        }
+
+        UpdateButtonPositions();
+    }
+
     public void Hide()
     {
         SelectedTower = null;
@@ -63,8 +87,16 @@ public class TowerControlPanel : UIElement
     /// </summary>
     public void UpdateButtonPositions()
     {
-        _sellButton.Position = Position + new Vector2(10, Size.Y - 50);
-        _upgradeButton.Position = Position + new Vector2(Size.X / 2 + 5, Size.Y - 50);
+        if (_isMaxLevel)
+        {
+            // Центрируем кнопку продажи, если апгрейд недоступен
+            _sellButton.Position = Position + new Vector2((Size.X - _sellButton.Size.X) / 2, Size.Y - 50);
+        }
+        else
+        {
+            _sellButton.Position = Position + new Vector2(10, Size.Y - 50);
+            _upgradeButton.Position = Position + new Vector2(Size.X / 2 + 5, Size.Y - 50);
+        }
     }
 
     public override void Update(GameTime gameTime, MouseState mouseState, MouseState previousMouseState)
@@ -92,6 +124,17 @@ public class TowerControlPanel : UIElement
             spriteBatch.DrawString(font, $"Range: {SelectedTower.Behavior.Range}", textPos, Color.Yellow);
             textPos.Y += 20;
             spriteBatch.DrawString(font, $"Fire Rate: {SelectedTower.Behavior.FireRate}/s", textPos, Color.Orange);
+            textPos.Y += 20;
+            spriteBatch.DrawString(font, $"Level: {SelectedTower.UpgradeLevel + 1}", textPos, Color.LightGreen);
+            textPos.Y += 20;
+            if (_isMaxLevel)
+            {
+                spriteBatch.DrawString(font, "Next: MAX", textPos, Color.Gray);
+            }
+            else if (_nextUpgradeCost.HasValue)
+            {
+                spriteBatch.DrawString(font, $"Next Upgrade: ${_nextUpgradeCost.Value}", textPos, _canAfford ? Color.Gold : Color.Red);
+            }
         }
 
         _sellButton.Draw(spriteBatch, pixel, font);

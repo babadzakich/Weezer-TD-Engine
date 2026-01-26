@@ -18,6 +18,7 @@ public class LaserTowerBehavior : ITowerBehavior
     public int Cost => 300;
     public float Range { get; }
     public float FireRate { get; }
+    public LevelLoader.TowerDefinition Definition { get; set; }
     
     private Vector2? currentTarget;
     private IDamageDealerBehavior laserDamageBehavior;

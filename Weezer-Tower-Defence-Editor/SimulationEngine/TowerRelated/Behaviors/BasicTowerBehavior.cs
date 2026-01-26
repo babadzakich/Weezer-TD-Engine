@@ -22,6 +22,7 @@ public class BasicTowerBehavior : ITowerBehavior
     public int Cost { get; }
     public float Range { get; }
     public float FireRate { get; }
+    public LevelLoader.TowerDefinition Definition { get; set; }
     private SimulationEngine.EnemyRelated.Enemy _currentTarget;
 
     public BasicTowerBehavior(string id, string name, IDamageDealerBehavior projectileConfig, int cost, float range, float fireRate)

@@ -29,6 +29,11 @@ public class EnemyController : Controller
         return _instance;
     }
 
+    public static void ResetInstance()
+    {
+        _instance = null;
+    }
+
     public void AddEnemy(Enemy enemy)
     {
         Enemies.Add(enemy);

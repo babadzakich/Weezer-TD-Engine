@@ -6,7 +6,8 @@ namespace SimulationEngine.BulletRelated
     {
         void Update(DamageDealer damageDealer, GameTime gameTime);
         void Draw(DamageDealer damageDealer, Microsoft.Xna.Framework.Graphics.SpriteBatch spriteBatch);
-        float Damage { get; }
-        float HitRadius { get; }
+        float Damage { get; set; }
+        float HitRadius { get; set; }
+        float Speed { get; set; }
     }
 }

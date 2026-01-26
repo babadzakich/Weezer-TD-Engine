@@ -9,11 +9,14 @@ public class BasicEnemyType : IEnemyType
 {
     private Texture2D _texture;
     private int _currentWaypointIndex = 0;
+    private int _maxHealth = 100;
+    private int _health;
+    
     public int health { get; set; } = 100;
-
-    public float speed => 60f;
-
-    public int Damage => 10; // Базовый враг наносит 10 урона
+    public int MaxHealth { get; set; } = 100;
+    public float speed { get; set; } = 60f;
+    public int Damage { get; set; } = 10; // Базовый враг наносит 10 урона
+    public float HitRadius { get; set; } = 10f; // Радиус хитбокса
 
 
     // Fix due to previous incompatibility
@@ -23,11 +26,13 @@ public class BasicEnemyType : IEnemyType
 
     public BasicEnemyType() : this(null)
     {
+        health = 100;
     }
 
     public BasicEnemyType(Texture2D texture)
     {
         _texture = texture;
+        health = 100;
     }
 
     public void SetTexture(Texture2D texture)
