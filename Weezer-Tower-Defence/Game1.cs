@@ -33,6 +33,15 @@ public class Game1 : Game
     private GameManager gameManager;
     private GameMap gameMap;
 
+    private enum GameState
+    {
+        LevelSelection,
+        Playing
+    }
+    private GameState _currentState = GameState.LevelSelection;
+    private LevelSelectionPanel _levelSelectionPanel;
+    private KeyboardState _previousKeyboardState;
+
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
@@ -49,17 +58,23 @@ public class Game1 : Game
 
     protected override void Initialize()
     {
-        // Загружаем уровень из архива
+        _levelSelectionPanel = new LevelSelectionPanel();
+        _levelSelectionPanel.OnLevelSelected += LoadLevel;
+        
+        base.Initialize();
+    }
 
-        string levelArchivePath = "Content/level_1_package.zip";
+    private void LoadLevel(string levelArchivePath)
+    {
         Console.WriteLine($"Attempting to load level from archive: {levelArchivePath}");
         if (!System.IO.File.Exists(levelArchivePath))
         {
             Console.WriteLine($"ERROR: Level archive not found at {levelArchivePath}");
-            Console.WriteLine("Please create a level in the editor (dotnet run -- editor) and press Ctrl+P to package it.");
-            Exit();
             return;
         }
+
+        // Сброс старого состояния перед загрузкой нового уровня
+        ResetGameState();
 
         try
         {
@@ -68,14 +83,9 @@ public class Game1 : Game
             
             gameMap = loadedLevel.Map;
             Console.WriteLine($"Loaded map: {gameMap.Name} ({gameMap.Width}x{gameMap.Height})");
-            Console.WriteLine($"- Spawn points: {gameMap.SpawnPoints.Count}");
-            Console.WriteLine($"- Defense points: {gameMap.DefensePoints.Count}");
-            Console.WriteLine($"- Paths: {gameMap.Paths.Count}");
-            Console.WriteLine($"- Build zones: {gameMap.BuildZones.Count}");
             
             // Загружаем определения врагов в фабрику
             EnemyTypeFactory.Instance.LoadEnemyTypesFromLevel(loadedLevel.EnemyDefinitions);
-            Console.WriteLine($"Loaded {loadedLevel.EnemyDefinitions.Count} enemy definitions into factory");
             
             // Инициализируем контроллеры
             damageDealerController = DamageDealerController.GetInstance(this);
@@ -89,7 +99,6 @@ public class Game1 : Game
                 var wave = ConvertWaveDataToWave(waveData, gameMap);
                 waveController.AddWave(wave);
             }
-            Console.WriteLine($"Loaded {loadedLevel.Waves.Count} waves");
             
             // Инициализируем GameManager
             gameManager = GameManager.getInstance(
@@ -98,22 +107,62 @@ public class Game1 : Game
                 gameMap, 
                 towerController, 
                 waveController, 
-                enemyController
+                enemyController,
+                damageDealerController,
+                loadedLevel.TowerDefinitions
             );
-            gameManager.Defeat += () => Exit();
-            gameManager.Win += () => Exit();
+            gameManager.DefaultTowerTexture = _towerTexture;
+            gameManager.DefaultBulletTexture = _bulletTexture;
+            gameManager.Defeat += ReturnToMenu;
+            gameManager.Win += ReturnToMenu;
             
+            // Инициализация графических ресурсов, которые зависят от загруженного уровня
+            if (_enemyTexture != null)
+                waveController.SetEnemyTexture(_enemyTexture);
+            
+            // Также при загрузке уровня нужно убедиться, что пули (если они есть) получают текстуру
+            // Хотя при старте уровня их обычно нет, но для надежности:
+            if (_bulletTexture != null)
+            {
+                foreach (var bullet in damageDealerController.damageDealers)
+                {
+                    bullet.Texture = _bulletTexture;
+                }
+            }
+                
+            // Запускаем первую волну
+            waveController.StartNextWave();
+            
+            _currentState = GameState.Playing;
             Console.WriteLine("Level loaded successfully!");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"ERROR loading level: {ex.Message}");
             Console.WriteLine(ex.StackTrace);
-            Exit();
-            return;
         }
+    }
 
-        base.Initialize();
+    private void ResetGameState()
+    {
+        TowerController.ResetInstance();
+        EnemyController.ResetInstance();
+        DamageDealerController.ResetInstance();
+        WaveController.ResetInstance();
+        GameManager.ResetInstance();
+        
+        towerController = null;
+        enemyController = null;
+        damageDealerController = null;
+        waveController = null;
+        gameManager = null;
+        gameMap = null;
+    }
+
+    private void ReturnToMenu()
+    {
+        _currentState = GameState.LevelSelection;
+        _levelSelectionPanel.RefreshLevelList();
     }
 
     protected override void LoadContent()
@@ -157,16 +206,17 @@ public class Game1 : Game
         _enemyTexture.SetData(enemyData);
 
         // Присваиваем текстуру всем пулям в контроллере
-        foreach (var bullet in damageDealerController.damageDealers)
+        if (damageDealerController != null)
         {
-            bullet.Texture = _bulletTexture;
+            foreach (var bullet in damageDealerController.damageDealers)
+            {
+                bullet.Texture = _bulletTexture;
+            }
         }
         
         // Присваиваем текстуру WaveController для врагов
-        waveController.SetEnemyTexture(_enemyTexture);
-        
-        // Запускаем первую волну
-        waveController.StartNextWave();
+        if (waveController != null)
+            waveController.SetEnemyTexture(_enemyTexture);
     }
 
     protected override void Update(GameTime gameTime)
@@ -176,10 +226,20 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyState.IsKeyDown(Keys.Escape))
             Exit();
 
-        damageDealerController.Update(gameTime);
-        towerController.Update(gameTime);
-        enemyController.Update(gameTime);
-        waveController.Update(gameTime);
+        if (_currentState == GameState.LevelSelection)
+        {
+            _levelSelectionPanel.Update(currentKeyState, _previousKeyboardState);
+            _previousKeyboardState = currentKeyState;
+            return;
+        }
+
+        if (currentKeyState.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
+        {
+            ReturnToMenu();
+            _previousKeyboardState = currentKeyState;
+            return;
+        }
+
         gameManager.Update(gameTime);
         
         // Обновляем UI информацию
@@ -189,15 +249,24 @@ public class Game1 : Game
         if (gameMap.DefensePoints.Count > 0 && gameMap.DefensePoints[0].IsDestroyed)
         {
             // Game Over
-            Exit();
+            ReturnToMenu();
         }
 
         base.Update(gameTime);
+        _previousKeyboardState = currentKeyState;
     }
 
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
+
+        if (_currentState == GameState.LevelSelection)
+        {
+            _spriteBatch.Begin();
+            _levelSelectionPanel.Draw(_spriteBatch, _font ?? Content.Load<SpriteFont>("DefaultFont"), _pixel, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            _spriteBatch.End();
+            return;
+        }
 
         _spriteBatch.Begin();
         gameMap.Draw(_spriteBatch, _pixel);
