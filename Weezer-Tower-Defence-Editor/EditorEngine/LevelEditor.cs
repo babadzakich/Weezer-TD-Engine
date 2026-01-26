@@ -707,7 +707,14 @@ public class LevelEditor
             currentMap.Name = levelId;
             waveSet.MapId = levelId;
 
-            string outputPath = $"Content/{currentMap.Id}.zip";
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            var outputPath = System.IO.Path.Combine(
+                appData,
+                "WeezerTowerDefence",
+                "Levels",
+                $"{currentMap.Id}.zip"
+            );
             LevelPackager.PackLevel(currentMap, waveSet, outputPath);
             Console.WriteLine($"Level packed successfully to: {outputPath}");
             statusMessage = $"Level packed to {currentMap.Id}.zip!";

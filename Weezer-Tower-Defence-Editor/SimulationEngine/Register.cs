@@ -39,21 +39,6 @@ class Register {
         );
     }
 
-    private static void copyDlls()     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var targetRoot = Path.Combine(
-            appData,
-            "WeezerTowerDefence",
-            "Editor",
-            "DLLs"
-        );
-        recursiveCopy(
-            sourceDir: "PrecompiledDLLs",
-            targetDir: targetRoot
-        );
-        Console.WriteLine("NU I GDE");
-    }
-
     private static void recursiveCopy(string sourceDir, string targetDir)
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -63,11 +48,9 @@ class Register {
 
         foreach (var resourceName in assembly.GetManifestResourceNames())
         {
-            Console.WriteLine($"{resourceName};   {resourceRoot}");
             if (!resourceName.StartsWith(resourceRoot))
                 continue;
 
-            Console.WriteLine("WOW");
             var relative = resourceName.Substring(resourceRoot.Length);
 
             var parts = relative.Split('.');

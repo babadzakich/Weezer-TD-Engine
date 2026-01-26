@@ -27,12 +27,12 @@
 
   <ItemGroup>
     <!-- Исключаем Content из компиляции - там лежат архивы уровней и их файлы -->
-    <Compile Remove="Content/**/*.cs" />
+    <Compile Remove="Content/**/*" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <MonoGameContentReference Include="Content\Content.mgcb" />
-  </ItemGroup>
+  </ItemGroup>-->
 
   <ItemGroup>
     <!-- Зависимости MonoGame -->

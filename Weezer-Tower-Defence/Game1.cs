@@ -49,7 +49,15 @@ public class Game1 : Game
         _graphics = new GraphicsDeviceManager(this);
         _graphics.PreferredBackBufferWidth = 1600;
         _graphics.PreferredBackBufferHeight = 900;
-        Content.RootDirectory = "Content";
+
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        var targetRoot = System.IO.Path.Combine(
+            appData,
+            "WeezerTowerDefence",
+            "common"
+        );
+        Content.RootDirectory = $"{targetRoot}";
         IsMouseVisible = true;
         
         // Разрешаем изменение размера окна

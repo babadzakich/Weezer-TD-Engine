@@ -41,9 +41,16 @@ public static class LevelPackager
     /// </summary>
     public static void PackLevel(GameMap map, WaveSet waveSet, string outputPath)
     {
-        // Создаём папку для уровня в Content/Levels/
-        string levelDir = IOPath.Combine("Content", "Levels", map.Id);
-        
+        // Создаём папку для уровня в $APP_DATA$/WeezerTowerDefence/Levels/{map.Id}
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        var levelDir = System.IO.Path.Combine(
+            appData,
+            "WeezerTowerDefence",
+            "Levels",
+            $"{map.Id}"
+        );
+
         // Если папка существует, очищаем её
         if (Directory.Exists(levelDir))
             Directory.Delete(levelDir, true);

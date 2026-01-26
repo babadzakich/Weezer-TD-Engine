@@ -38,7 +38,13 @@ public class LevelSelectionPanel
     public void RefreshLevelList()
     {
         _levels.Clear();
-        string contentPath = "Content";
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        var contentPath = System.IO.Path.Combine(
+            appData,
+            "WeezerTowerDefence",
+            "Levels"
+        );
         if (Directory.Exists(contentPath))
         {
             var files = Directory.GetFiles(contentPath, "*.zip");
@@ -73,7 +79,15 @@ public class LevelSelectionPanel
             (ks.IsKeyDown(Keys.Space) && prevKs.IsKeyUp(Keys.Space)))
         {
             _isOpen = false;
-            OnLevelSelected?.Invoke(Path.Combine("Content", _levels[_selectedIndex]));
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            var levelPath = System.IO.Path.Combine(
+                appData,
+                "WeezerTowerDefence",
+                "Levels",
+                _levels[_selectedIndex]
+            );
+            OnLevelSelected?.Invoke(levelPath);
         }
     }
 
