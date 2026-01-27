@@ -66,6 +66,6 @@ public class UITextField
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)
     {
         sb.Draw(pixel, Bounds, IsActive ? Color.DarkGray : Color.Gray);
-    sb.DrawString(font, Text ?? "", new Vector2(Bounds.X + 4, Bounds.Y + 4), Color.White);
+        sb.DrawString(font, Text ?? "", new Vector2(Bounds.X + 4, Bounds.Y + 4), Color.White);
     }
 }

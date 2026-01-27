@@ -14,6 +14,7 @@ namespace EditorEngine;
 public class LevelEditor
 {
     private TowerEditorPanel towerPanel;
+    private DamageDealerEditor damageDealerEditor;
     private UITextField levelNameField;
     private MoneyHealthEditor moneyHealthPanel;
 
@@ -54,6 +55,7 @@ public class LevelEditor
     public LevelEditor(ContentManager content, int screenWidth, int screenHeight)
     {
         towerPanel = new TowerEditorPanel();
+        damageDealerEditor = new DamageDealerEditor();
         levelNameField = new UITextField(new Rectangle(320, 10, 150, 30), "level_1");
         moneyHealthPanel = new MoneyHealthEditor();
 
@@ -83,12 +85,24 @@ public class LevelEditor
             towerPanel.Update(mouseState, keyboardState, previousMouseState);
         }
 
+        if (damageDealerEditor.isShown)
+        {
+            damageDealerEditor.Update(mouseState, keyboardState);
+        }
+
         if (!IsAnyTextFieldActive())
         {
             if (keyboardState.IsKeyDown(Keys.T) && previousKeyboardState.IsKeyUp(Keys.T))
             {
                 towerPanel.Toggle();
             }
+
+            if(keyboardState.IsKeyDown(Keys.Y) && previousKeyboardState.IsKeyUp(Keys.Y))
+            {
+                damageDealerEditor.Toggle();
+            }
+
+
 
             if (keyboardState.IsKeyDown(Keys.M) && previousKeyboardState.IsKeyUp(Keys.M))
             {
@@ -184,7 +198,7 @@ public class LevelEditor
 
     private bool IsAnyTextFieldActive()
     {
-        return levelNameField.IsActive || moneyHealthPanel.IsAnyFieldActive() || towerPanel.IsAnyFieldActive();
+        return levelNameField.IsActive || moneyHealthPanel.IsAnyFieldActive() || towerPanel.IsAnyFieldActive() || damageDealerEditor.IsAnyFieldActive();
     }
 
     private void HandleMouseInput(MouseState mouseState)
@@ -371,6 +385,11 @@ public class LevelEditor
 
         if (towerPanel.IsOpen)
             towerPanel.Draw(spriteBatch, defaultFont, pixel);
+
+        if (damageDealerEditor.isShown)
+        {
+            damageDealerEditor.Draw(spriteBatch, defaultFont, pixel);
+        }
 
         if (wavesPanel.IsOpen)
             DrawWavesPanel(spriteBatch, pixel);

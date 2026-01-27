@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-
+using EditorEngine.DamageDealers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -14,6 +14,8 @@ class Register {
         Console.WriteLine("Setting up");
         copyInbuilt();
         createDLLs();
+        var tmp = DamageDealerRegistry.Instance;
+        Console.WriteLine("LOL");
     }
 
     /// <summary>
