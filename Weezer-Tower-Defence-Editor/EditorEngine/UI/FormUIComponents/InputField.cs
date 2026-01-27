@@ -77,12 +77,23 @@ class InputField : IShowable
 
         if (type == "int")
         {
+            if (newText == "")
+            {
+                text = newText;
+                _onUpdate?.Invoke("0", id, type);
+            }
+
             if (!int.TryParse(newText, out _))
                 return;
 
         }
         else if (type == "float")
         {
+            if (newText == "")
+            {
+                text = newText;
+                _onUpdate?.Invoke("0", id, type);
+            }
             if (!float.TryParse(newText + "0", out _))
                 return;
         }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -7,29 +8,26 @@ using System.Text;
 using System.Text.Json;
 using SimulationEngine.Persistence;
 
-namespace EditorEngine.DamageDealers;
 
-
-public class DamageDealerRegistry
+public class EnemyRegistry
 {
-    private static DamageDealerRegistry _instance;
-    public static DamageDealerRegistry Instance => _instance ??= new DamageDealerRegistry();
-    private DamageDealerRegistry()
+    private static EnemyRegistry _instance;
+    public static EnemyRegistry Instance => _instance ??= new EnemyRegistry();
+    private EnemyRegistry()
     {
-        loadDamageDealerClasses();
-        loadDamageDealerConfigs();
+        loadClasses();
+        loadConfigs();
     }
 
     public void Update()
     {
-        damageDealers = new();
-        loadDamageDealerConfigs();
+        enemies = new();
+        loadConfigs();
     }
-
 
     public Dictionary<string, BehaviorConfig> behaviorDescriptions = new();
     public Dictionary<string, Type> behaviors = new();
-    public Dictionary<string, TypeSpecification> damageDealers = new();
+    public Dictionary<string, TypeSpecification> enemies = new();
 
 
 
@@ -38,7 +36,7 @@ public class DamageDealerRegistry
     /// It uses json files to find out which dll to load and which class to look for
     /// Also json-s describe constructor arguments
     /// </summary>
-    private void loadDamageDealerClasses()
+    private void loadClasses()
     {
 
         var jsonRoot = System.IO.Path.Combine(
@@ -46,7 +44,7 @@ public class DamageDealerRegistry
             "WeezerTowerDefence",
             "Editor",
             "custom",
-            "damageDealers",
+            "enemies",
             "behaviors"
         );
         var jsonOptions = new JsonSerializerOptions
@@ -60,6 +58,7 @@ public class DamageDealerRegistry
         foreach (var jsonPath in Directory.EnumerateFiles(jsonRoot, "*.json"))
         {
             var json = File.ReadAllText(jsonPath);
+            Console.WriteLine($"Loading behavior from {jsonPath}");
 
             var config = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
             if (config == null)
@@ -74,7 +73,7 @@ public class DamageDealerRegistry
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "WeezerTowerDefence",
                 "DLLs",
-                "damageDealers",
+                "enemies",
                 $"{config.FileName}.dll"
              );
 
@@ -97,7 +96,7 @@ public class DamageDealerRegistry
         }
     }
 
-    private void loadDamageDealerConfigs()
+    private void loadConfigs()
     {
         var result = new Dictionary<string, TypeSpecification>();
 
@@ -106,7 +105,7 @@ public class DamageDealerRegistry
             "WeezerTowerDefence",
             "Editor",
             "custom",
-            "damageDealers",
+            "enemies",
             "configs"
         );
 
@@ -126,8 +125,6 @@ public class DamageDealerRegistry
             if (spec == null)
                 throw new Exception($"Failed to parse {jsonPath}");
 
-            Console.WriteLine($"Loaded damage dealer config: {spec}");
-            Console.WriteLine($"  Class: {spec.ClassName}");
             if (!behaviors.ContainsKey(spec.ClassName))
                 throw new Exception(
                     $"Behavior class '{spec.ClassName}' not found (config: {jsonPath})"
@@ -139,35 +136,6 @@ public class DamageDealerRegistry
             result[spec.Name] = spec;
         }
 
-        damageDealers = result;
-    }
-}
-
-
-
-
-
-public sealed class SnakeCaseNamingPolicy : JsonNamingPolicy
-{
-    public override string ConvertName(string name)
-    {
-        var sb = new StringBuilder();
-
-        for (int i = 0; i < name.Length; i++)
-        {
-            var c = name[i];
-
-            if (char.IsUpper(c))
-            {
-                if (i > 0) sb.Append('_');
-                sb.Append(char.ToLowerInvariant(c));
-            }
-            else
-            {
-                sb.Append(c);
-            }
-        }
-
-        return sb.ToString();
+        enemies = result;
     }
 }

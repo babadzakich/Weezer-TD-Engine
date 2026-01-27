@@ -23,7 +23,7 @@ public sealed class ArgConfig
 }
 
 /// <summary>
-/// DTO for specific bullet. Class + values for constructor
+/// DTO for specific object. Class + values for constructor
 /// </summary>
 public sealed class TypeSpecification
 {
@@ -36,4 +36,29 @@ public sealed class ArgValueSpec
 {
     public string Name { get; set; }
     public JsonElement Value { get; set; }
+}
+
+public sealed class SnakeCaseNamingPolicy : JsonNamingPolicy
+{
+    public override string ConvertName(string name)
+    {
+        var sb = new StringBuilder();
+
+        for (int i = 0; i < name.Length; i++)
+        {
+            var c = name[i];
+
+            if (char.IsUpper(c))
+            {
+                if (i > 0) sb.Append('_');
+                sb.Append(char.ToLowerInvariant(c));
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+
+        return sb.ToString();
+    }
 }

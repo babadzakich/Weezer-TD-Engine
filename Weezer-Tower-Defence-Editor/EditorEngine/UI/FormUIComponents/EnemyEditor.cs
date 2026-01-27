@@ -13,12 +13,12 @@ using MonoGame.Extended;
 
 namespace EditorEngine.UI;
 
-public class DamageDealerEditor : IShowable
+public class EnemyEditor : IShowable
 {
     private readonly int top = 50, left = 50, width = 500, height = 800;
 
     private readonly InputField nameField;
-    private readonly SelectorFieldForm damageDealerSelector;
+    private readonly SelectorFieldForm enemySelector;
     private FormComponent form;
 
     public bool isShown = false;
@@ -27,9 +27,9 @@ public class DamageDealerEditor : IShowable
     private string name = "";
     private string selectedDamageDealer = "";
 
-    public DamageDealerEditor()
+    public EnemyEditor()
     {
-        var damageDealerNames = DamageDealers.DamageDealerRegistry.Instance
+        var damageDealerNames = EnemyRegistry.Instance
             .behaviorDescriptions
             .Values
             .Select(x => x.Name)
@@ -38,9 +38,9 @@ public class DamageDealerEditor : IShowable
         var current_top = top;
         nameField = new InputField(current_top + 10, left + 10, width-20, 40, "nameField", "string", onNameUpdate, "");
         current_top += 60;
-        damageDealerSelector = new SelectorFieldForm(current_top + 10, left + 10, width-20, 40, "damageDealer", damageDealerNames, onDamageDealerSelect);
-        current_top += 60;
-        form = new FormComponent(current_top, left, width, height, "Damage Dealer Editor", arguments, onSaveClick);
+        enemySelector = new SelectorFieldForm(current_top + 10, left + 10, width-20, 40, "enemy", damageDealerNames, onDamageDealerSelect);
+        current_top += 60 * damageDealerNames.Count;
+        form = new FormComponent(current_top, left, width, height, "Enemy Editor", arguments, onSaveClick);
         form_top = current_top;
 
     }
@@ -48,14 +48,14 @@ public class DamageDealerEditor : IShowable
     private void onDamageDealerSelect(string selected, string id)
     {
         selectedDamageDealer = selected;
-        var behaviorConfig = DamageDealers.DamageDealerRegistry.Instance
+        var behaviorConfig = EnemyRegistry.Instance
             .behaviorDescriptions
             .Values
             .FirstOrDefault(x => x.Name == selected);
         if (behaviorConfig != null)
         {
             arguments = behaviorConfig.Args;
-            form = new FormComponent(form_top, left, width, height, "Damage Dealer Editor", arguments, onSaveClick);
+            form = new FormComponent(form_top, left, width, height, "Enemy Editor", arguments, onSaveClick);
         }
     }
 
@@ -66,7 +66,7 @@ public class DamageDealerEditor : IShowable
 
     private void onSaveClick(List<ArgValueSpec> argValues, string id)
     {
-        var className = DamageDealers.DamageDealerRegistry.Instance
+        var className = EnemyRegistry.Instance
             .behaviorDescriptions
             .Values
             .FirstOrDefault(x => x.Name == selectedDamageDealer)?
@@ -79,7 +79,7 @@ public class DamageDealerEditor : IShowable
             "WeezerTowerDefence",
             "Editor",
             "custom",
-            "damageDealers",
+            "enemies",
             "configs"
         );
 
@@ -97,13 +97,13 @@ public class DamageDealerEditor : IShowable
 
         File.WriteAllText(jsonPath, jsonString);
 
-        DamageDealers.DamageDealerRegistry.Instance.Update();
+        EnemyRegistry.Instance.Update();
     }
 
     public void Update(MouseState mouse, KeyboardState keyboard)
     {
         nameField.Update(mouse, keyboard);
-        damageDealerSelector.Update(mouse, keyboard);
+        enemySelector.Update(mouse, keyboard);
         form.Update(mouse, keyboard);
     }
 
@@ -113,7 +113,7 @@ public class DamageDealerEditor : IShowable
         sb.Draw(pixel, new Rectangle(left, top, width, height), new Color(40, 40, 60, 220));
 
         nameField.Draw(sb, font, pixel);
-        damageDealerSelector.Draw(sb, font, pixel);
+        enemySelector.Draw(sb, font, pixel);
         form.Draw(sb, font, pixel);
     }
 
@@ -125,7 +125,7 @@ public class DamageDealerEditor : IShowable
     public bool IsAnyFieldActive()
     {
         if (nameField.IsAnyFieldActive()) return true;
-        if (damageDealerSelector.IsAnyFieldActive()) return true;
+        if (enemySelector.IsAnyFieldActive()) return true;
         if (form.IsAnyFieldActive()) return true;
 
         return false;

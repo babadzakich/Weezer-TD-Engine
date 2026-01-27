@@ -7,29 +7,27 @@ using System.Text;
 using System.Text.Json;
 using SimulationEngine.Persistence;
 
-namespace EditorEngine.DamageDealers;
 
-
-public class DamageDealerRegistry
+public class TowerRegistry
 {
-    private static DamageDealerRegistry _instance;
-    public static DamageDealerRegistry Instance => _instance ??= new DamageDealerRegistry();
-    private DamageDealerRegistry()
+    private static TowerRegistry _instance;
+    public static TowerRegistry Instance => _instance ??= new TowerRegistry();
+    private TowerRegistry()
     {
-        loadDamageDealerClasses();
-        loadDamageDealerConfigs();
+        loadTowersClasses();
+        loadTowersConfigs();
     }
 
     public void Update()
     {
-        damageDealers = new();
-        loadDamageDealerConfigs();
+        towers = new();
+        loadTowersConfigs();
     }
 
 
     public Dictionary<string, BehaviorConfig> behaviorDescriptions = new();
     public Dictionary<string, Type> behaviors = new();
-    public Dictionary<string, TypeSpecification> damageDealers = new();
+    public Dictionary<string, List<TypeSpecification>> towers = new();
 
 
 
@@ -38,7 +36,7 @@ public class DamageDealerRegistry
     /// It uses json files to find out which dll to load and which class to look for
     /// Also json-s describe constructor arguments
     /// </summary>
-    private void loadDamageDealerClasses()
+    private void loadTowersClasses()
     {
 
         var jsonRoot = System.IO.Path.Combine(
@@ -46,7 +44,7 @@ public class DamageDealerRegistry
             "WeezerTowerDefence",
             "Editor",
             "custom",
-            "damageDealers",
+            "towers",
             "behaviors"
         );
         var jsonOptions = new JsonSerializerOptions
@@ -60,6 +58,7 @@ public class DamageDealerRegistry
         foreach (var jsonPath in Directory.EnumerateFiles(jsonRoot, "*.json"))
         {
             var json = File.ReadAllText(jsonPath);
+            Console.WriteLine($"Loading behavior from {jsonPath}");
 
             var config = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
             if (config == null)
@@ -74,7 +73,7 @@ public class DamageDealerRegistry
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "WeezerTowerDefence",
                 "DLLs",
-                "damageDealers",
+                "towers",
                 $"{config.FileName}.dll"
              );
 
@@ -97,16 +96,16 @@ public class DamageDealerRegistry
         }
     }
 
-    private void loadDamageDealerConfigs()
+    private void loadTowersConfigs()
     {
-        var result = new Dictionary<string, TypeSpecification>();
+        var result = new Dictionary<string, List<TypeSpecification>>();
 
         var jsonRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "WeezerTowerDefence",
             "Editor",
             "custom",
-            "damageDealers",
+            "towers",
             "configs"
         );
 
@@ -122,52 +121,27 @@ public class DamageDealerRegistry
         {
             var json = File.ReadAllText(jsonPath);
 
-            var spec = JsonSerializer.Deserialize<TypeSpecification>(json, jsonOptions);
+            var spec = JsonSerializer.Deserialize<List<TypeSpecification>>(json, jsonOptions);
             if (spec == null)
                 throw new Exception($"Failed to parse {jsonPath}");
+            if (spec.Count == 0)
+                throw new Exception($"No tower levels in {jsonPath}");
 
-            Console.WriteLine($"Loaded damage dealer config: {spec}");
-            Console.WriteLine($"  Class: {spec.ClassName}");
-            if (!behaviors.ContainsKey(spec.ClassName))
+            var className = spec[0].ClassName;
+
+            if (!behaviors.ContainsKey(className))
                 throw new Exception(
-                    $"Behavior class '{spec.ClassName}' not found (config: {jsonPath})"
+                    $"Behavior class '{className}' not found (config: {jsonPath})"
                 );
 
-            if (result.ContainsKey(spec.Name))
-                throw new Exception($"Duplicate damage dealer config: {spec.Name}");
+            var name = spec[0].Name;
+            if (result.ContainsKey(name))
+                throw new Exception($"Duplicate damage dealer config: {name}");
 
-            result[spec.Name] = spec;
+            result[name] = spec;
         }
 
-        damageDealers = result;
+        towers = result;
     }
 }
 
-
-
-
-
-public sealed class SnakeCaseNamingPolicy : JsonNamingPolicy
-{
-    public override string ConvertName(string name)
-    {
-        var sb = new StringBuilder();
-
-        for (int i = 0; i < name.Length; i++)
-        {
-            var c = name[i];
-
-            if (char.IsUpper(c))
-            {
-                if (i > 0) sb.Append('_');
-                sb.Append(char.ToLowerInvariant(c));
-            }
-            else
-            {
-                sb.Append(c);
-            }
-        }
-
-        return sb.ToString();
-    }
-}

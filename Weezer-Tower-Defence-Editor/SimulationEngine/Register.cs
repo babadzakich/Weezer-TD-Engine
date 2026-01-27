@@ -15,6 +15,7 @@ class Register {
         copyInbuilt();
         createDLLs();
         var tmp = DamageDealerRegistry.Instance;
+        var tmp_enemies = EnemyRegistry.Instance;
         Console.WriteLine("LOL");
     }
 
