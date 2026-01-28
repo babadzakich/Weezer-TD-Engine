@@ -41,4 +41,10 @@
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Shared_simulation_engine">
+      <HintPath>..\shared_simulation_engine\bin\Release\net9.0\Shared_simulation_engine.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

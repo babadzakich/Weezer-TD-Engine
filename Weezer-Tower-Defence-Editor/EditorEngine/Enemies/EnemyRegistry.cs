@@ -81,11 +81,9 @@ public class EnemyRegistry
                 throw new FileNotFoundException(dllPath);
 
             var assembly = Assembly.LoadFrom(dllPath);
-            Console.WriteLine("BLYAD NU VOT TUT SUKA EST");
             var type = assembly
                 .GetTypes()
                 .FirstOrDefault(t => t.Name == config.ClassName);
-            Console.WriteLine($"{type.Name} ya SHAS UBU SEBYA NAHUY");
             if (type == null)
                 throw new Exception(
                     $"Type {config.ClassName} not found in {dllPath}"
