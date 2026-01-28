@@ -13,7 +13,7 @@ class Register {
     public static void setup() {
         Console.WriteLine("Setting up");
         copyInbuilt();
-        createDLLs();
+        //createDLLs();
         var tmp = DamageDealerRegistry.Instance;
         var tmp_enemies = EnemyRegistry.Instance;
         Console.WriteLine("LOL");

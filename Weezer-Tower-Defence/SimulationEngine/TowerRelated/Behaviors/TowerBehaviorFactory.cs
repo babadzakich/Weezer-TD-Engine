@@ -14,6 +14,9 @@ namespace SimulationEngine.TowerRelated.Behaviors;
 
 class TowerBehaviorFactory
 {
+
+    
+
     public static ITowerBehavior CreateTowerBehavior(LevelLoader.TowerDefinition towerDefinition)
     {
         if (string.IsNullOrEmpty(towerDefinition.ClassName))

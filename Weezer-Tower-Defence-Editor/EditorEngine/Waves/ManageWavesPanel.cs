@@ -140,13 +140,6 @@ public class ManageWavesPanel
         return map.SpawnPoints.Select(s => s.Id).ToList();
     }
 
-    /// <summary>
-    /// Получить доступные типы врагов из реестра
-    /// </summary>
-    public IReadOnlyList<string> GetAvailableEnemyTypeIds()
-    {
-        return EnemyTypeRegistry.Instance.GetAllEnemyTypeIds();
-    }
 
     /// <summary>
     /// Получить информацию о типе врага (для отображения в UI)

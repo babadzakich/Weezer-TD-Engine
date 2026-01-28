@@ -12,12 +12,11 @@ namespace SimulationEngine.TowerRelated;
 public class TowerBehaviorRegistry
 {
     private static TowerBehaviorRegistry _instance;
-    private Dictionary<string, Func<ITowerBehavior>> _behaviorFactories;
+    private Dictionary<string, TypeSpecification> _behaviorFactories = new();
 
     private TowerBehaviorRegistry()
     {
-        _behaviorFactories = new Dictionary<string, Func<ITowerBehavior>>();
-        RegisterDefaultBehaviors();
+        _behaviorFactories = new Dictionary<string, TypeSpecification>();
     }
 
     public static TowerBehaviorRegistry Instance
@@ -30,48 +29,5 @@ public class TowerBehaviorRegistry
         }
     }
 
-    /// <summary>
-    /// Регистрация стандартных поведений
-    /// </summary>
-    private void RegisterDefaultBehaviors()
-    {
-        Register("BasicTowerBehavior", () => new BasicTowerBehavior("basic_tower", "Basic Tower", new SimulationEngine.BulletRelated.Behaviors.StandardBulletBehavior(25f, 10f, 1000f), 100, 150f, 1f));
-        Register("LaserTowerBehavior", () => new LaserTowerBehavior());
-        // Другие поведения можно добавить позже или через плагины
-    }
 
-    /// <summary>
-    /// Регистрация нового поведения (для плагинов)
-    /// </summary>
-    public void Register(string behaviorType, Func<ITowerBehavior> factory)
-    {
-        _behaviorFactories[behaviorType] = factory;
-    }
-
-    /// <summary>
-    /// Создать экземпляр поведения по типу
-    /// </summary>
-    public ITowerBehavior Create(string behaviorType)
-    {
-        if (string.IsNullOrEmpty(behaviorType))
-        {
-            // По умолчанию базовое поведение
-            return new BasicTowerBehavior("basic_tower", "Basic Tower", new SimulationEngine.BulletRelated.Behaviors.StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f);
-        }
-
-        if (_behaviorFactories.TryGetValue(behaviorType, out var factory))
-        {
-            return factory();
-        }
-
-        throw new ArgumentException($"Unknown tower behavior type: {behaviorType}");
-    }
-
-    /// <summary>
-    /// Проверить, зарегистрирован ли тип поведения
-    /// </summary>
-    public bool IsRegistered(string behaviorType)
-    {
-        return _behaviorFactories.ContainsKey(behaviorType);
-    }
 }

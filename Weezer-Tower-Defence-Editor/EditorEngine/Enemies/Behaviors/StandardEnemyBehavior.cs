@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace EditorEngine.Enemies.Behaviors;
+using EditorEngine.Enemies;
 
 /// <summary>
 /// Стандартное поведение - просто идёт по пути

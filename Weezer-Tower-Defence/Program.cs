@@ -1,6 +1,9 @@
 ﻿using System;
+using System.IO;
+using System.Linq;
 using System.Reflection;
-﻿using Microsoft.Xna.Framework;
+using System.Text.Json;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated.Behaviors;
@@ -9,26 +12,60 @@ namespace Weezer_Tower_Defence
 {
     public static class Program
     {
-        static void Main()
+        static void Main(string[] args)
         {
             Console.WriteLine("Starting Weezer Tower Defence...");
 
 
-            //// путь к твоей скомпиленной DLL
-            //string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\towers\BasicTower.dll";
+            //string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\damageDealers\standardBullet.dll";
 
-            //// грузим сборку
-            //Assembly assembly = Assembly.LoadFrom(dllPath);
+            var jsonRoot = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "WeezerTowerDefence",
+            "Editor",
+            "custom",
+            "damageDealers",
+            "behaviors"
+        );
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
 
-            //Type type = assembly.GetType("BasicTowerBehavior");
+            if (!Directory.Exists(jsonRoot))
+                throw new DirectoryNotFoundException(jsonRoot);
 
-            //// создаём экземпляр
-            //dynamic obj = Activator.CreateInstance(type, "hello", "bitch", new StandardBulletBehavior(10, 10, 10), 10, 10, 10)!;
-            //Console.WriteLine(obj.Name);
+            foreach (var jsonPath in Directory.EnumerateFiles(jsonRoot, "*.json"))
+            {
+                var json = File.ReadAllText(jsonPath);
 
+                var config = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
+                if (config == null)
+                    throw new Exception($"Failed to parse {jsonPath}");
 
-            using var game = new Game1();
-            game.Run();
+                var dllPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "WeezerTowerDefence",
+                    "DLLs",
+                    "damageDealers",
+                    $"{config.FileName}.dll"
+                 );
+
+                if (!File.Exists(dllPath))
+                    throw new FileNotFoundException(dllPath);
+
+                var assembly = Assembly.LoadFrom(dllPath);
+
+                var type = assembly
+                    .GetType(config.ClassName);
+
+                Console.WriteLine($"OFF COURSE IT IS NOT NONE: {type.Name}");
+
+                if (type == null)
+                    throw new Exception(
+                        $"Type {config.ClassName} not found in {dllPath}"
+                    );
+            }
         }
     }
 }

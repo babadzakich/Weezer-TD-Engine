@@ -2,13 +2,12 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.BulletRelated;
 using SimulationEngine.EnemyRelated;
-using SimulationEngine.BulletRelated.Behaviors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using SimulationEngine;
 
-namespace SimulationEngine.TowerRelated.Behaviors;
+using SimulationEngine.TowerRelated;
 
 /// <summary>
 /// Базовое поведение башни - стреляет в ближайшего врага

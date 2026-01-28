@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Linq;
+using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.MapRelated;
 using SimulationEngine.WaveRelated;
-using IOPath = System.IO.Path;
 using GamePath = SimulationEngine.MapRelated.Path;
+using IOPath = System.IO.Path;
 
 namespace SimulationEngine;
 
@@ -186,6 +188,14 @@ public class LevelLoader
                 Console.WriteLine("MoneyHealth.json not found, using defaults (100 money, 20 lives)");
             }
 
+
+
+            EnemyRegistry.ResetEnemies(
+                IOPath.Combine(tempDir, "Dlls", "enemies"),
+                IOPath.Combine(tempDir, "enemies", "configs"),
+                IOPath.Combine(tempDir, "enemies", "behaviors")
+                );
+
             // 3. Загружаем определения врагов
             string enemiesDir = IOPath.Combine(tempDir, "Enemies");
             if (Directory.Exists(enemiesDir))
@@ -325,6 +335,30 @@ public class LevelLoader
                 Count = s.Count
             }).ToList()
         }).ToList();
+    }
+
+    private static void LinkDLLs(string rootPath)
+    {
+        if (!Directory.Exists(rootPath))
+        {
+            Console.WriteLine($"Folder not found: {rootPath}");
+            return;
+        }
+
+        foreach (var dllPath in Directory.EnumerateFiles(
+                     rootPath, "*.dll", SearchOption.AllDirectories))
+        {
+            try
+            {
+                Console.WriteLine($"Loading: {dllPath}");
+                var assembly = Assembly.LoadFrom(dllPath);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load {dllPath}: {ex.Message}");
+            }
+        }
     }
 
     private static void LoadEnemyDefinitions(string enemiesDir, Dictionary<string, EnemyDefinition> definitions)

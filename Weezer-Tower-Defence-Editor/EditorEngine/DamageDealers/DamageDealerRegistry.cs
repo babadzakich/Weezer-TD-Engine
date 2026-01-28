@@ -86,6 +86,9 @@ public class DamageDealerRegistry
             var type = assembly
                 .GetTypes()
                 .FirstOrDefault(t => t.Name == config.ClassName);
+
+            Console.WriteLine($"OFF COURSE IT IS NOT NONE: {type.Name}");
+
             if (type == null)
                 throw new Exception(
                     $"Type {config.ClassName} not found in {dllPath}"
