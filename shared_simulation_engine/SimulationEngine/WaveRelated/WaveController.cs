@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.EnemyRelated;
@@ -78,12 +79,11 @@ namespace SimulationEngine.WaveRelated
             {
                 // Создаем копию группы для отслеживания остатка
                 _remainingEnemies.Add(new Wave.EnemyGroup {
-                    Type = group.Type,
                     Count = group.Count,
                     SpawnPoint = group.SpawnPoint,
                     EnemyStringId = group.EnemyStringId
                 });
-                Console.WriteLine($"  - {group.EnemyStringId ?? group.Type.Name}: {group.Count} enemies at spawn {group.SpawnPoint.Id}");
+                Console.WriteLine($"  - {group.EnemyStringId}: {group.Count} enemies at spawn {group.SpawnPoint.Id}");
             }
         }
 
@@ -136,7 +136,7 @@ namespace SimulationEngine.WaveRelated
                 if (group.Count > 0)
                 {
                     SpawnPoint spawnPoint = group.SpawnPoint;
-                    Console.WriteLine($"Trying to spawn {group.EnemyStringId ?? group.Type.Name} at spawn point {spawnPoint.Id}, pathId={spawnPoint.PathId}");
+                    Console.WriteLine($"Trying to spawn {group.EnemyStringId} at spawn point {spawnPoint.Id}, pathId={spawnPoint.PathId}");
                     
                     var path = _gameMap.GetPathById(spawnPoint.PathId);
                     
@@ -154,39 +154,16 @@ namespace SimulationEngine.WaveRelated
                         {
                             Console.WriteLine($"Using factory to create enemy: {group.EnemyStringId}");
                             // Используем фабрику для создания врага по строковому ID
-                            enemy = EnemyTypeFactory.Instance.CreateEnemy(group.EnemyStringId, spawnPoint.Position, path);
+                            IEnemyType enemyType = EnemyRegistry.create(group.EnemyStringId);
+                            enemy = new Enemy(enemyType, spawnPoint.Position, path);
+                            //enemy = EnemyTypeFactory.Instance.CreateEnemy(group.EnemyStringId, spawnPoint.Position, path);
                         }
                         else
                         {
-                            // Старый метод через рефлексию (для совместимости)
-                            IEnemyType newEnemyType = null;
-                            System.Type enemyType = group.Type;
-                            
-                            var constructor = enemyType.GetConstructor(new[] { typeof(Texture2D) });
-                            if (constructor != null)
-                            {
-                                newEnemyType = (IEnemyType)constructor.Invoke(new object[] { _enemyTexture });
-                            }
-                            else
-                            {
-                                var defaultConstructor = enemyType.GetConstructor(System.Type.EmptyTypes);
-                                if (defaultConstructor != null)
-                                {
-                                    newEnemyType = (IEnemyType)defaultConstructor.Invoke(null);
-                                }
-                            }
-                            
-                            if (newEnemyType != null)
-                            {
-                                enemy = new Enemy(newEnemyType, spawnPoint.Position, path);
-                            }
+                            throw new Exception("Group.EnemyStringId is null or empty");
                         }
-                        
-                        if (enemy != null)
-                        {
-                            _enemyController.AddEnemy(enemy);
-                        }
-                        
+
+                        _enemyController.AddEnemy(enemy);
                         group.Count--;
                     }
                     return; // Спавним по одному врагу за раз

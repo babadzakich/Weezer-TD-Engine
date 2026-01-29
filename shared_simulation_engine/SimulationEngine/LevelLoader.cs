@@ -24,6 +24,7 @@ public class LevelLoader
         public GameMap Map { get; set; }
         public List<WaveData> Waves { get; set; }
         public Dictionary<string, EnemyDefinition> EnemyDefinitions { get; set; }
+        public List<string> TowerNames { get; set; }
         public Dictionary<string, TowerDefinition> TowerDefinitions { get; set; }
         public Dictionary<string, DamageDealerDefinition> DamageDealerDefinitions { get; set; }
         public MoneyHealthSettings MoneyHealthSettings { get; set; }
@@ -192,9 +193,24 @@ public class LevelLoader
 
             EnemyRelated.EnemyRegistry.ResetEnemies(
                 IOPath.Combine(tempDir, "Dlls", "enemies"),
-                IOPath.Combine(tempDir, "enemies", "configs"),
-                IOPath.Combine(tempDir, "enemies", "behaviors")
+                IOPath.Combine(tempDir, "Enemies", "configs"),
+                IOPath.Combine(tempDir, "Enemies", "behaviors")
                 );
+
+            BulletRelated.DamageDealerRegistry.Reset(
+                IOPath.Combine(tempDir, "Dlls", "damageDealers"),
+                IOPath.Combine(tempDir, "DamageDealers", "configs"),
+                IOPath.Combine(tempDir, "DamageDealers", "behaviors")
+                );
+
+            TowerRelated.TowerBehaviorRegistry.Reset(
+                IOPath.Combine(tempDir, "Dlls", "towers"),
+                IOPath.Combine(tempDir, "towers", "configs"),
+                IOPath.Combine(tempDir, "towers", "behaviors")
+                );
+
+            level.TowerNames = TowerRelated.TowerBehaviorRegistry.typeSpecsRegistry.Keys.ToList();
+
 
             // 3. Загружаем определения врагов
             string enemiesDir = IOPath.Combine(tempDir, "Enemies");
@@ -337,29 +353,6 @@ public class LevelLoader
         }).ToList();
     }
 
-    private static void LinkDLLs(string rootPath)
-    {
-        if (!Directory.Exists(rootPath))
-        {
-            Console.WriteLine($"Folder not found: {rootPath}");
-            return;
-        }
-
-        foreach (var dllPath in Directory.EnumerateFiles(
-                     rootPath, "*.dll", SearchOption.AllDirectories))
-        {
-            try
-            {
-                Console.WriteLine($"Loading: {dllPath}");
-                var assembly = Assembly.LoadFrom(dllPath);
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to load {dllPath}: {ex.Message}");
-            }
-        }
-    }
 
     private static void LoadEnemyDefinitions(string enemiesDir, Dictionary<string, EnemyDefinition> definitions)
     {

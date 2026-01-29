@@ -112,8 +112,7 @@ public class Game1 : Game
                 }
             }
             
-            // Загружаем определения врагов в фабрику
-            EnemyTypeFactory.Instance.LoadEnemyTypesFromLevel(loadedLevel.EnemyDefinitions);
+
             
             // Загружаем волны из уровня
             foreach (var waveData in loadedLevel.Waves)
@@ -143,7 +142,8 @@ public class Game1 : Game
                 gameMap, 
                 startingMoney,
                 startingLives,
-                towerController, 
+                towerController,
+                loadedLevel.TowerNames,
                 loadedLevel.TowerDefinitions,
                 waveController, 
                 enemyController,
@@ -336,7 +336,7 @@ public class Game1 : Game
             }
 
             // Получаем определение врага
-            var enemyDef = EnemyTypeFactory.Instance.GetEnemyDefinition(spawn.EnemyTypeId);
+            var enemyDef = EnemyRegistry.create(spawn.EnemyTypeId);
             if (enemyDef == null)
             {
                 Console.WriteLine($"Warning: Enemy definition {spawn.EnemyTypeId} not found");
@@ -345,7 +345,7 @@ public class Game1 : Game
 
             // Используем BasicEnemyType как placeholder тип, но сохраняем строковый ID
             // WaveController будет использовать строковый ID для создания правильных врагов через фабрику
-            wave.AddEnemy(typeof(BasicEnemyType), spawn.Count, spawnPoint, spawn.EnemyTypeId);
+            wave.AddEnemy(spawn.EnemyTypeId, spawn.Count, spawnPoint, spawn.EnemyTypeId);
             Console.WriteLine($"Added to wave {waveData.Index}: {spawn.Count}x {spawn.EnemyTypeId} at {spawn.SpawnPointId}");
         }
         

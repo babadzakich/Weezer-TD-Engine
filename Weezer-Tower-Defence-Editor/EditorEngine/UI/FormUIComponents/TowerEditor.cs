@@ -78,7 +78,7 @@ public class TowerEditor : IShowable
                 .ToList();
             for (int i = 0; i < levelForm.Count; i++)
             {
-                levelForm[i] = new FormComponent(form_top, left + form_width*i, form_width, form_height, $"{i}", arguments, onSaveClick);
+                levelForm[i] = new FormComponent(form_top, left + form_width*i, form_width, form_height, $"{i }", arguments, onSaveClick);
             }
         }
     }
@@ -113,7 +113,7 @@ public class TowerEditor : IShowable
 
     private void onSaveClickButton()
     {
-        var className = EnemyRegistry.Instance
+        var className = TowerRegistry.Instance
             .behaviorDescriptions
             .Values
             .FirstOrDefault(x => x.Name == selectedDamageDealer)?

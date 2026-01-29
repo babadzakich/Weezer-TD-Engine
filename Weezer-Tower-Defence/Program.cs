@@ -12,18 +12,19 @@ namespace Weezer_Tower_Defence
     {
         static void Main()
         {
-            //Console.WriteLine("Starting Weezer Tower Defence...");
+            Console.WriteLine("Starting Weezer Tower Defence...");
 
 
             //// путь к твоей скомпиленной DLL
-            //string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\damageDealers\standardBullet.dll";
+            ////string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\damageDealers\standardBullet.dll";
+            //string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\enemies\basicEnemy.dll";
 
             //// грузим сборку
             //Assembly assembly = Assembly.LoadFrom(dllPath);
 
             //var types = assembly.GetTypes().ToList();
-            //for (var typel in types)
-            //{ }
+            //foreach (var typle in types)
+            //{ Console.WriteLine(typle.FullName); }
 
 
             //Type type = assembly.GetType("StandardBulletBehavior");

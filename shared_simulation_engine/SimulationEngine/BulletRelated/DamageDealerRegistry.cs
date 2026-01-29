@@ -10,30 +10,31 @@ using SimulationEngine.EnemyRelated;
 using SimulationEngine.Persistence;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxTokenParser;
 
-namespace SimulationEngine.EnemyRelated;
-public class EnemyRegistry
+namespace SimulationEngine.BulletRelated;
+
+public class DamageDealerRegistry
 {
     private static Dictionary<string, Type> typeRegistry = new();
     private static Dictionary<string, BehaviorConfig> typeBehaviorRegistry = new();
     private static Dictionary<string, TypeSpecification> typeSpecsRegistry = new();
 
 
-    public static IEnemyType create(string name)
+    public static IDamageDealerBehavior create(string name)
     {
         var spec = typeSpecsRegistry[name];
         var type = typeRegistry[spec.ClassName];
         var behavior = typeBehaviorRegistry[spec.ClassName];
 
-        IEnemyType instance;
+        IDamageDealerBehavior instance;
         if (spec.Args.Count == 0)
-            instance = (IEnemyType)Activator.CreateInstance(type);
+            instance = (IDamageDealerBehavior)Activator.CreateInstance(type);
         else
-            instance = (IEnemyType)Activator.CreateInstance(type, createArgs(behavior, spec));
+            instance = (IDamageDealerBehavior)Activator.CreateInstance(type, createArgs(behavior, spec));
 
         return instance;
     }
 
-    public static void ResetEnemies(string dllsDir, string configsDir, string behaviorDescriptionsDir)
+    public static void Reset(string dllsDir, string configsDir, string behaviorDescriptionsDir)
     {
         typeBehaviorRegistry = loadConfigs(behaviorDescriptionsDir);
 

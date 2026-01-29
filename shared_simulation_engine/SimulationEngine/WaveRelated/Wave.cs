@@ -8,7 +8,6 @@ public class Wave
 {
     public class EnemyGroup
     {
-        public System.Type Type { get; set; }
         public int Count { get; set; }
         public SpawnPoint SpawnPoint { get; set; }
         public string EnemyStringId { get; set; }
@@ -23,22 +22,21 @@ public class Wave
         EnemyGroups = new List<EnemyGroup>();
     }
 
-    public void AddEnemy(System.Type enemyType, int count, SpawnPoint spawnPoint)
+    public void AddEnemy(string enemyType, int count, SpawnPoint spawnPoint)
     {
         EnemyGroups.Add(new EnemyGroup { 
-            Type = enemyType, 
             Count = count, 
-            SpawnPoint = spawnPoint 
+            SpawnPoint = spawnPoint,
+            EnemyStringId = enemyType
         });
     }
     
-    public void AddEnemy(System.Type enemyType, int count, SpawnPoint spawnPoint, string enemyStringId)
+    public void AddEnemy(string enemyType, int count, SpawnPoint spawnPoint, string enemyStringId)
     {
         EnemyGroups.Add(new EnemyGroup { 
-            Type = enemyType, 
             Count = count, 
-            SpawnPoint = spawnPoint, 
-            EnemyStringId = enemyStringId 
+            SpawnPoint = spawnPoint,
+            EnemyStringId=enemyType
         });
     }
 }

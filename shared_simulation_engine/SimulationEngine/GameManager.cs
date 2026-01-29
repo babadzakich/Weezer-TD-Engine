@@ -52,17 +52,17 @@ public class GameManager
         _instance = null;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, List<string> towerNames, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, startingMoney, startingLives, towerController, towerDefinitions, waveController, enemyController, damageDealerController);
+        _instance = new GameManager(screenWidth, screenHeight, map, startingMoney, startingLives, towerController, towerNames, towerDefinitions, waveController, enemyController, damageDealerController);
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    private GameManager(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, List<string> towerNames, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
@@ -81,12 +81,9 @@ public class GameManager
         Map.DefensePoints[0].Health = startingLives;
 
         // Добавляем доступные башни в UI
-        if (towerDefinitions != null)
+        foreach (var towerName in towerNames)
         {
-            foreach (var towerDefinition in towerDefinitions.Values)
-            {
-                UIManager.AddAvailableTower(TowerBehaviorFactory.CreateTowerBehavior(towerDefinition));
-            }
+            UIManager.AddAvailableTower(TowerRelated.TowerBehaviorRegistry.create(towerName));
         }
 
         // Добавляем стандартную базовую башню

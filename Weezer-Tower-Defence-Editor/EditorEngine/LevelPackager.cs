@@ -58,13 +58,12 @@ public static class LevelPackager
                 "WeezerTowerDefence",
                 "Editor",
                 "custom",
-                "enemies",
-                "configs"
+                "enemies"
             );
 
             string enemiesDir = IOPath.Combine(levelDir, "Enemies");
 
-            hardCopy(originalEnemiesDir, enemiesDir);
+            hardCopyJson(originalEnemiesDir, enemiesDir);
 
             // 4. Создаём папку для башен
             string originalTowersDir = System.IO.Path.Combine(
@@ -72,13 +71,13 @@ public static class LevelPackager
                 "WeezerTowerDefence",
                 "Editor",
                 "custom",
-                "towers",
-                "configs"
+                "towers"
             );
 
             string towersDir = IOPath.Combine(levelDir, "Towers");
 
             hardCopy(originalTowersDir, towersDir);
+            
 
             // 5. Создаём папку для damage dealers
             string originalDamageDealersDir = System.IO.Path.Combine(
@@ -86,8 +85,7 @@ public static class LevelPackager
                  "WeezerTowerDefence",
                  "Editor",
                  "custom",
-                 "damageDealers",
-                 "configs"
+                 "damageDealers"
              );
 
             string damageDealersDir = IOPath.Combine(levelDir, "DamageDealers");
@@ -166,4 +164,30 @@ public static class LevelPackager
             File.Copy(file, targetPath);
         }
     }
+
+    private static void hardCopyJson(string source, string dest)
+    {
+        if (Directory.Exists(dest))
+        {
+            Directory.Delete(dest, recursive: true);
+        }
+
+        Directory.CreateDirectory(dest);
+
+        foreach (var dir in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            var relativeDir = IOPath.GetRelativePath(source, dir);
+            var targetDir = IOPath.Combine(dest, relativeDir);
+            Directory.CreateDirectory(targetDir);
+        }
+
+        foreach (var file in Directory.GetFiles(source, "*.json", SearchOption.AllDirectories))
+        {
+            var relativePath = IOPath.GetRelativePath(source, file);
+            var targetPath = IOPath.Combine(dest, relativePath);
+
+            File.Copy(file, targetPath, overwrite: true);
+        }
+    }
+
 }
