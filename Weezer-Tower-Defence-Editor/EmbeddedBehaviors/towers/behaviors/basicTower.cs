@@ -8,10 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SimulationEngine;
 
-using SimulationEngine.TowerRelated.Behaviors;
-using SimulationEngine.TowerRelated;
-using SimulationEngine.EnemyRelated;
-using SimulationEngine.BulletRelated;
+namespace SimulationEngine.TowerRelated.Behaviors;
 
 /// <summary>
 /// Базовое поведение башни - стреляет в ближайшего врага
@@ -25,6 +22,7 @@ public class BasicTowerBehavior : ITowerBehavior
     public int Cost { get; }
     public float Range { get; }
     public float FireRate { get; }
+    public LevelLoader.TowerDefinition Definition { get; set; }
     private SimulationEngine.EnemyRelated.Enemy _currentTarget;
 
     public BasicTowerBehavior(string id, string name, IDamageDealerBehavior projectileConfig, int cost, float range, float fireRate)
@@ -37,19 +35,19 @@ public class BasicTowerBehavior : ITowerBehavior
         FireRate = fireRate;
     }
 
-    
+
 
     public Vector2? FindTarget(Tower tower, EnemyController enemies)
     {
-        
+
         if (_currentTarget != null)
         {
-            if (Vector2.Distance(_currentTarget.Position, tower.Position) > Range) 
+            if (Vector2.Distance(_currentTarget.Position, tower.Position) > Range)
                 _currentTarget = null;
             else
                 return _currentTarget.Position;
         }
-        
+
         Enemy furthestEnemy = null;
         float smallestDistanceToGoal = float.MaxValue;
 
@@ -73,7 +71,7 @@ public class BasicTowerBehavior : ITowerBehavior
                 }
             }
         }
-        
+
         return furthestEnemy?.Position;
     }
 
@@ -81,7 +79,7 @@ public class BasicTowerBehavior : ITowerBehavior
     {
         // Создаём пулю в направлении цели
         Vector2 direction = Vector2.Normalize(targetPosition - tower.Position);
-        
+
         var bullet = new DamageDealer(projectileConfig, tower.Position, direction, projectileConfig.HitRadius);
         GameManager.GetInstance().DamageDealerController?.AddDamageDealer(bullet);
     }
@@ -91,37 +89,38 @@ public class BasicTowerBehavior : ITowerBehavior
         if (texture == null) texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
         // Рисуем радиус атаки
         DrawRangeCircle(spriteBatch, tower.Position, Range, new Color(255, 255, 255, 50));
-        
+
         // Рисуем башню
         spriteBatch.Draw(texture, tower.Position, null, Color.White, 0f,
             new Vector2(texture.Width / 2f, texture.Height / 2f), 1f, SpriteEffects.None, 0f);
     }
-    
+
     private void DrawRangeCircle(SpriteBatch spriteBatch, Vector2 center, float radius, Color color)
     {
         int segments = 64;
         Texture2D pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
         pixel.SetData(new[] { Color.White });
-        
+
         for (int i = 0; i < segments; i++)
         {
             float angle1 = (float)(2 * Math.PI * i / segments);
             float angle2 = (float)(2 * Math.PI * (i + 1) / segments);
-            
+
             Vector2 p1 = center + new Vector2((float)Math.Cos(angle1), (float)Math.Sin(angle1)) * radius;
             Vector2 p2 = center + new Vector2((float)Math.Cos(angle2), (float)Math.Sin(angle2)) * radius;
-            
+
             DrawLine(spriteBatch, pixel, p1, p2, color, 2f);
         }
     }
-    
+
     private void DrawLine(SpriteBatch spriteBatch, Texture2D pixel, Vector2 start, Vector2 end, Color color, float thickness)
     {
         Vector2 edge = end - start;
         float angle = (float)Math.Atan2(edge.Y, edge.X);
-        
+
         spriteBatch.Draw(pixel,
             new Rectangle((int)start.X, (int)start.Y, (int)edge.Length(), (int)thickness),
             null, color, angle, new Vector2(0, 0.5f), SpriteEffects.None, 0);
     }
 }
+

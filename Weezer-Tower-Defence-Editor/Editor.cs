@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using EditorEngine;
 using System;
+using System.IO;
 
 namespace Weezer_Tower_Defence;
 
@@ -18,8 +19,17 @@ public class Editor : Game
 
     public Editor()
     {
+
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        var targetRoot = Path.Combine(
+            appData,
+            "WeezerTowerDefence",
+            "common"
+        );
+
         graphics = new GraphicsDeviceManager(this);
-        Content.RootDirectory = "Content";
+        Content.RootDirectory = $"{targetRoot}";
         IsMouseVisible = true;
         
         // Разрешаем изменение размера окна

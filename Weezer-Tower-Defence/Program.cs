@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System.Reflection;
 using SimulationEngine.BulletRelated.Behaviors;
 
 namespace Weezer_Tower_Defence
@@ -15,17 +15,23 @@ namespace Weezer_Tower_Defence
             Console.WriteLine("Starting Weezer Tower Defence...");
 
 
-            // путь к твоей скомпиленной DLL
-            string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\towers\BasicTower.dll";
+            //// путь к твоей скомпиленной DLL
+            ////string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\damageDealers\standardBullet.dll";
+            //string dllPath = @"C:\Users\vanam\AppData\Roaming\WeezerTowerDefence\DLLs\enemies\basicEnemy.dll";
 
-            // грузим сборку
-            Assembly assembly = Assembly.LoadFrom(dllPath);
+            //// грузим сборку
+            //Assembly assembly = Assembly.LoadFrom(dllPath);
 
-            Type type = assembly.GetType("BasicTowerBehavior");
+            //var types = assembly.GetTypes().ToList();
+            //foreach (var typle in types)
+            //{ Console.WriteLine(typle.FullName); }
 
-            // создаём экземпляр
-            dynamic obj = Activator.CreateInstance(type, "hello", "bitch", new StandardBulletBehavior(10, 10, 10), 10, 10, 10)!;
-            Console.WriteLine(obj.Name);
+
+            //Type type = assembly.GetType("StandardBulletBehavior");
+
+            //// создаём экземпляр
+            //dynamic obj = Activator.CreateInstance(type, "hello", "bitch", new StandardBulletBehavior(10, 10, 10), 10, 10, 10)!;
+            //Console.WriteLine(obj.Name);
 
 
             using var game = new Game1();

@@ -26,10 +26,12 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<Compile Remove ="EmbeddedBehaviors/**/*" />
-		<Compile Remove ="PrecompiledDLLs/**/*" />
+		<Compile Remove="EmbeddedBehaviors/**/*" />
+		<Compile Remove="PrecompiledDLLs/**/*" />
+		<Compile Remove="Content/**/*" />
 		<EmbeddedResource Include="EmbeddedBehaviors/**/*" />
 		<EmbeddedResource Include="PrecompiledDLLs/**/*" />
+		<EmbeddedResource Include="Content/**/*" />
 	</ItemGroup>  	
 	
   <ItemGroup>
@@ -37,7 +39,13 @@
     <Compile Remove="Content/**/*.cs" />
   </ItemGroup>
 
-  <ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="EditorEngine\DamageDealers\Types\" />
+		<Folder Include="EmbeddedBehaviors\" />
+	</ItemGroup>
+
+	<ItemGroup>
     <!-- Зависимости MonoGame -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="MonoGame.Extended" Version="3.8.0" />
@@ -45,7 +53,11 @@
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
   </ItemGroup>
 
+  
+
   <ItemGroup>
-    <Folder Include="EmbeddedBehaviors\" />
+    <Reference Include="Shared_simulation_engine">
+      <HintPath>..\shared_simulation_engine\bin\Release\net9.0\Shared_simulation_engine.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

@@ -13,7 +13,9 @@ namespace EditorEngine;
 
 public class LevelEditor
 {
-    private TowerEditorPanel towerPanel;
+    private TowerEditor towerPanel;
+    private DamageDealerEditor damageDealerEditor;
+    private EnemyEditor enemyEditor;
     private UITextField levelNameField;
     private MoneyHealthEditor moneyHealthPanel;
 
@@ -53,7 +55,9 @@ public class LevelEditor
 
     public LevelEditor(ContentManager content, int screenWidth, int screenHeight)
     {
-        towerPanel = new TowerEditorPanel();
+        towerPanel = new TowerEditor();
+        enemyEditor = new EnemyEditor();
+        damageDealerEditor = new DamageDealerEditor();
         levelNameField = new UITextField(new Rectangle(320, 10, 150, 30), "level_1");
         moneyHealthPanel = new MoneyHealthEditor();
 
@@ -78,9 +82,19 @@ public class LevelEditor
         moneyHealthPanel.Update(mouseState, keyboardState);
         levelNameField.Update(mouseState, keyboardState);
 
-        if (towerPanel.IsOpen)
+        if (towerPanel.isShown)
         {
-            towerPanel.Update(mouseState, keyboardState, previousMouseState);
+            towerPanel.Update(mouseState, keyboardState);
+        }
+
+        if (damageDealerEditor.isShown)
+        {
+            damageDealerEditor.Update(mouseState, keyboardState);
+        }
+
+        if(enemyEditor.isShown) 
+        {
+            enemyEditor.Update(mouseState, keyboardState);
         }
 
         if (!IsAnyTextFieldActive())
@@ -89,6 +103,19 @@ public class LevelEditor
             {
                 towerPanel.Toggle();
             }
+
+            if(keyboardState.IsKeyDown(Keys.Y) && previousKeyboardState.IsKeyUp(Keys.Y))
+            {
+                damageDealerEditor.Toggle();
+            }
+
+            if(keyboardState.IsKeyDown(Keys.L) && previousKeyboardState.IsKeyUp(Keys.L))
+            {
+                Console.WriteLine("Toggling Enemy Editor");
+                enemyEditor.Toggle();
+            }
+
+
 
             if (keyboardState.IsKeyDown(Keys.M) && previousKeyboardState.IsKeyUp(Keys.M))
             {
@@ -184,16 +211,18 @@ public class LevelEditor
 
     private bool IsAnyTextFieldActive()
     {
-        return levelNameField.IsActive || moneyHealthPanel.IsAnyFieldActive() || towerPanel.IsAnyFieldActive();
+        return (levelNameField.IsActive || moneyHealthPanel.IsAnyFieldActive() 
+            || towerPanel.IsAnyFieldActive() || damageDealerEditor.IsAnyFieldActive() 
+            || enemyEditor.IsAnyFieldActive());
     }
 
     private void HandleMouseInput(MouseState mouseState)
     {
         // Если панель редактора башен открыта и мышь над ней - игнорируем ввод для карты
-        if (towerPanel.IsOpen && towerPanel.GetBounds().Contains(mouseState.Position))
-        {
-            return;
-        }
+        //if (towerPanel.IsOpen && towerPanel.GetBounds().Contains(mouseState.Position))
+        //{
+        //    return;
+        //}
 
         // Toolbar buttons click handling
         int toolbarX = 10;
@@ -248,8 +277,7 @@ public class LevelEditor
         {
             if (enemySelectionPanel.IsOpen)
             {
-                enemySelectionPanel.HandleClick(mouseState.Position, 
-                    wavesPanel.GetAllEnemyConfigs(), 
+                enemySelectionPanel.HandleClick(mouseState.Position,
                     wavesPanel.GetAvailableSpawnPointIds());
                 return;
             }
@@ -369,16 +397,24 @@ public class LevelEditor
 
         moneyHealthPanel.Draw(spriteBatch, defaultFont, pixel);
 
-        if (towerPanel.IsOpen)
+        if (towerPanel.isShown)
             towerPanel.Draw(spriteBatch, defaultFont, pixel);
+
+        if (damageDealerEditor.isShown)
+        {
+            damageDealerEditor.Draw(spriteBatch, defaultFont, pixel);
+        }
+
+        if (enemyEditor.isShown) 
+        {
+            enemyEditor.Draw(spriteBatch, defaultFont, pixel);
+        }
 
         if (wavesPanel.IsOpen)
             DrawWavesPanel(spriteBatch, pixel);
 
         if (enemySelectionPanel.IsOpen)
-            enemySelectionPanel.Draw(spriteBatch, defaultFont, pixel, 
-                wavesPanel.GetAllEnemyConfigs(), 
-                wavesPanel.GetAvailableSpawnPointIds());
+            enemySelectionPanel.Draw(spriteBatch, defaultFont, pixel, wavesPanel.GetAvailableSpawnPointIds());
 
     }
 
@@ -707,7 +743,14 @@ public class LevelEditor
             currentMap.Name = levelId;
             waveSet.MapId = levelId;
 
-            string outputPath = $"Content/{currentMap.Id}.zip";
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            var outputPath = System.IO.Path.Combine(
+                appData,
+                "WeezerTowerDefence",
+                "Levels",
+                $"{currentMap.Id}.zip"
+            );
             LevelPackager.PackLevel(currentMap, waveSet, outputPath);
             Console.WriteLine($"Level packed successfully to: {outputPath}");
             statusMessage = $"Level packed to {currentMap.Id}.zip!";

@@ -48,9 +48,7 @@ public class EnemySelectionPanel
             Open();
     }
 
-    public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel, 
-                     IReadOnlyList<EnemyConfig> enemyConfigs,
-                     IReadOnlyList<string> spawnPointIds)
+    public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel, IReadOnlyList<string> spawnPointIds)
     {
         if (!IsOpen) return;
 
@@ -68,24 +66,24 @@ public class EnemySelectionPanel
         sb.DrawString(font, "Enemy Type:", new Vector2(panelRect.X + 10, y), Color.White);
         y += 25;
 
-        if (enemyConfigs.Count == 0)
+        EnemyRegistry enemyRegistry = EnemyRegistry.Instance;
+        Dictionary<string, TypeSpecification> enemies = enemyRegistry.enemies;
+
+        if (enemies.Keys.Count == 0)
         {
-            sb.DrawString(font, "No enemies found in Content/Enemies!", new Vector2(panelRect.X + 10, y), Color.Red);
+            sb.DrawString(font, "No enemies found. Create one beforehand", new Vector2(panelRect.X + 10, y), Color.Red);
             y += 30;
         }
         else
         {
-            foreach (var config in enemyConfigs)
+            foreach (var enemy in enemies.Keys)
             {
-                Color buttonColor = selectedEnemyTypeId == config.Id ? Color.Green : Color.Gray;
+                Color buttonColor = selectedEnemyTypeId == enemy ? Color.Green : Color.Gray;
                 Rectangle enemyRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 35);
                 sb.Draw(pixel, enemyRect, buttonColor * 0.6f);
                 
                 // Информация о враге с его поведением
-                var behavior = EnemyBehaviorRegistry.Instance.GetBehavior(config.BehaviorId);
-                string behaviorName = behavior?.BehaviorName ?? config.BehaviorId;
-                string info = $"{config.DisplayName} [{behaviorName}] (HP:{config.BaseHealth} SPD:{config.BaseSpeed:F0} DMG:{config.Damage})";
-                sb.DrawString(font, info, new Vector2(enemyRect.X + 5, enemyRect.Y + 8), Color.White);
+                sb.DrawString(font, enemy, new Vector2(enemyRect.X + 5, enemyRect.Y + 8), Color.White);
                 
                 y += 40;
             }
@@ -156,8 +154,7 @@ public class EnemySelectionPanel
         }
     }
 
-    public void HandleClick(Point mousePosition, 
-                           IReadOnlyList<EnemyConfig> enemyConfigs,
+    public void HandleClick(Point mousePosition,
                            IReadOnlyList<string> spawnPointIds)
     {
         if (!IsOpen) return;
@@ -165,13 +162,16 @@ public class EnemySelectionPanel
 
         int y = panelRect.Y + 50 + 25;
 
+
+        EnemyRegistry enemyRegistry = EnemyRegistry.Instance;
+        Dictionary<string, TypeSpecification> enemies = enemyRegistry.enemies;
         // Проверка кликов по типам врагов
-        foreach (var config in enemyConfigs)
+        foreach (var enemy in enemies.Keys)
         {
             Rectangle enemyRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 35);
             if (enemyRect.Contains(mousePosition))
             {
-                selectedEnemyTypeId = config.Id;
+                selectedEnemyTypeId = enemy;
                 return;
             }
             y += 40;

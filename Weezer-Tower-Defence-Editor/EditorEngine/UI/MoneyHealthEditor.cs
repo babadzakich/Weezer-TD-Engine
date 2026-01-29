@@ -8,7 +8,7 @@ using MonoGame.Extended;
 
 namespace EditorEngine.UI;
 
-public class  MoneyHealthEditor
+public class MoneyHealthEditor
 {
     private int y_offset = 300;
     private int x_offset = 20;
@@ -24,7 +24,7 @@ public class  MoneyHealthEditor
 
     public MoneyHealthEditor()
     {
-        int x = x_offset+ 10, y = y_offset + 10, w = 50, h = 30;
+        int x = x_offset + 10, y = y_offset + 10, w = 50, h = 30;
         moneyField = new(new Rectangle(x_offset + label_offset, y_offset, w, h), money.ToString(), (string x, string y) => { }, "money");
         healthField = new(new Rectangle(x_offset + label_offset, y_offset + field_offset, w, h), health.ToString(), (x, y) => { }, "health");
 
@@ -50,8 +50,8 @@ public class  MoneyHealthEditor
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)
     {
-        int x = x_offset+10;
-        int y = y_offset+10;
+        int x = x_offset + 10;
+        int y = y_offset + 10;
 
 
         DrawLabel(sb, font, "Money:", new Vector2(x_offset, y_offset));
