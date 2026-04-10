@@ -1,0 +1,15 @@
+{
+  "id": "level_1",
+  "name": "Level 1",
+  "width": 1920,
+  "height": 1080,
+  "spawnPoints": [
+    {
+      "id": "spawn_0",
+      "x": 1061,
+      "y": 717
+    }
+  ],
+  "defensePoints": [],
+  "paths": []
+}

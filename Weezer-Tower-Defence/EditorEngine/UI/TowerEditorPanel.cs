@@ -1,0 +1,123 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using SimulationEngine.TowerRelated;
+using EditorEngine.Towers;
+
+namespace EditorEngine.UI;
+
+public class TowerEditorPanel
+{
+    private readonly TowerConfig config;
+
+    private readonly UITextField idField;
+    private readonly UITextField nameField;
+    private readonly UITextField costField;
+    private readonly UITextField rangeField;
+    private readonly UITextField fireRateField;
+    private readonly UITextField damageField;
+    private readonly UITextField behaviorField;
+
+    private readonly UIButton saveButton;
+
+    public bool IsOpen { get; private set; }
+
+    public TowerEditorPanel(TowerConfig config)
+    {
+        this.config = config;
+
+        int x = 20, y = 20, w = 220, h = 26, gap = 34;
+
+        idField       = new(new Rectangle(x, y, w, h), config.Id);
+        nameField     = new(new Rectangle(x, y += gap, w, h), config.Name);
+        costField     = new(new Rectangle(x, y += gap, w, h), config.Cost.ToString());
+        rangeField    = new(new Rectangle(x, y += gap, w, h), config.Range.ToString());
+        fireRateField = new(new Rectangle(x, y += gap, w, h), config.FireRate.ToString());
+        damageField   = new(new Rectangle(x, y += gap, w, h), config.Damage.ToString());
+        behaviorField = new(new Rectangle(x, y += gap, w, h), config.BehaviorType);
+
+        saveButton = new UIButton(
+            new Rectangle(x, y + gap + 10, w, h),
+            "Save Tower",
+            SaveTower
+        );
+    }
+    public void Toggle()
+    {
+        IsOpen = !IsOpen;
+    }
+
+    public void Update(MouseState mouse, KeyboardState keyboard)
+    {
+        if (!IsOpen) return;
+
+        idField.Update(mouse, keyboard);
+        nameField.Update(mouse, keyboard);
+        costField.Update(mouse, keyboard);
+        rangeField.Update(mouse, keyboard);
+        fireRateField.Update(mouse, keyboard);
+        damageField.Update(mouse, keyboard);
+        behaviorField.Update(mouse, keyboard);
+
+        saveButton.Update(mouse);
+    }
+
+    public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)
+{
+    if (!IsOpen) return;
+
+    int panelWidth = 260;
+    int panelHeight = 350;
+    int x = 10;
+    int y = 10;
+
+    // Фон панели
+    sb.Draw(pixel, new Rectangle(x, y, panelWidth, panelHeight), Color.Black * 0.85f);
+
+    int labelOffset = 18;
+    int fieldHeight = 26;
+
+    DrawLabel(sb, font, "Id", new Vector2(x + 4, y + 4));
+    idField.Draw(sb, font, pixel);
+
+    DrawLabel(sb, font, "Name", new Vector2(x + 4, y + 4 + labelOffset * 1));
+    nameField.Draw(sb, font, pixel);
+
+    DrawLabel(sb, font, "Cost", new Vector2(x + 4, y + 4 + labelOffset * 2));
+    costField.Draw(sb, font, pixel);
+
+    DrawLabel(sb, font, "Range", new Vector2(x + 4, y + 4 + labelOffset * 3));
+    rangeField.Draw(sb, font, pixel);
+
+    DrawLabel(sb, font, "Fire Rate", new Vector2(x + 4, y + 4 + labelOffset * 4));
+    fireRateField.Draw(sb, font, pixel);
+
+    DrawLabel(sb, font, "Damage", new Vector2(x + 4, y + 4 + labelOffset * 5));
+    damageField.Draw(sb, font, pixel);
+
+    DrawLabel(sb, font, "Behavior", new Vector2(x + 4, y + 4 + labelOffset * 6));
+    behaviorField.Draw(sb, font, pixel);
+
+    saveButton.Draw(sb, font, pixel);
+}
+    private void DrawLabel(SpriteBatch sb, SpriteFont font, string text, Vector2 pos)
+    {
+        sb.DrawString(font, text, pos, Color.White);
+    }
+
+    private void SaveTower()
+    {
+        config.Id = idField.Text;
+        config.Name = nameField.Text;
+        config.Cost = int.Parse(costField.Text);
+        config.Range = float.Parse(rangeField.Text);
+        config.FireRate = float.Parse(fireRateField.Text);
+        config.Damage = float.Parse(damageField.Text);
+        config.BehaviorType = behaviorField.Text;
+
+        TowerPackageSaver.Save(
+            $"Content/Towers/{config.Id}.tdtower",
+            config
+        );
+    }
+}
