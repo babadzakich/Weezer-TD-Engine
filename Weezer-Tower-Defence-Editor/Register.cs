@@ -38,6 +38,9 @@ class Register
             "custom"
         );
 
+        Directory.CreateDirectory(targetRoot);
+
+        Console.WriteLine(targetRoot);
         recursiveCopy(
             sourceDir: "EmbeddedBehaviors",
             targetDir: targetRoot
@@ -53,6 +56,7 @@ class Register
 
         foreach (var resourceName in assembly.GetManifestResourceNames())
         {
+            Console.WriteLine($"Copying resource {resourceName}");
             if (!resourceName.StartsWith(resourceRoot))
                 continue;
 
@@ -78,6 +82,7 @@ class Register
             using var stream = assembly.GetManifestResourceStream(resourceName)
                 ?? throw new InvalidOperationException($"Resource not found: {resourceName}");
 
+            Console.WriteLine(targetPath);
             using var file = File.Create(targetPath);
             stream.CopyTo(file);
         }
