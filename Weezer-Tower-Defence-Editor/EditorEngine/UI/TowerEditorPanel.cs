@@ -1,24 +1,19 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Serialization;
+using EditorEngine.Towers;
+using EditorEngine.Towers.Types;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using EditorEngine.Towers;
 using IOPath = System.IO.Path;
-using EditorEngine.Towers.Types;
-using SimulationEngine.TowerRelated;
 
 namespace EditorEngine.UI;
 
 public class TowerEditorPanel
 {
-    private string id = "new_tower";
-    private string name = "New Tower";
-    private int cost = 100;
-    private float range = 150f;
-    private float fireRate = 1f;
     private float damage = 25f;
 
     private ITowerConfig towerConfig;
@@ -28,7 +23,6 @@ public class TowerEditorPanel
     private readonly int width = 1500;
     private readonly int height = 600;
     private readonly int leftInputPadding = 300;
-    private readonly int upperInputPadding = 50;
     private readonly int inputHeight = 40;
     private readonly int dropListHeight = 200;
 
@@ -65,9 +59,10 @@ public class TowerEditorPanel
 
         public UpgradeLevelUI(int y, int x)
         {
-            int h = 26;
-            int w = 55;
-            int spacing = 5;
+            const int h = 26;
+            const int w = 55;
+            const int spacing = 5;
+
             CostField = new UITextField(new Rectangle(x, y, w, h), "50");
             RangeField = new UITextField(new Rectangle(x + w + spacing, y, w, h), "170");
             FireRateField = new UITextField(new Rectangle(x + (w + spacing) * 2, y, w, h), "1.2");
@@ -94,41 +89,40 @@ public class TowerEditorPanel
     public TowerEditorPanel()
     {
         List<string> options = new() { "basic", "machine gun", "sniper" };
-        towerConfig = new EditorEngine.Towers.Types.BasicTower();
+        towerConfig = new BasicTower();
 
-        selectorField = new SelectorField(top, left, options, onClick: setFromDefault);
+        selectorField = new SelectorField(top, left, options, onClick: SetFromDefault);
         selectorField.Show();
 
         int x = left + leftInputPadding;
         int y = top + dropListHeight;
-        int w = 400;
-        int h = 26;
+        const int w = 400;
+        const int h = 26;
 
-        idField          = new(new Rectangle(x, y, w, h), towerConfig.Id, updateTextField, "id");
-        nameField        = new(new Rectangle(x, y += inputHeight, w, h), towerConfig.Name, updateTextField, "name");
-        classField       = new(new Rectangle(x, y += inputHeight, w, h), towerConfig.ClassName, updateTextField, "className");
-        bulletClassField = new(new Rectangle(x, y += inputHeight, w, h), towerConfig.BulletClassName, updateTextField, "bulletClassName");
-        costField        = new(new Rectangle(x, y += inputHeight, w, h), towerConfig.Cost.ToString(), updateTextField, "cost");
-        rangeField       = new(new Rectangle(x, y += inputHeight, w, h), towerConfig.Range.ToString(), updateTextField, "range");
-        fireRateField    = new(new Rectangle(x, y += inputHeight, w, h), towerConfig.FireRate.ToString(), updateTextField, "fireRate");
-        damageField      = new(new Rectangle(x, y += inputHeight, w, h), damage.ToString(), updateTextField, "damage");
-        levelsCountField = new(new Rectangle(x, y += inputHeight, w, h), "0", updateTextField, "levelsCount");
+        idField = new UITextField(new Rectangle(x, y, w, h), towerConfig.Id, UpdateTextField, "id");
+        nameField = new UITextField(new Rectangle(x, y += inputHeight, w, h), towerConfig.Name, UpdateTextField, "name");
+        classField = new UITextField(new Rectangle(x, y += inputHeight, w, h), towerConfig.ClassName, UpdateTextField, "className");
+        bulletClassField = new UITextField(new Rectangle(x, y += inputHeight, w, h), towerConfig.BulletClassName, UpdateTextField, "bulletClassName");
+        costField = new UITextField(new Rectangle(x, y += inputHeight, w, h), towerConfig.Cost.ToString(), UpdateTextField, "cost");
+        rangeField = new UITextField(new Rectangle(x, y += inputHeight, w, h), towerConfig.Range.ToString(), UpdateTextField, "range");
+        fireRateField = new UITextField(new Rectangle(x, y += inputHeight, w, h), towerConfig.FireRate.ToString(), UpdateTextField, "fireRate");
+        damageField = new UITextField(new Rectangle(x, y += inputHeight, w, h), damage.ToString(), UpdateTextField, "damage");
+        levelsCountField = new UITextField(new Rectangle(x, y += inputHeight, w, h), "0", UpdateTextField, "levelsCount");
 
         newTowerButton = new UIButton(
             new Rectangle(x + w + 50, top + dropListHeight, 200, 50),
             "New Tower",
-            ClearFields
-        );
+            ClearFields);
 
         saveButton = new UIButton(
             new Rectangle(x + w + 50, top + dropListHeight + 60, 200, 50),
             "Save Tower",
-            SaveTower
-        );
+            SaveTower);
     }
 
     private void ClearFields()
     {
+        towerConfig = new BasicTower();
         idField.Text = "new_tower";
         nameField.Text = "New Tower";
         classField.Text = "SimulationEngine.TowerRelated.Behaviors.BasicTowerBehavior";
@@ -138,6 +132,7 @@ public class TowerEditorPanel
         fireRateField.Text = "1";
         damageField.Text = "25";
         levelsCountField.Text = "0";
+        damage = 25f;
         upgradeLevels.Clear();
         lastLevelsCountText = "0";
     }
@@ -156,7 +151,8 @@ public class TowerEditorPanel
         }
     }
 
-    private void updateTextField(string text, string fieldId) {
+    private void UpdateTextField(string text, string fieldId)
+    {
         switch (fieldId)
         {
             case "id":
@@ -186,11 +182,14 @@ public class TowerEditorPanel
         }
     }
 
-    private void setFromDefault(string defaultName)
+    private void SetFromDefault(string defaultName)
     {
-        if (defaultName == "basic") towerConfig = new EditorEngine.Towers.Types.BasicTower();
-        else if (defaultName == "machine gun") towerConfig = new EditorEngine.Towers.Types.MachineGunTower();
-        else if (defaultName == "sniper") towerConfig = new EditorEngine.Towers.Types.SniperTower();
+        towerConfig = defaultName switch
+        {
+            "machine gun" => new MachineGunTower(),
+            "sniper" => new SniperTower(),
+            _ => new BasicTower()
+        };
 
         idField.Text = towerConfig.Id;
         nameField.Text = towerConfig.Name;
@@ -205,10 +204,16 @@ public class TowerEditorPanel
     {
         towerSelectionButtons.Clear();
         towerDeleteButtons.Clear();
+
         string configDir = "Content/Towers";
         if (!Directory.Exists(configDir)) return;
 
-        int startX = 320, startY = 50, btnW = 150, btnH = 25, delW = 30;
+        int startX = 320;
+        int startY = 50;
+        const int btnW = 150;
+        const int btnH = 25;
+        const int delW = 30;
+
         foreach (var file in Directory.GetFiles(configDir, "*.json"))
         {
             string towerId = IOPath.GetFileNameWithoutExtension(file);
@@ -220,10 +225,12 @@ public class TowerEditorPanel
 
     private void LoadTower(string towerId)
     {
-        try {
+        try
+        {
             string json = File.ReadAllText(IOPath.Combine("Content/Towers", $"{towerId}.json"));
             var data = System.Text.Json.JsonSerializer.Deserialize<TowerSaveData>(json);
             if (data == null) return;
+
             idField.Text = data.Id;
             nameField.Text = data.Name;
             classField.Text = data.ClassName ?? "SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior";
@@ -233,12 +240,17 @@ public class TowerEditorPanel
             fireRateField.Text = data.FireRate.ToString();
             damageField.Text = (data.Damage > 0 ? data.Damage : 25).ToString();
             levelsCountField.Text = (data.Upgrades?.Count ?? 0).ToString();
+
+            damage = data.Damage > 0 ? data.Damage : 25f;
+
             upgradeLevels.Clear();
-            if (data.Upgrades != null) {
+            if (data.Upgrades != null)
+            {
                 int startY = levelsCountField.Bounds.Y + 40;
-                foreach (var u in data.Upgrades) {
+                foreach (var u in data.Upgrades)
+                {
                     var ui = new UpgradeLevelUI(startY, 110);
-                    ui.CostField.Text = u.Cost.ToString();
+                    ui.CostField.Text = (u.Cost > 0 ? u.Cost : u.UpgradeCost).ToString();
                     ui.RangeField.Text = u.Range.ToString();
                     ui.FireRateField.Text = u.FireRate.ToString();
                     ui.DamageField.Text = u.Damage.ToString();
@@ -246,21 +258,32 @@ public class TowerEditorPanel
                     startY += 35;
                 }
             }
+
             lastLevelsCountText = levelsCountField.Text;
-        } catch (Exception ex) { Console.WriteLine("Error loading tower: " + ex.Message); }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error loading tower: " + ex.Message);
+        }
     }
 
     private void DeleteTower(string towerId)
     {
-        try {
+        try
+        {
             File.Delete(IOPath.Combine("Content/Towers", $"{towerId}.json"));
             RefreshTowerList();
-        } catch (Exception ex) { Console.WriteLine("Error deleting tower: " + ex.Message); }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error deleting tower: " + ex.Message);
+        }
     }
 
     public void Update(MouseState mouse, KeyboardState keyboard, MouseState previousMouse)
     {
         if (!IsOpen) return;
+
         selectorField.Update(mouse);
         idField.Update(mouse, keyboard);
         nameField.Update(mouse, keyboard);
@@ -272,50 +295,58 @@ public class TowerEditorPanel
         damageField.Update(mouse, keyboard);
         levelsCountField.Update(mouse, keyboard);
 
-        if (levelsCountField.Text != lastLevelsCountText) {
-            if (int.TryParse(levelsCountField.Text, out int count)) {
-                count = Math.Clamp(count, 0, 5);
-                while (upgradeLevels.Count < count) upgradeLevels.Add(new UpgradeLevelUI(levelsCountField.Bounds.Y + 40 + upgradeLevels.Count * 35, 110));
-                while (upgradeLevels.Count > count) upgradeLevels.RemoveAt(upgradeLevels.Count - 1);
-                lastLevelsCountText = count.ToString();
-            }
+        if (levelsCountField.Text != lastLevelsCountText &&
+            int.TryParse(levelsCountField.Text, out int count))
+        {
+            count = Math.Clamp(count, 0, 5);
+            while (upgradeLevels.Count < count)
+                upgradeLevels.Add(new UpgradeLevelUI(levelsCountField.Bounds.Y + 40 + upgradeLevels.Count * 35, 110));
+            while (upgradeLevels.Count > count)
+                upgradeLevels.RemoveAt(upgradeLevels.Count - 1);
+            lastLevelsCountText = count.ToString();
         }
 
-        foreach (var u in upgradeLevels) u.Update(mouse, keyboard);
+        foreach (var u in upgradeLevels)
+            u.Update(mouse, keyboard);
+
         newTowerButton.Update(mouse);
         saveButton.Update(mouse);
-        foreach (var btn in towerSelectionButtons.ToList()) btn.Update(mouse);
-        foreach (var btn in towerDeleteButtons.ToList()) btn.Update(mouse);
+
+        foreach (var btn in towerSelectionButtons.ToList())
+            btn.Update(mouse);
+        foreach (var btn in towerDeleteButtons.ToList())
+            btn.Update(mouse);
     }
 
     public bool IsAnyFieldActive()
     {
         if (!IsOpen) return false;
 
-        bool anyUpgradeFieldActive = false;
-        foreach (var u in upgradeLevels)
-        {
-            if (u.CostField.IsActive || u.RangeField.IsActive || u.FireRateField.IsActive || u.DamageField.IsActive)
-            {
-                anyUpgradeFieldActive = true;
-                break;
-            }
-        }
+        bool anyUpgradeFieldActive = upgradeLevels.Any(u =>
+            u.CostField.IsActive ||
+            u.RangeField.IsActive ||
+            u.FireRateField.IsActive ||
+            u.DamageField.IsActive);
 
-        return idField.IsActive || nameField.IsActive || classField.IsActive || bulletClassField.IsActive ||
-               costField.IsActive || rangeField.IsActive || fireRateField.IsActive || damageField.IsActive ||
-               levelsCountField.IsActive || anyUpgradeFieldActive;
+        return idField.IsActive ||
+               nameField.IsActive ||
+               classField.IsActive ||
+               bulletClassField.IsActive ||
+               costField.IsActive ||
+               rangeField.IsActive ||
+               fireRateField.IsActive ||
+               damageField.IsActive ||
+               levelsCountField.IsActive ||
+               anyUpgradeFieldActive;
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)
     {
         if (!IsOpen) return;
-        int panelWidth = width;
-        int panelHeight = height + 300;
-        sb.Draw(pixel, new Rectangle(left, top, panelWidth, panelHeight), Color.Black * 0.85f);
+
+        sb.Draw(pixel, new Rectangle(left, top, width, height + 300), Color.Black * 0.85f);
         selectorField.Draw(sb, font, pixel);
 
-        int x = left + leftInputPadding;
         DrawLabel(sb, font, "Id:", new Vector2(idField.Bounds.X - 120, idField.Bounds.Y + 2));
         idField.Draw(sb, font, pixel);
         DrawLabel(sb, font, "Name:", new Vector2(nameField.Bounds.X - 120, nameField.Bounds.Y + 2));
@@ -335,7 +366,8 @@ public class TowerEditorPanel
         DrawLabel(sb, font, "Levels:", new Vector2(levelsCountField.Bounds.X - 120, levelsCountField.Bounds.Y + 2));
         levelsCountField.Draw(sb, font, pixel);
 
-        for (int i = 0; i < upgradeLevels.Count; i++) {
+        for (int i = 0; i < upgradeLevels.Count; i++)
+        {
             DrawLabel(sb, font, $"Lvl {i + 2}:", new Vector2(upgradeLevels[i].CostField.Bounds.X - 60, upgradeLevels[i].CostField.Bounds.Y + 2));
             upgradeLevels[i].Draw(sb, font, pixel);
         }
@@ -347,20 +379,26 @@ public class TowerEditorPanel
         foreach (var btn in towerDeleteButtons) btn.Draw(sb, font, pixel);
     }
 
-    private void DrawLabel(SpriteBatch sb, SpriteFont font, string text, Vector2 pos) => sb.DrawString(font, text, pos, Color.White);
+    private void DrawLabel(SpriteBatch sb, SpriteFont font, string text, Vector2 pos)
+    {
+        sb.DrawString(font, text, pos, Color.White);
+    }
 
     private void SaveTower()
     {
         string towerId = idField.Text;
         if (string.IsNullOrWhiteSpace(towerId)) return;
-        var upgrades = upgradeLevels.Select(u => new TowerUpgradeData {
+
+        var upgrades = upgradeLevels.Select(u => new TowerUpgradeData
+        {
             Cost = int.TryParse(u.CostField.Text, out int c) ? c : 0,
             Range = float.TryParse(u.RangeField.Text, out float r) ? r : 0,
             FireRate = float.TryParse(u.FireRateField.Text, out float f) ? f : 0,
             Damage = float.TryParse(u.DamageField.Text, out float d) ? d : 0
         }).ToList();
 
-        var config = new TowerSaveData {
+        var config = new TowerSaveData
+        {
             Id = towerId,
             Name = nameField.Text,
             ClassName = classField.Text,
@@ -374,26 +412,71 @@ public class TowerEditorPanel
 
         string configDir = "Content/Towers";
         Directory.CreateDirectory(configDir);
-        File.WriteAllText(IOPath.Combine(configDir, $"{towerId}.json"), System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(
+            IOPath.Combine(configDir, $"{towerId}.json"),
+            System.Text.Json.JsonSerializer.Serialize(
+                config,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+
         RefreshTowerList();
     }
 
-    private class TowerSaveData {
+    private class TowerSaveData
+    {
+        [JsonPropertyName("id")]
         public string Id { get; set; }
+
+        [JsonPropertyName("name")]
         public string Name { get; set; }
+
+        [JsonPropertyName("className")]
         public string ClassName { get; set; }
+
+        [JsonPropertyName("bulletClassName")]
         public string BulletClassName { get; set; }
+
+        [JsonPropertyName("cost")]
         public int Cost { get; set; }
+
+        [JsonPropertyName("range")]
         public float Range { get; set; }
+
+        [JsonPropertyName("fireRate")]
         public float FireRate { get; set; }
+
+        [JsonPropertyName("damage")]
         public float Damage { get; set; }
-        public List<TowerUpgradeData> Upgrades { get; set; }
+
+        [JsonPropertyName("upgrades")]
+        public List<TowerUpgradeData> Upgrades { get; set; } = new();
+
+        [JsonPropertyName("upgradeLevels")]
+        public List<TowerUpgradeData> UpgradeLevels
+        {
+            get => Upgrades;
+            set => Upgrades = value ?? new List<TowerUpgradeData>();
+        }
     }
 
-    private class TowerUpgradeData {
+    private class TowerUpgradeData
+    {
+        [JsonPropertyName("cost")]
         public int Cost { get; set; }
+
+        [JsonPropertyName("upgradeCost")]
+        public int UpgradeCost
+        {
+            get => Cost;
+            set => Cost = value;
+        }
+
+        [JsonPropertyName("range")]
         public float Range { get; set; }
+
+        [JsonPropertyName("fireRate")]
         public float FireRate { get; set; }
+
+        [JsonPropertyName("damage")]
         public float Damage { get; set; }
     }
 }

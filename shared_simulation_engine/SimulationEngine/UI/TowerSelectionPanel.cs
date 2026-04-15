@@ -1,9 +1,9 @@
+using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.TowerRelated;
-using System;
-using System.Collections.Generic;
 
 namespace SimulationEngine.UI;
 
@@ -15,8 +15,9 @@ public class TowerSelectionPanel : UIElement
     public List<TowerButton> TowerButtons { get; private set; }
     public Color BackgroundColor { get; set; }
     public ITowerBehavior SelectedTower { get; private set; }
-    
-    public event Action<ITowerBehavior> OnTowerSelected;
+    public LevelLoader.TowerDefinition SelectedDefinition { get; private set; }
+
+    public event Action<ITowerBehavior, LevelLoader.TowerDefinition> OnTowerSelected;
 
     public TowerSelectionPanel(Vector2 position, Vector2 size) : base(position, size)
     {
@@ -24,45 +25,41 @@ public class TowerSelectionPanel : UIElement
         TowerButtons = new List<TowerButton>();
     }
 
-    public void AddTowerOption(ITowerBehavior towerBehavior, Texture2D icon = null)
+    public void AddTowerOption(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition, Texture2D icon = null)
     {
         int index = TowerButtons.Count;
-        Vector2 buttonPos = Position + new Vector2(10, 10 + index * 90);
         Vector2 buttonSize = new Vector2(Size.X - 20, 80);
-        
-        var button = new TowerButton(buttonPos, buttonSize, towerBehavior, icon);
-        button.OnClick += () => SelectTower(towerBehavior);
+        Vector2 buttonPos = Position + new Vector2(10, 10 + index * 90);
+
+        var button = new TowerButton(buttonPos, buttonSize, towerBehavior, definition, icon);
+        button.OnClick += () => SelectTower(towerBehavior, definition);
         TowerButtons.Add(button);
-        
-        // Динамическое изменение высоты панели
-        float newHeight = 20 + TowerButtons.Count * 90;
-        Size = new Vector2(Size.X, newHeight);
+
+        Size = new Vector2(Size.X, 20 + TowerButtons.Count * 90);
     }
 
-    private void SelectTower(ITowerBehavior towerBehavior)
+    private void SelectTower(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition)
     {
         SelectedTower = towerBehavior;
-        OnTowerSelected?.Invoke(towerBehavior);
-        
-        // Подсвечиваем выбранную кнопку
+        SelectedDefinition = definition;
+        OnTowerSelected?.Invoke(towerBehavior, definition);
+
         foreach (var btn in TowerButtons)
         {
-            btn.IsSelected = (btn.TowerBehavior == towerBehavior);
+            btn.IsSelected = btn.TowerBehavior == towerBehavior;
         }
     }
 
     public void DeselectTower()
     {
         SelectedTower = null;
+        SelectedDefinition = null;
         foreach (var btn in TowerButtons)
         {
             btn.IsSelected = false;
         }
     }
-    
-    /// <summary>
-    /// Обновить позиции кнопок при изменении позиции панели
-    /// </summary>
+
     public void UpdateButtonPositions()
     {
         for (int i = 0; i < TowerButtons.Count; i++)
@@ -85,10 +82,8 @@ public class TowerSelectionPanel : UIElement
     {
         if (!IsVisible) return;
 
-        // Фон панели
         spriteBatch.Draw(pixel, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), BackgroundColor);
 
-        // Кнопки башен
         foreach (var button in TowerButtons)
         {
             button.Draw(spriteBatch, pixel, font);
@@ -102,14 +97,18 @@ public class TowerSelectionPanel : UIElement
 public class TowerButton : Button
 {
     public ITowerBehavior TowerBehavior { get; }
+    public LevelLoader.TowerDefinition Definition { get; }
     public Texture2D Icon { get; set; }
     public bool IsSelected { get; set; }
     public Color SelectedColor { get; set; }
 
-    public TowerButton(Vector2 position, Vector2 size, ITowerBehavior towerBehavior, Texture2D icon) 
+    private bool _isHovered;
+
+    public TowerButton(Vector2 position, Vector2 size, ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition, Texture2D icon)
         : base(position, size, "")
     {
         TowerBehavior = towerBehavior;
+        Definition = definition;
         Icon = icon;
         SelectedColor = new Color(100, 150, 100);
     }
@@ -118,28 +117,23 @@ public class TowerButton : Button
     {
         if (!IsVisible) return;
 
-        Color bgColor = IsSelected ? SelectedColor : 
-                        (!IsEnabled ? DisabledColor : 
-                        (_isHovered ? HoverColor : BackgroundColor));
-        
-        // Фон кнопки
+        Color bgColor = IsSelected
+            ? SelectedColor
+            : (!IsEnabled ? DisabledColor : (_isHovered ? HoverColor : BackgroundColor));
+
         spriteBatch.Draw(pixel, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), bgColor);
-        
-        // Рамка
         DrawBorder(spriteBatch, pixel, Position, Size, IsSelected ? Color.Green : Color.White, IsSelected ? 3 : 2);
 
         if (font != null)
         {
             Vector2 textPos = Position + new Vector2(10, 10);
-            spriteBatch.DrawString(font, TowerBehavior.Id, textPos, TextColor);
+            spriteBatch.DrawString(font, Definition?.Name ?? TowerBehavior.Id, textPos, TextColor);
             textPos.Y += 20;
             spriteBatch.DrawString(font, $"Cost: ${TowerBehavior.Cost}", textPos, Color.Gold);
             textPos.Y += 20;
             spriteBatch.DrawString(font, $"Range: {TowerBehavior.Range}", textPos, Color.Cyan);
         }
     }
-
-    private bool _isHovered;
 
     public override void Update(GameTime gameTime, MouseState mouseState, MouseState previousMouseState)
     {

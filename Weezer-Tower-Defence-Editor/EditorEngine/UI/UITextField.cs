@@ -1,28 +1,27 @@
 using System;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System;
-using System.Linq;
 
 namespace EditorEngine.UI;
 
-// Added fix to prevent multiple characters being added
 public class UITextField
 {
     public Rectangle Bounds;
     public string Text = "";
     public bool IsActive;
-    private KeyboardState _prevKeyboard;
-    private Action<string, string> onUpdate;
+
+    private readonly Action<string, string> _onUpdate;
     public readonly string id;
+
+    private Keys[] _previousPressedKeys = Array.Empty<Keys>();
 
     public UITextField(Rectangle bounds, string initial = "", Action<string, string> onUpdate = null, string id = null)
     {
         Bounds = bounds;
         Text = initial;
-        _prevKeyboard = Keyboard.GetState();
-        this.onUpdate = onUpdate;
+        _onUpdate = onUpdate;
         this.id = id;
     }
 
@@ -31,15 +30,19 @@ public class UITextField
         if (mouse.LeftButton == ButtonState.Pressed)
             IsActive = Bounds.Contains(mouse.Position);
 
+        Keys[] currentPressedKeys = keyboard.GetPressedKeys();
+
         if (!IsActive)
         {
-            _prevKeyboard = keyboard;
+            _previousPressedKeys = currentPressedKeys;
             return;
         }
 
-        foreach (var key in keyboard.GetPressedKeys())
+        string oldText = Text;
+
+        foreach (var key in currentPressedKeys)
         {
-            if (_prevKeyboard.IsKeyDown(key))
+            if (_previousPressedKeys.Contains(key))
                 continue;
 
             if (key == Keys.Back && Text.Length > 0)
@@ -56,11 +59,12 @@ public class UITextField
                 Text += "-";
             else if (key == Keys.Space)
                 Text += " ";
-            
-            onUpdate?.Invoke(Text, id);
         }
 
-        _prevKeyboard = keyboard;
+        if (Text != oldText)
+            _onUpdate?.Invoke(Text, id);
+
+        _previousPressedKeys = currentPressedKeys;
     }
 
     public void Draw(SpriteBatch sb, SpriteFont font, Texture2D pixel)

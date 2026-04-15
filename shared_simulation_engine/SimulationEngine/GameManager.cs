@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated;
 using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.EnemyRelated;
@@ -11,7 +10,6 @@ using SimulationEngine.TowerRelated;
 using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
 using SimulationEngine.WaveRelated;
-using static SimulationEngine.LevelLoader;
 
 namespace SimulationEngine;
 
@@ -26,12 +24,12 @@ public class GameManager
     public WaveController WaveController { get; private set; }
     public EnemyController EnemyController { get; private set; }
     public DamageDealerController DamageDealerController { get; private set; }
-    
+
     public Texture2D DefaultTowerTexture { get; set; }
     public Texture2D DefaultEnemyTexture { get; set; }
     public Texture2D DefaultBulletTexture { get; set; }
 
-    private GameInputHandler _inputHandler;
+    private readonly GameInputHandler _inputHandler;
 
     public event Action Defeat;
     public event Action Win;
@@ -44,6 +42,7 @@ public class GameManager
         {
             throw new InvalidOperationException("GameManager is not initialized. Call getInstance with parameters first.");
         }
+
         return _instance;
     }
 
@@ -52,17 +51,76 @@ public class GameManager
         _instance = null;
     }
 
-    public static GameManager getInstance(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, List<string> towerNames, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    public static GameManager getInstance(
+        int screenWidth,
+        int screenHeight,
+        GameMap map,
+        int startingMoney,
+        int startingLives,
+        TowerController towerController,
+        List<string> towerNames,
+        Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions,
+        WaveController waveController = null,
+        EnemyController enemyController = null,
+        DamageDealerController damageDealerController = null)
     {
         if (_instance != null)
         {
             return _instance;
         }
-        _instance = new GameManager(screenWidth, screenHeight, map, startingMoney, startingLives, towerController, towerNames, towerDefinitions, waveController, enemyController, damageDealerController);
+
+        _instance = new GameManager(
+            screenWidth,
+            screenHeight,
+            map,
+            startingMoney,
+            startingLives,
+            towerController,
+            towerNames,
+            towerDefinitions,
+            waveController,
+            enemyController,
+            damageDealerController);
+
         return _instance;
     }
 
-    private GameManager(int screenWidth, int screenHeight, GameMap map, int startingMoney, int startingLives, TowerController towerController, List<string> towerNames, Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions, WaveController waveController = null, EnemyController enemyController = null, DamageDealerController damageDealerController = null)
+    public static GameManager getInstance(
+        int screenWidth,
+        int screenHeight,
+        GameMap map,
+        TowerController towerController,
+        WaveController waveController = null,
+        EnemyController enemyController = null,
+        DamageDealerController damageDealerController = null,
+        Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions = null)
+    {
+        return getInstance(
+            screenWidth,
+            screenHeight,
+            map,
+            100,
+            20,
+            towerController,
+            null,
+            towerDefinitions,
+            waveController,
+            enemyController,
+            damageDealerController);
+    }
+
+    private GameManager(
+        int screenWidth,
+        int screenHeight,
+        GameMap map,
+        int startingMoney,
+        int startingLives,
+        TowerController towerController,
+        List<string> towerNames,
+        Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions,
+        WaveController waveController = null,
+        EnemyController enemyController = null,
+        DamageDealerController damageDealerController = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
@@ -70,24 +128,65 @@ public class GameManager
         WaveController = waveController;
         EnemyController = enemyController;
         DamageDealerController = damageDealerController ?? DamageDealerController.GetInstance(null);
-        
+
         _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
-        
+
         UIManager.OnStartWaveRequested += StartWave;
 
-        // Existing design assume that health is the health of the first defense point
-        // So I decide to stick to that
         UIManager.Money = startingMoney;
-        Map.DefensePoints[0].Health = startingLives;
-
-        // Добавляем доступные башни в UI
-        foreach (var towerName in towerNames)
+        UIManager.Lives = startingLives;
+        if (Map.DefensePoints.Count > 0)
         {
-            UIManager.AddAvailableTower(TowerRelated.TowerBehaviorRegistry.create(towerName));
+            Map.DefensePoints[0].Health = startingLives;
         }
 
-        // Добавляем стандартную базовую башню
-        //UIManager.AddAvailableTower(new TowerRelated.Behaviors.BasicTowerBehavior("basic_tower", "Basic Tower", new StandardBulletBehavior(25f, 300f, 500f), 100, 150f, 1f));
+        InitializeAvailableTowers(towerNames, towerDefinitions);
+    }
+
+    private void InitializeAvailableTowers(
+        List<string> towerNames,
+        Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions)
+    {
+        if (towerDefinitions != null && towerDefinitions.Count > 0)
+        {
+            foreach (var def in towerDefinitions.Values)
+            {
+                var bulletBehavior = new StandardBulletBehavior(
+                    def.Damage > 0 ? def.Damage : 25f,
+                    500f,
+                    500f);
+                var behavior = new DefinitionTowerBehavior(def, bulletBehavior);
+                UIManager.AddAvailableTower(behavior, def);
+            }
+
+            return;
+        }
+
+        if (towerNames != null && towerNames.Count > 0)
+        {
+            foreach (var towerName in towerNames)
+            {
+                var behavior = TowerBehaviorRegistry.create(towerName);
+                UIManager.AddAvailableTower(behavior, behavior.Definition);
+            }
+
+            return;
+        }
+
+        var basicDef = new LevelLoader.TowerDefinition
+        {
+            Id = "basic_tower",
+            Name = "Basic Tower",
+            Cost = 100,
+            Range = 150f,
+            FireRate = 1f,
+            Damage = 25f
+        };
+
+        var fallbackBehavior = new DefinitionTowerBehavior(
+            basicDef,
+            new StandardBulletBehavior(25f, 300f, 500f));
+        UIManager.AddAvailableTower(fallbackBehavior, basicDef);
     }
 
     public void Update(GameTime gameTime)
@@ -99,21 +198,22 @@ public class GameManager
         WaveController?.Update(gameTime);
         EnemyController?.Update(gameTime);
         DamageDealerController?.Update(gameTime);
-        
-        // Обновляем Lives на основе здоровья базы
+
         if (Map.DefensePoints.Count > 0)
         {
             UIManager.Lives = Map.DefensePoints[0].Health;
         }
-        
-        // Проверка на поражение
+
         if (UIManager.Lives <= 0)
         {
             Console.WriteLine("Defeat detected");
             Defeat?.Invoke();
         }
-        // Чекаем победу
-        if (WaveController != null && WaveController.CurrentWaveIndex >= WaveController.TotalWaves && !WaveController.IsWaveActive && EnemyController.Enemies.Count == 0)
+
+        if (WaveController != null &&
+            WaveController.CurrentWaveIndex >= WaveController.TotalWaves &&
+            !WaveController.IsWaveActive &&
+            (EnemyController == null || EnemyController.Enemies.Count == 0))
         {
             Console.WriteLine("Win detected");
             Win?.Invoke();
@@ -124,15 +224,16 @@ public class GameManager
     {
         Map.Draw(spriteBatch, pixelTexture);
         TowerController.Draw(spriteBatch);
-        if (EnemyController != null)
-            EnemyController.Draw(spriteBatch);
+        EnemyController?.Draw(spriteBatch);
         DamageDealerController?.Draw(spriteBatch);
         UIManager.Draw(spriteBatch, pixelTexture, font);
     }
 
     public void StartWave()
     {
-        if (WaveController != null && !WaveController.IsWaveActive && WaveController.CurrentWaveIndex < WaveController.TotalWaves)
+        if (WaveController != null &&
+            !WaveController.IsWaveActive &&
+            WaveController.CurrentWaveIndex < WaveController.TotalWaves)
         {
             WaveController.StartNextWave();
         }
