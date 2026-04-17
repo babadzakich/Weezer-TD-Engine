@@ -17,12 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="MyLibrary">
-      <HintPath>..\shared_simulation_engine\bin\Debug\net9.0\Shared_simulation_engine.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  
-  <ItemGroup>
     <EmbeddedResource Include="Icon.ico">
       <LogicalName>Icon.ico</LogicalName>
     </EmbeddedResource>
@@ -49,8 +43,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Shared_simulation_engine">
-      <HintPath>..\shared_simulation_engine\bin\Release\net9.0\Shared_simulation_engine.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\shared_simulation_engine\Shared-Simulation-Engine.csproj" />
   </ItemGroup>
 </Project>

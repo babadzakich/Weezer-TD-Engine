@@ -106,7 +106,7 @@ public class GameInputHandler
         _uiManager.HideTowerSelection();
     }
 
-    private void OnTowerSelectedFromPanel(ITowerBehavior towerBehavior)
+    private void OnTowerSelectedFromPanel(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition)
     {
         // Проверяем, что у нас выбрана зона для строительства
         if (_selectedBuildZone == null) return;
@@ -120,18 +120,22 @@ public class GameInputHandler
         
         // Создаём башню с выбранным поведением
         ITowerBehavior behaviorInstance = towerBehavior;
-        LevelLoader.TowerDefinition definition = null;
+        LevelLoader.TowerDefinition towerDefinition = definition ?? towerBehavior.Definition;
 
         if (towerBehavior is SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior defBehavior)
         {
-            definition = defBehavior.Definition;
+            towerDefinition ??= defBehavior.Definition;
             // новый экземпляр, чтобы состояния не пересекались
             behaviorInstance = new SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior(
-                definition,
+                towerDefinition,
                 new StandardBulletBehavior(25f, 300f, 500f));
         }
+        else
+        {
+            behaviorInstance.Definition = towerDefinition;
+        }
 
-        var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, definition);
+        var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, towerDefinition);
         tower.Texture = GameManager.GetInstance().DefaultTowerTexture;
         _towerController.AddTower(tower);
         

@@ -34,7 +34,7 @@ namespace Weezer_Tower_Defence
             //Console.WriteLine(obj.Name);
 
 
-            using var game = new Game1();
+            using var game = new GameRunner();
             game.Run();
         }
     }

@@ -4,6 +4,7 @@ using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SimulationEngine.Infrastructure;
 
 namespace SimulationEngine.UI;
 
@@ -38,18 +39,14 @@ public class LevelSelectionPanel
     public void RefreshLevelList()
     {
         _levels.Clear();
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-        var contentPath = System.IO.Path.Combine(
-            appData,
-            "WeezerTowerDefence",
-            "Levels"
-        );
+        var contentPath = PathService.LevelsDirectory;
         if (Directory.Exists(contentPath))
         {
             var files = Directory.GetFiles(contentPath, "*.zip");
             foreach (var file in files)
             {
+                Console.WriteLine($"Found level file: {file}");
                 _levels.Add(Path.GetFileName(file));
             }
         }
@@ -79,14 +76,9 @@ public class LevelSelectionPanel
             (ks.IsKeyDown(Keys.Space) && prevKs.IsKeyUp(Keys.Space)))
         {
             _isOpen = false;
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-            var levelPath = System.IO.Path.Combine(
-                appData,
-                "WeezerTowerDefence",
-                "Levels",
-                _levels[_selectedIndex]
-            );
+            var levelPath = PathService.GetLevelArchivePath(_levels[_selectedIndex]);
+            Console.WriteLine($"Selected level: {levelPath}");
             OnLevelSelected?.Invoke(levelPath);
         }
     }
@@ -95,7 +87,6 @@ public class LevelSelectionPanel
     {
         if (!_isOpen) return;
 
-        // Фон на весь экран
         spriteBatch.Draw(_pixel, new Rectangle(0, 0, _screenWidth, _screenHeight), Color.Black * 0.8f);
 
         if (_font == null) return;
@@ -114,7 +105,13 @@ public class LevelSelectionPanel
 
         if (_levels.Count == 0)
         {
-            spriteBatch.DrawString(_font, "No levels found in Content/ folder!", new Vector2(_screenWidth / 2 - 150, startY), Color.Red);
+            string emptyMessage = "No levels found in Content/ folder!";
+            Vector2 emptyMessageSize = _font.MeasureString(emptyMessage);
+            spriteBatch.DrawString(
+                _font,
+                emptyMessage,
+                new Vector2(_screenWidth / 2 - emptyMessageSize.X / 2, startY),
+                Color.Red);
         }
 
         string hint = "Use UP/DOWN to select, ENTER to start";

@@ -8,17 +8,20 @@ using System.Threading.Tasks;
 using EditorEngine.DamageDealers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using SimulationEngine.Infrastructure;
 
 class Register
 {
     public static void setup()
     {
         Console.WriteLine("Setting up");
+        ensureEditorDirectories();
         copyInbuilt();
+        copySharedContent();
         createDLLs();
         var tmp_enemies = EnemyRegistry.Instance;
         var tmp = DamageDealerRegistry.Instance;
-        Console.WriteLine("LOL");
+        var tmp_towers = TowerRegistry.Instance;
     }
 
     /// <summary>
@@ -29,14 +32,7 @@ class Register
     /// </summary>
     private static void copyInbuilt()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
-        var targetRoot = Path.Combine(
-            appData,
-            "WeezerTowerDefence",
-            "Editor",
-            "custom"
-        );
+        var targetRoot = PathService.EditorDirectory;
 
         Directory.CreateDirectory(targetRoot);
 
@@ -45,6 +41,50 @@ class Register
             sourceDir: "EmbeddedBehaviors",
             targetDir: targetRoot
         );
+    }
+
+    private static void copySharedContent()
+    {
+        var targetRoot = PathService.CommonDirectory;
+
+        try
+        {
+            Directory.CreateDirectory(targetRoot);
+
+            recursiveCopy(
+                sourceDir: "Content",
+                targetDir: targetRoot
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: failed to copy shared content to {targetRoot}: {ex.Message}");
+        }
+    }
+
+    private static void ensureEditorDirectories()
+    {
+        var editorRoot = PathService.EditorDirectory;
+        var dllRoot = PathService.DLLsDirectory;
+
+        string[] relativeDirs =
+        {
+            Path.Combine("towers", "behaviors"),
+            Path.Combine("towers", "configs"),
+            Path.Combine("enemies", "behaviors"),
+            Path.Combine("enemies", "configs"),
+            Path.Combine("damageDealers", "behaviors"),
+            Path.Combine("damageDealers", "configs")
+        };
+
+        Directory.CreateDirectory(editorRoot);
+        Directory.CreateDirectory(dllRoot);
+
+        foreach (var dir in relativeDirs)
+        {
+            Directory.CreateDirectory(Path.Combine(editorRoot, dir));
+            Directory.CreateDirectory(Path.Combine(dllRoot, dir.Split(Path.DirectorySeparatorChar)[0]));
+        }
     }
 
     private static void recursiveCopy(string sourceDir, string targetDir)

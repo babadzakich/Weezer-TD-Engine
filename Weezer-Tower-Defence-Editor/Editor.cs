@@ -19,14 +19,22 @@ public class Editor : Game
 
     public Editor()
     {
-
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-        var targetRoot = Path.Combine(
+        var commonRoot = Path.Combine(
             appData,
             "WeezerTowerDefence",
             "common"
         );
+
+        var localContentRoot = Path.Combine(AppContext.BaseDirectory, "Content");
+        var localProjectContentRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Content"));
+
+        string targetRoot = File.Exists(Path.Combine(commonRoot, "DefaultFont.xnb"))
+            ? commonRoot
+            : File.Exists(Path.Combine(localProjectContentRoot, "DefaultFont.xnb"))
+                ? localProjectContentRoot
+                : localContentRoot;
 
         graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = $"{targetRoot}";

@@ -13,10 +13,11 @@ using SimulationEngine.EnemyRelated.EnemyTypes;
 using SimulationEngine;
 using SimulationEngine.UI;
 using System.Linq;
+using SimulationEngine.Infrastructure;
 
 namespace Weezer_Tower_Defence;
 
-public class Game1 : Game
+public class GameRunner : Game
 {
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
@@ -44,20 +45,18 @@ public class Game1 : Game
         Playing
     }
 
-    public Game1()
+    public GameRunner()
     {
-        _graphics = new GraphicsDeviceManager(this);
-        _graphics.PreferredBackBufferWidth = 1600;
-        _graphics.PreferredBackBufferHeight = 900;
+        _graphics = new GraphicsDeviceManager(this)
+        {
+            PreferredBackBufferWidth = 1600,
+            PreferredBackBufferHeight = 900
+        };
+        var commonRoot = PathService.CommonDirectory;
 
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
-        var targetRoot = System.IO.Path.Combine(
-            appData,
-            "WeezerTowerDefence",
-            "common"
-        );
-        Content.RootDirectory = $"{targetRoot}";
+        Console.WriteLine($"Common content root: {commonRoot}");
+        
+        Content.RootDirectory = $"{commonRoot}";
         IsMouseVisible = true;
         
         // Разрешаем изменение размера окна
@@ -67,7 +66,7 @@ public class Game1 : Game
     protected override void Initialize()
     {
         _levelSelectionPanel = new LevelSelectionPanel(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
-        _levelSelectionPanel.OnLevelSelected += (path) => LoadLevel(path);
+        _levelSelectionPanel.OnLevelSelected += LoadLevel;
 
         base.Initialize();
     }
@@ -182,7 +181,7 @@ public class Game1 : Game
 
         // Создаём пиксельную текстуру для отрисовки линий/прямоугольников
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
-        _pixel.SetData(new[] { Color.White });
+        _pixel.SetData([Color.White]);
         
         // Загружаем шрифт
         try

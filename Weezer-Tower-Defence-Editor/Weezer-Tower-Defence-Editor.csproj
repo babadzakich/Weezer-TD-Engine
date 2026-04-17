@@ -16,12 +16,6 @@
     <None Remove="Icon.bmp" />
   </ItemGroup>
 
-    <ItemGroup>
-        <Reference Include="MyLibrary">
-            <HintPath>..\shared_simulation_engine\bin\Debug\net9.0\Shared_simulation_engine.dll</HintPath>
-        </Reference>
-    </ItemGroup>
-    
   <ItemGroup>
     <EmbeddedResource Include="Icon.ico">
       <LogicalName>Icon.ico</LogicalName>
@@ -39,6 +33,13 @@
 		<EmbeddedResource Include="PrecompiledDLLs/**/*" />
 		<EmbeddedResource Include="Content/**/*" />
 	</ItemGroup>  	
+
+  <ItemGroup>
+    <None Include="Content/**/*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <LinkBase>Content</LinkBase>
+    </None>
+  </ItemGroup>
 	
   <ItemGroup>
     <!-- Исключаем Content из компиляции - там лежат архивы уровней и их файлы -->
@@ -62,8 +63,6 @@
   
 
   <ItemGroup>
-    <Reference Include="Shared_simulation_engine">
-      <HintPath>..\shared_simulation_engine\bin\Release\net9.0\Shared_simulation_engine.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\shared_simulation_engine\Shared-Simulation-Engine.csproj" />
   </ItemGroup>
 </Project>
