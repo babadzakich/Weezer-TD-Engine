@@ -1,0 +1,9 @@
+{
+  "defaults": {
+    "latency": 0,
+    "jitter": 0,
+    "drop_rate": 0.0,
+    "duplicate_rate": 0.0
+  },
+  "nodes": {}
+}
