@@ -8,6 +8,7 @@ using EditorEngine.Towers.Types;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SimulationEngine.Infrastructure;
 using IOPath = System.IO.Path;
 
 namespace EditorEngine.UI;
@@ -205,7 +206,7 @@ public class TowerEditorPanel
         towerSelectionButtons.Clear();
         towerDeleteButtons.Clear();
 
-        string configDir = "Content/Towers";
+        string configDir = PathService.GetEditorConfigDirectory("towers");
         if (!Directory.Exists(configDir)) return;
 
         int startX = 320;
@@ -227,7 +228,7 @@ public class TowerEditorPanel
     {
         try
         {
-            string json = File.ReadAllText(IOPath.Combine("Content/Towers", $"{towerId}.json"));
+            string json = File.ReadAllText(IOPath.Combine(PathService.GetEditorConfigDirectory("towers"), $"{towerId}.json"));
             var data = System.Text.Json.JsonSerializer.Deserialize<TowerSaveData>(json);
             if (data == null) return;
 
@@ -271,7 +272,7 @@ public class TowerEditorPanel
     {
         try
         {
-            File.Delete(IOPath.Combine("Content/Towers", $"{towerId}.json"));
+            File.Delete(IOPath.Combine(PathService.GetEditorConfigDirectory("towers"), $"{towerId}.json"));
             RefreshTowerList();
         }
         catch (Exception ex)
@@ -410,7 +411,7 @@ public class TowerEditorPanel
             Upgrades = upgrades
         };
 
-        string configDir = "Content/Towers";
+        string configDir = PathService.GetEditorConfigDirectory("towers");
         Directory.CreateDirectory(configDir);
         File.WriteAllText(
             IOPath.Combine(configDir, $"{towerId}.json"),

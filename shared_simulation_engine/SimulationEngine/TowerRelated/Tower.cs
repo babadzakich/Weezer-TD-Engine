@@ -49,10 +49,12 @@ public class Tower
 
     public int? GetNextUpgradeCost()
     {
-        if (Definition == null || Definition.UpgradeLevels == null) return null;
-        int nextIndex = UpgradeLevel;
-        if (nextIndex < 0 || nextIndex >= Definition.UpgradeLevels.Count) return null;
-        return Definition.UpgradeLevels[nextIndex].UpgradeCost;
+        if (Definition == null || Definition.Upgrades == null || Definition.Upgrades.Count == 0)
+        {
+            return null;
+        }
+
+        return Definition.Upgrades[0].Cost;
     }
 
     public bool ApplyLevelStats()

@@ -1,0 +1,11 @@
+{
+  "id": "test_branch_rapid",
+  "name": "Rapid Fork Tower",
+  "className": "BranchingTestTowerBehavior",
+  "bulletClassName": "test_rapid_round",
+  "cost": 210,
+  "range": 185,
+  "fireRate": 3.0,
+  "damage": 7,
+  "upgradeOptions": []
+}

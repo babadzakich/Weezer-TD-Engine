@@ -93,15 +93,8 @@ public class LevelLoader
         [JsonPropertyName("damage")]
         public float Damage { get; set; }
 
-        [JsonPropertyName("upgrades")]
-        public List<TowerUpgradeDefinition> Upgrades { get; set; } = new();
-
-        [JsonPropertyName("upgradeLevels")]
-        public List<TowerUpgradeDefinition> UpgradeLevels
-        {
-            get => Upgrades;
-            set => Upgrades = value ?? new List<TowerUpgradeDefinition>();
-        }
+        [JsonPropertyName("upgradeOptions")]
+        public List<TowerUpgradeDefinition> Upgrades { get; set; } = [];
     }
 
     public class TowerUpgradeDefinition
@@ -109,21 +102,8 @@ public class LevelLoader
         [JsonPropertyName("cost")]
         public int Cost { get; set; }
 
-        [JsonPropertyName("upgradeCost")]
-        public int UpgradeCost
-        {
-            get => Cost;
-            set => Cost = value;
-        }
-
-        [JsonPropertyName("range")]
-        public float Range { get; set; }
-
-        [JsonPropertyName("fireRate")]
-        public float FireRate { get; set; }
-
-        [JsonPropertyName("damage")]
-        public float Damage { get; set; }
+        [JsonPropertyName("targetTowerId")]
+        public string TargetTowerId { get; set; }
     }
 
     public class DamageDealerDefinition
@@ -200,19 +180,19 @@ public class LevelLoader
             }
 
             EnemyRelated.EnemyRegistry.ResetEnemies(
-                IOPath.Combine(tempDir, "Dlls", "enemies"),
+                IOPath.Combine(tempDir, "DLLs", "enemies"),
                 IOPath.Combine(tempDir, "Enemies", "configs"),
                 IOPath.Combine(tempDir, "Enemies", "behaviors"));
 
             BulletRelated.DamageDealerRegistry.Reset(
-                IOPath.Combine(tempDir, "Dlls", "damageDealers"),
+                IOPath.Combine(tempDir, "DLLs", "damageDealers"),
                 IOPath.Combine(tempDir, "DamageDealers", "configs"),
                 IOPath.Combine(tempDir, "DamageDealers", "behaviors"));
 
             TowerRelated.TowerBehaviorRegistry.Reset(
-                IOPath.Combine(tempDir, "Dlls", "towers"),
-                IOPath.Combine(tempDir, "towers", "configs"),
-                IOPath.Combine(tempDir, "towers", "behaviors"));
+                IOPath.Combine(tempDir, "DLLs", "towers"),
+                IOPath.Combine(tempDir, "Towers", "configs"),
+                IOPath.Combine(tempDir, "Towers", "behaviors"));
 
             level.TowerNames = TowerRelated.TowerBehaviorRegistry.typeSpecsRegistry.Keys.ToList();
 
@@ -258,7 +238,7 @@ public class LevelLoader
         string json = File.ReadAllText(mapFilePath);
         var serializedMap = JsonSerializer.Deserialize<SerializedMap>(json, _jsonOptions);
 
-        var map = new GameMap(serializedMap.Id, serializedMap.Name, serializedMap.Width, serializedMap.Height);
+        var map = new GameMap( serializedMap.Id, serializedMap.Name, serializedMap.Width, serializedMap.Height);
 
         Console.WriteLine($"Map '{map.Id}' deserialized. Found {serializedMap.SpawnPoints.Count} spawns, {serializedMap.DefensePoints.Count} defense points, {serializedMap.Paths.Count} paths, {serializedMap.BuildZones.Count} build zones.");
 

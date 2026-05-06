@@ -13,6 +13,7 @@ public class LevelSelectionPanel
     private List<string> _levels = new();
     private int _selectedIndex = 0;
     private bool _isOpen = true;
+    private bool _isFailure = false;
     private SpriteFont _font;
     private Texture2D _pixel;
     private int _screenWidth;
@@ -21,6 +22,7 @@ public class LevelSelectionPanel
     public event Action<string> OnLevelSelected;
 
     public bool IsOpen => _isOpen;
+    public bool IsFailure => _isFailure;
 
     public LevelSelectionPanel(int screenWidth, int screenHeight)
     {
@@ -32,7 +34,7 @@ public class LevelSelectionPanel
     {
         _font = font;
         _pixel = new Texture2D(graphicsDevice, 1, 1);
-        _pixel.SetData(new[] { Color.White });
+        _pixel.SetData([Color.White]);
         RefreshLevelList();
     }
 
@@ -100,12 +102,14 @@ public class LevelSelectionPanel
         {
             Color color = (i == _selectedIndex) ? Color.Cyan : Color.White;
             string prefix = (i == _selectedIndex) ? "> " : "  ";
-            spriteBatch.DrawString(_font, prefix + _levels[i], new Vector2(_screenWidth / 2 - 150, startY + i * 40), color);
+            string displayName = prefix + (_levels[i].EndsWith(".zip") ? _levels[i][..^4] : _levels[i]);
+            Vector2 nameSize = _font.MeasureString(displayName);
+            spriteBatch.DrawString(_font, displayName, new Vector2(_screenWidth / 2 - nameSize.X / 2, startY + i * 40), color);
         }
 
         if (_levels.Count == 0)
         {
-            string emptyMessage = "No levels found in Content/ folder!";
+            string emptyMessage = $"No levels found in {PathService.LevelsDirectory}";
             Vector2 emptyMessageSize = _font.MeasureString(emptyMessage);
             spriteBatch.DrawString(
                 _font,

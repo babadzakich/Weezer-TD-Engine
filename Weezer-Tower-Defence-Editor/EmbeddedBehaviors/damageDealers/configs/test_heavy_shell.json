@@ -1,0 +1,22 @@
+{
+  "name": "test_heavy_shell",
+  "className": "TestHeavyShellBehavior",
+  "args": [
+    {
+      "name": "damage",
+      "value": 36
+    },
+    {
+      "name": "speed",
+      "value": 220
+    },
+    {
+      "name": "maxDistance",
+      "value": 650
+    },
+    {
+      "name": "hitRadius",
+      "value": 8
+    }
+  ]
+}

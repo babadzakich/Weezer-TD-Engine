@@ -1,0 +1,22 @@
+{
+  "name": "test_base_round",
+  "className": "TestBaseRoundBehavior",
+  "args": [
+    {
+      "name": "damage",
+      "value": 14
+    },
+    {
+      "name": "speed",
+      "value": 300
+    },
+    {
+      "name": "maxDistance",
+      "value": 500
+    },
+    {
+      "name": "hitRadius",
+      "value": 5
+    }
+  ]
+}

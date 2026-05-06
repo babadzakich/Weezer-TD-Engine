@@ -5,21 +5,25 @@
 Система разделена на **Поведения** (Behaviors) и **Конфиги** (Configs):
 
 ### Поведения (IEnemyBehavior)
+
 **Где:** `EditorEngine/Enemies/Behaviors/`
 
 Определяют КАК враг движется, атакует, рендерится. Это код, логика.
 
 **Примеры:**
+
 - `StandardEnemyBehavior` - просто идёт по пути
 - `FlyingEnemyBehavior` - летит прямо к цели, быстрее
 - `TeleportingEnemyBehavior` - телепортируется вперёд каждые 2 секунды
 
 ### Конфиги (EnemyConfig)
+
 **Где:** `EditorEngine/Enemies/Configs/*.json`
 
 Определяют конкретных врагов с их параметрами. Это данные.
 
 **Пример:** `goblin.json`
+
 ```json
 {
   "Id": "goblin",
@@ -36,6 +40,7 @@
 ### 1. Выбери существующее поведение
 
 Посмотри в `EditorEngine/Enemies/Behaviors/`:
+
 - `standard` - обычное движение
 - `flying` - полёт
 - `teleporting` - телепорт

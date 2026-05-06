@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended;
+using SimulationEngine.Infrastructure;
 
 namespace EditorEngine.UI;
 
@@ -77,9 +78,8 @@ public class MoneyHealthEditor
             health = parsedHealth;
 
 
-        string configDir = "Content/";
-        System.IO.Directory.CreateDirectory(configDir);
-        string configPath = System.IO.Path.Combine(configDir, $"MoneyHealth.json");
+
+        string configPath = System.IO.Path.Combine(PathService.EditorDirectory, $"MoneyHealth.json");
 
         var config = new
         {

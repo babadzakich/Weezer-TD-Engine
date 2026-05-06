@@ -28,7 +28,7 @@ public class UIManager
 
     public event Action OnStartWaveRequested;
     public event Action<Tower> OnTowerSellRequested;
-    public event Action<Tower> OnTowerUpgradeRequested;
+    public event Action<Tower, LevelLoader.TowerUpgradeDefinition> OnTowerUpgradeRequested;
 
     public UIManager(int screenWidth, int screenHeight)
     {
@@ -44,9 +44,11 @@ public class UIManager
         StartWaveButton = new Button(
             new Vector2(10, 90),
             new Vector2(200, 80),
-            "START WAVE");
-        StartWaveButton.BackgroundColor = new Color(0, 150, 0);
-        StartWaveButton.HoverColor = new Color(0, 200, 0);
+            "START WAVE")
+        {
+            BackgroundColor = new Color(0, 150, 0),
+            HoverColor = new Color(0, 200, 0)
+        };
         StartWaveButton.OnClick += () => OnStartWaveRequested?.Invoke();
         _allElements.Add(StartWaveButton);
 
@@ -60,7 +62,7 @@ public class UIManager
             new Vector2(100, 100),
             new Vector2(250, 190));
         TowerControlPanel.OnSellTower += tower => OnTowerSellRequested?.Invoke(tower);
-        TowerControlPanel.OnUpgradeTower += tower => OnTowerUpgradeRequested?.Invoke(tower);
+        TowerControlPanel.OnUpgradeTower += (tower, option) => OnTowerUpgradeRequested?.Invoke(tower, option);
         _allElements.Add(TowerControlPanel);
     }
 
@@ -106,12 +108,11 @@ public class UIManager
         TowerControlPanel.ShowForTower(tower);
         TowerControlPanel.UpdateButtonPositions();
 
-        int? nextCost = tower.GetNextUpgradeCost();
+        var upgrades = tower.Definition?.Upgrades ?? new List<LevelLoader.TowerUpgradeDefinition>();
         bool isMaxLevel = tower.Definition == null ||
-                          tower.Definition.UpgradeLevels == null ||
-                          tower.UpgradeLevel >= tower.Definition.UpgradeLevels.Count;
-        bool canAfford = nextCost.HasValue && Money >= nextCost.Value;
-        TowerControlPanel.SetUpgradeInfo(nextCost, canAfford, isMaxLevel);
+                          tower.Definition.Upgrades == null ||
+                          tower.Definition.Upgrades.Count == 0;
+        TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel);
     }
 
     public void HideTowerControl()
@@ -146,12 +147,11 @@ public class UIManager
         if (TowerControlPanel.IsVisible && TowerControlPanel.SelectedTower != null)
         {
             var tower = TowerControlPanel.SelectedTower;
-            int? nextCost = tower.GetNextUpgradeCost();
+            var upgrades = tower.Definition?.Upgrades ?? new List<LevelLoader.TowerUpgradeDefinition>();
             bool isMaxLevel = tower.Definition == null ||
-                              tower.Definition.UpgradeLevels == null ||
-                              tower.UpgradeLevel >= tower.Definition.UpgradeLevels.Count;
-            bool canAfford = nextCost.HasValue && Money >= nextCost.Value;
-            TowerControlPanel.SetUpgradeInfo(nextCost, canAfford, isMaxLevel);
+                              tower.Definition.Upgrades == null ||
+                              tower.Definition.Upgrades.Count == 0;
+            TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel);
         }
 
         foreach (var element in _allElements)

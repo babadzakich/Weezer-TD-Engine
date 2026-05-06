@@ -1,0 +1,32 @@
+[
+  {
+    "name": "test_branch_base",
+    "className": "BranchingTestTowerBehavior",
+    "args": [
+      {
+        "name": "id",
+        "value": "test_branch_base"
+      },
+      {
+        "name": "name",
+        "value": "Fork Tower"
+      },
+      {
+        "name": "projectileConfig",
+        "value": "test_base_round"
+      },
+      {
+        "name": "cost",
+        "value": 120
+      },
+      {
+        "name": "range",
+        "value": 165
+      },
+      {
+        "name": "fireRate",
+        "value": 1.1
+      }
+    ]
+  }
+]

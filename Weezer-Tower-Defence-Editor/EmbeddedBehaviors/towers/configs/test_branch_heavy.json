@@ -1,0 +1,32 @@
+[
+  {
+    "name": "test_branch_heavy",
+    "className": "BranchingTestTowerBehavior",
+    "args": [
+      {
+        "name": "id",
+        "value": "test_branch_heavy"
+      },
+      {
+        "name": "name",
+        "value": "Heavy Fork Tower"
+      },
+      {
+        "name": "projectileConfig",
+        "value": "test_heavy_shell"
+      },
+      {
+        "name": "cost",
+        "value": 240
+      },
+      {
+        "name": "range",
+        "value": 240
+      },
+      {
+        "name": "fireRate",
+        "value": 0.7
+      }
+    ]
+  }
+]

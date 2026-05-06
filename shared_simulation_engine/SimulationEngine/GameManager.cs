@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.BulletRelated;
@@ -24,6 +25,7 @@ public class GameManager
     public WaveController WaveController { get; private set; }
     public EnemyController EnemyController { get; private set; }
     public DamageDealerController DamageDealerController { get; private set; }
+    public Dictionary<string, LevelLoader.TowerDefinition> TowerDefinitions { get; private set; }
 
     public Texture2D DefaultTowerTexture { get; set; }
     public Texture2D DefaultEnemyTexture { get; set; }
@@ -128,6 +130,7 @@ public class GameManager
         WaveController = waveController;
         EnemyController = enemyController;
         DamageDealerController = damageDealerController ?? DamageDealerController.GetInstance(null);
+        TowerDefinitions = towerDefinitions ?? new Dictionary<string, LevelLoader.TowerDefinition>();
 
         _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
 
@@ -140,7 +143,7 @@ public class GameManager
             Map.DefensePoints[0].Health = startingLives;
         }
 
-        InitializeAvailableTowers(towerNames, towerDefinitions);
+        InitializeAvailableTowers(towerNames, TowerDefinitions);
     }
 
     private void InitializeAvailableTowers(
@@ -149,13 +152,16 @@ public class GameManager
     {
         if (towerDefinitions != null && towerDefinitions.Count > 0)
         {
-            foreach (var def in towerDefinitions.Values)
+            var upgradeTargets = towerDefinitions.Values
+                .Where(def => def.Upgrades != null)
+                .SelectMany(def => def.Upgrades)
+                .Select(upgrade => upgrade.TargetTowerId)
+                .Where(targetId => !string.IsNullOrWhiteSpace(targetId))
+                .ToHashSet();
+
+            foreach (var def in towerDefinitions.Values.Where(def => !upgradeTargets.Contains(def.Id)))
             {
-                var bulletBehavior = new StandardBulletBehavior(
-                    def.Damage > 0 ? def.Damage : 25f,
-                    500f,
-                    500f);
-                var behavior = new DefinitionTowerBehavior(def, bulletBehavior);
+                var behavior = TowerBehaviorFactory.CreateTowerBehavior(def);
                 UIManager.AddAvailableTower(behavior, def);
             }
 
@@ -166,7 +172,7 @@ public class GameManager
         {
             foreach (var towerName in towerNames)
             {
-                var behavior = TowerBehaviorRegistry.create(towerName);
+                var behavior = TowerBehaviorFactory.CreateFromRegisteredName(towerName);
                 UIManager.AddAvailableTower(behavior, behavior.Definition);
             }
 

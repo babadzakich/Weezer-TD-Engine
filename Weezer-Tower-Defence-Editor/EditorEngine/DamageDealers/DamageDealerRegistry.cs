@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using SimulationEngine.Infrastructure;
 using SimulationEngine.Persistence;
 
 namespace EditorEngine.DamageDealers;
@@ -16,7 +17,7 @@ public class DamageDealerRegistry
     public static DamageDealerRegistry Instance => _instance ??= new DamageDealerRegistry();
     private DamageDealerRegistry()
     {
-        loadDamageDealerClasses();
+        // loadDamageDealerClasses();
         loadDamageDealerConfigs();
     }
 
@@ -28,7 +29,7 @@ public class DamageDealerRegistry
 
 
     public Dictionary<string, BehaviorConfig> behaviorDescriptions = new();
-    public Dictionary<string, Type> behaviors = new();
+    // public Dictionary<string, Type> behaviors = new();
     public Dictionary<string, TypeSpecification> damageDealers = new();
 
 
@@ -38,77 +39,82 @@ public class DamageDealerRegistry
     /// It uses json files to find out which dll to load and which class to look for
     /// Also json-s describe constructor arguments
     /// </summary>
-    private void loadDamageDealerClasses()
-    {
+    // private void loadDamageDealerClasses()
+    // {
 
-        var jsonRoot = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "WeezerTowerDefence",
-            "Editor",
-            "custom",
-            "damageDealers",
-            "behaviors"
-        );
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
+    //     var jsonRoot = System.IO.Path.Combine(
+    //         PathService.EditorDirectory,
+    //         "custom",
+    //         "damageDealers",
+    //         "behaviors"
+    //     );
+    //     var jsonOptions = new JsonSerializerOptions
+    //     {
+    //         PropertyNameCaseInsensitive = true
+    //     };
 
-        if (!Directory.Exists(jsonRoot))
-            throw new DirectoryNotFoundException(jsonRoot);
+    //     if (!Directory.Exists(jsonRoot))
+    //         "custom",
+    //         "damageDealers",
+    //         "behaviors"
+    //     );
+    //     var jsonOptions = new JsonSerializerOptions
+    //     {
+    //         PropertyNameCaseInsensitive = true
+    //     };
 
-        foreach (var jsonPath in Directory.EnumerateFiles(jsonRoot, "*.json"))
-        {
-            var json = File.ReadAllText(jsonPath);
+    //     if (!Directory.Exists(jsonRoot))
+    //         throw new DirectoryNotFoundException(jsonRoot);
 
-            var config = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
-            if (config == null)
-                throw new Exception($"Failed to parse {jsonPath}");
+    //     foreach (var jsonPath in Directory.EnumerateFiles(jsonRoot, "*.json"))
+    //     {
+    //         var json = File.ReadAllText(jsonPath);
 
-            if (behaviorDescriptions.ContainsKey(config.ClassName))
-                throw new Exception($"Duplicate behavior name: {config.ClassName}");
+    //         var config = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
+    //         if (config == null)
+    //             throw new Exception($"Failed to parse {jsonPath}");
 
-            behaviorDescriptions[config.ClassName] = config;
+    //         if (behaviorDescriptions.ContainsKey(config.ClassName))
+    //             throw new Exception($"Duplicate behavior name: {config.ClassName}");
 
-            var dllPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "WeezerTowerDefence",
-                "DLLs",
-                "damageDealers",
-                $"{config.FileName}.dll"
-             );
+    //         behaviorDescriptions[config.ClassName] = config;
 
-            if (!File.Exists(dllPath))
-                throw new FileNotFoundException(dllPath);
+    //         var dllPath = Path.Combine(
+    //             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+    //             "WeezerTowerDefence",
+    //             "DLLs",
+    //             "damageDealers",
+    //             $"{config.FileName}.dll"
+    //          );
 
-            var assembly = Assembly.LoadFrom(dllPath);
+    //         if (!File.Exists(dllPath))
+    //             throw new FileNotFoundException(dllPath);
 
-            var type = assembly
-                .GetTypes()
-                .FirstOrDefault(t => t.Name == config.ClassName);
+    //         var assembly = Assembly.LoadFrom(dllPath);
 
-            Console.WriteLine($"OFF COURSE IT IS NOT NONE: {type.Name}");
+    //         var type = assembly
+    //             .GetTypes()
+    //             .FirstOrDefault(t => t.Name == config.ClassName);
 
-            if (type == null)
-                throw new Exception(
-                    $"Type {config.ClassName} not found in {dllPath}"
-                );
-            if (behaviors.ContainsKey(config.ClassName))
-                throw new Exception($"Duplicate behavior class: {config.ClassName}");
+    //         Console.WriteLine($"OFF COURSE IT IS NOT NONE: {type.Name}");
 
-            behaviors[config.ClassName] = type;
-        }
-    }
+    //         if (type == null)
+    //             throw new Exception(
+    //                 $"Type {config.ClassName} not found in {dllPath}"
+    //             );
+    //         if (behaviors.ContainsKey(config.ClassName))
+    //             throw new Exception($"Duplicate behavior class: {config.ClassName}");
+
+    //         behaviors[config.ClassName] = type;
+    //     }
+    // }
 
     private void loadDamageDealerConfigs()
     {
         var result = new Dictionary<string, TypeSpecification>();
 
         var jsonRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "WeezerTowerDefence",
-            "Editor",
-            "custom",
+            PathService.EditorDirectory,
             "damageDealers",
             "configs"
         );
@@ -131,10 +137,10 @@ public class DamageDealerRegistry
 
             Console.WriteLine($"Loaded damage dealer config: {spec}");
             Console.WriteLine($"  Class: {spec.ClassName}");
-            if (!behaviors.ContainsKey(spec.ClassName))
-                throw new Exception(
-                    $"Behavior class '{spec.ClassName}' not found (config: {jsonPath})"
-                );
+            // if (!behaviors.ContainsKey(spec.ClassName))
+            //     throw new Exception(
+            //         $"Behavior class '{spec.ClassName}' not found (config: {jsonPath})"
+            //     );
 
             if (result.ContainsKey(spec.Name))
                 throw new Exception($"Duplicate damage dealer config: {spec.Name}");

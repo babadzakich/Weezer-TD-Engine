@@ -8,16 +8,17 @@ using EditorEngine.Waves;
 using System;
 using EditorEngine.UI;
 using SimulationEngine.TowerRelated;
+using SimulationEngine.Infrastructure;
 
 namespace EditorEngine;
 
 public class LevelEditor
 {
-    private TowerEditor towerPanel;
-    private DamageDealerEditor damageDealerEditor;
-    private EnemyEditor enemyEditor;
-    private UITextField levelNameField;
-    private MoneyHealthEditor moneyHealthPanel;
+    private readonly TowerEditor towerPanel;
+    private readonly DamageDealerEditor damageDealerEditor;
+    private readonly EnemyEditor enemyEditor;
+    private readonly UITextField levelNameField;
+    private readonly MoneyHealthEditor moneyHealthPanel;
 
     private bool debugToggleMessage = false;
     private string statusMessage = "";
@@ -53,6 +54,8 @@ public class LevelEditor
     private List<Vector2> currentPathPoints = new List<Vector2>();
     private string selectedPathDefensePointId = null;
 
+    public bool IsExitRequested { get; private set; } = false;
+
     public LevelEditor(ContentManager content, int screenWidth, int screenHeight)
     {
         towerPanel = new TowerEditor();
@@ -74,11 +77,13 @@ public class LevelEditor
         camera = new Camera(new Vector2(3000, 2000), screenWidth, screenHeight);
 
         // Загрузка шрифта
-        defaultFont = content.Load<SpriteFont>("DefaultFont"); 
+        defaultFont = content.Load<SpriteFont>("EditorFont"); 
     }
 
     public void Update(GameTime gameTime, KeyboardState keyboardState, MouseState mouseState)
     {   
+        IsExitRequested = false;
+
         moneyHealthPanel.Update(mouseState, keyboardState);
         levelNameField.Update(mouseState, keyboardState);
 
@@ -95,6 +100,16 @@ public class LevelEditor
         if(enemyEditor.isShown) 
         {
             enemyEditor.Update(mouseState, keyboardState);
+        }
+
+        if (keyboardState.IsKeyDown(Keys.Escape) && previousKeyboardState.IsKeyUp(Keys.Escape))
+        {
+            if (HandleEscape())
+            {
+                previousKeyboardState = keyboardState;
+                previousMouseState = mouseState;
+                return;
+            }
         }
 
         if (!IsAnyTextFieldActive())
@@ -209,11 +224,54 @@ public class LevelEditor
         }
     }
 
+    private bool HandleEscape()
+    {
+        if (enemySelectionPanel.IsOpen)
+        {
+            enemySelectionPanel.Close();
+            return true;
+        }
+
+        if (wavesPanel.IsOpen)
+        {
+            wavesPanel.Close();
+            currentMode = EditorMode.None;
+            return true;
+        }
+
+        if (towerPanel.isShown)
+        {
+            towerPanel.Toggle();
+            return true;
+        }
+
+        if (damageDealerEditor.isShown)
+        {
+            damageDealerEditor.Toggle();
+            return true;
+        }
+
+        if (enemyEditor.isShown)
+        {
+            enemyEditor.Toggle();
+            return true;
+        }
+
+        if (currentMode != EditorMode.None)
+        {
+            currentMode = EditorMode.None;
+            return true;
+        }
+
+        IsExitRequested = true;
+        return true;
+    }
+
     private bool IsAnyTextFieldActive()
     {
-        return (levelNameField.IsActive || moneyHealthPanel.IsAnyFieldActive() 
+        return levelNameField.IsActive || moneyHealthPanel.IsAnyFieldActive() 
             || towerPanel.IsAnyFieldActive() || damageDealerEditor.IsAnyFieldActive() 
-            || enemyEditor.IsAnyFieldActive());
+            || enemyEditor.IsAnyFieldActive();
     }
 
     private void HandleMouseInput(MouseState mouseState)
@@ -724,8 +782,8 @@ public class LevelEditor
         currentMap.Name = levelId;
         waveSet.MapId = levelId;
 
-        MapSerializer.SaveMap(currentMap, $"Content/Maps/{currentMap.Id}.json");
-        WaveSerializer.Save(waveSet, $"Content/Maps/{currentMap.Id}.waves.json");
+        MapSerializer.SaveMap(currentMap,System.IO.Path.Combine(PathService.EditorMapsDirectory, $"{currentMap.Id}.json"));
+        WaveSerializer.Save(waveSet, System.IO.Path.Combine(PathService.EditorMapsDirectory, $"{currentMap.Id}.waves.json"));
         Console.WriteLine($"Level {currentMap.Id} saved successfully!");
         statusMessage = $"Level {currentMap.Id} saved!";
         debugToggleMessage = true;
@@ -743,12 +801,8 @@ public class LevelEditor
             currentMap.Name = levelId;
             waveSet.MapId = levelId;
 
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
             var outputPath = System.IO.Path.Combine(
-                appData,
-                "WeezerTowerDefence",
-                "Levels",
+                PathService.LevelsDirectory,
                 $"{currentMap.Id}.zip"
             );
             LevelPackager.PackLevel(currentMap, waveSet, outputPath);
@@ -768,9 +822,12 @@ public class LevelEditor
 
     public void LoadAll(string mapId)
     {
-        currentMap = MapSerializer.LoadMap($"Content/Maps/{mapId}.json");
-        waveSet = WaveSerializer.Load($"Content/Maps/{mapId}.waves.json")
+        currentMap = MapSerializer.LoadMap(System.IO.Path.Combine(PathService.EditorMapsDirectory, $"{mapId}.json"))
+            ?? new GameMap(mapId, $"Level {mapId}", 3000, 2000);
+        waveSet = WaveSerializer.Load(System.IO.Path.Combine(PathService.EditorMapsDirectory, $"{mapId}.waves.json"))
                 ?? new WaveSet { MapId = mapId };
+        wavesPanel = new ManageWavesPanel(waveSet, currentMap);
+        Console.WriteLine($"Level {mapId} loaded successfully!");
     }
 
 

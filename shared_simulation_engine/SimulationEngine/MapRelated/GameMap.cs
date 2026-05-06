@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using SimulationEngine.Infrastructure;
 using System.Collections.Generic;
+using System.IO;
 
 namespace SimulationEngine.MapRelated;
 
@@ -91,7 +93,6 @@ public class GameMap
     }
 
     /// <summary>
-    /// Отрисовка карты (для отладки)
     /// </summary>
     public void Draw(SpriteBatch spriteBatch, Texture2D pixel)
     {
@@ -117,6 +118,7 @@ public class GameMap
         // Рисуем точки спавна
         foreach (var spawn in SpawnPoints)
         {
+            // spriteBatch.Draw(_spawnpoint, spawn.Position - new Vector2(_spawnpoint.Width / 2, _spawnpoint.Height / 2), Color.White);
             DrawCircle(spriteBatch, pixel, spawn.Position, 10, Color.Red);
         }
 

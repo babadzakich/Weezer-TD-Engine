@@ -1,0 +1,20 @@
+{
+  "id": "test_branch_base",
+  "name": "Fork Tower",
+  "className": "BranchingTestTowerBehavior",
+  "bulletClassName": "test_base_round",
+  "cost": 120,
+  "range": 165,
+  "fireRate": 1.1,
+  "damage": 14,
+  "upgradeOptions": [
+    {
+      "cost": 90,
+      "targetTowerId": "test_branch_rapid"
+    },
+    {
+      "cost": 110,
+      "targetTowerId": "test_branch_heavy"
+    }
+  ]
+}

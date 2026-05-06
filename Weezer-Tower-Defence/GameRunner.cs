@@ -186,7 +186,7 @@ public class GameRunner : Game
         // Загружаем шрифт
         try
         {
-            _font = Content.Load<SpriteFont>("DefaultFont");
+            _font = Content.Load<SpriteFont>("EngineFont");
             Console.WriteLine("Font loaded successfully!");
         }
         catch (Exception ex)

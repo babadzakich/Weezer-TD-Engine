@@ -37,18 +37,17 @@ public class BasicTowerBehavior : ITowerBehavior
 
     public void ApplyLevel(int level)
     {
-        if (Definition == null || Definition.UpgradeLevels == null || level <= 0 || level > Definition.UpgradeLevels.Count)
+        if (Definition == null)
         {
-            Range = Definition?.Range ?? Range;
-            FireRate = Definition?.FireRate ?? FireRate;
-            if (projectileConfig != null) projectileConfig.Damage = Definition?.Damage ?? (projectileConfig?.Damage ?? 25f);
             return;
         }
 
-        var up = Definition.UpgradeLevels[level - 1];
-        Range = up.Range > 0 ? up.Range : Definition.Range;
-        FireRate = up.FireRate > 0 ? up.FireRate : Definition.FireRate;
-        if (projectileConfig != null) projectileConfig.Damage = up.Damage > 0 ? up.Damage : (Definition.Damage > 0 ? Definition.Damage : 25f);
+        Range = Definition.Range;
+        FireRate = Definition.FireRate;
+        if (projectileConfig != null)
+        {
+            projectileConfig.Damage = Definition.Damage > 0 ? Definition.Damage : (projectileConfig?.Damage ?? 25f);
+        }
     }
 
     
@@ -164,4 +163,3 @@ public class BasicTowerBehavior : ITowerBehavior
             null, color, angle, new Vector2(0, 0.5f), SpriteEffects.None, 0);
     }
 }
-

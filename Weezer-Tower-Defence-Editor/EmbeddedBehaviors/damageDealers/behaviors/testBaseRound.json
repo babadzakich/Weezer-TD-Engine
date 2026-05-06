@@ -1,0 +1,23 @@
+{
+  "name": "Test Base Round",
+  "fileName": "testBaseRound",
+  "className": "TestBaseRoundBehavior",
+  "args": [
+    {
+      "name": "damage",
+      "type": "float"
+    },
+    {
+      "name": "speed",
+      "type": "float"
+    },
+    {
+      "name": "maxDistance",
+      "type": "float"
+    },
+    {
+      "name": "hitRadius",
+      "type": "float"
+    }
+  ]
+}

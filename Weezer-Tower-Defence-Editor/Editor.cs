@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using EditorEngine;
 using System;
 using System.IO;
+using SimulationEngine.Infrastructure;
 
 namespace Weezer_Tower_Defence;
 
@@ -19,31 +20,15 @@ public class Editor : Game
 
     public Editor()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
-        var commonRoot = Path.Combine(
-            appData,
-            "WeezerTowerDefence",
-            "common"
-        );
-
-        var localContentRoot = Path.Combine(AppContext.BaseDirectory, "Content");
-        var localProjectContentRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../Content"));
-
-        string targetRoot = File.Exists(Path.Combine(commonRoot, "DefaultFont.xnb"))
-            ? commonRoot
-            : File.Exists(Path.Combine(localProjectContentRoot, "DefaultFont.xnb"))
-                ? localProjectContentRoot
-                : localContentRoot;
+        var commonRoot = PathService.CommonDirectory;
 
         graphics = new GraphicsDeviceManager(this);
-        Content.RootDirectory = $"{targetRoot}";
+        Content.RootDirectory = $"{commonRoot}";
         IsMouseVisible = true;
         
-        // Разрешаем изменение размера окна
         Window.AllowUserResizing = true;
-        graphics.PreferredBackBufferWidth = 1920;
-        graphics.PreferredBackBufferHeight = 1080;
+        graphics.PreferredBackBufferWidth = 1600;
+        graphics.PreferredBackBufferHeight = 900;
     }
 
     protected override void Initialize()
@@ -61,7 +46,7 @@ public class Editor : Game
         
         try
         {
-            font = Content.Load<SpriteFont>("DefaultFont");
+            font = Content.Load<SpriteFont>("EditorFont");
         }
         catch
         {
@@ -69,16 +54,22 @@ public class Editor : Game
         }
         
         pixel = new Texture2D(GraphicsDevice, 1, 1);
-        pixel.SetData(new[] { Color.White });
+        pixel.SetData([Color.White]);
     }
 
     protected override void Update(GameTime gameTime)
     {
         var keyboardState = Keyboard.GetState();
         
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
-            keyboardState.IsKeyDown(Keys.Escape))
+        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
             Exit();
+
+        if (showInstructions &&
+            keyboardState.IsKeyDown(Keys.Escape) &&
+            previousKeyState.IsKeyUp(Keys.Escape))
+        {
+            Exit();
+        }
 
         // Закрыть инструкции по нажатию Enter или пробела
         if (showInstructions && 
@@ -93,6 +84,8 @@ public class Editor : Game
         if (!showInstructions)
         {
             levelEditor.Update(gameTime, keyboardState, mouseState);
+            if (levelEditor.IsExitRequested)
+                Exit();
         }
 
         previousKeyState = keyboardState;
@@ -156,9 +149,6 @@ public class Editor : Game
             "=== СОХРАНЕНИЕ ===",
             "Ctrl+S - Сохранить карту и волны",
             "Ctrl+P - Упаковать уровень в архив",
-            "",
-            "",
-            "ENTER или ПРОБЕЛ - Закрыть это окно",
             "",
             "Нажмите ENTER или ПРОБЕЛ чтобы начать редактирование..."
         ];

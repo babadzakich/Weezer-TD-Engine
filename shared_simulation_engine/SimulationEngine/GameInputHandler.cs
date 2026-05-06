@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.MapRelated;
 using SimulationEngine.TowerRelated;
+using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
 using System;
 using SimulationEngine.BulletRelated.Behaviors;
@@ -194,25 +195,47 @@ public class GameInputHandler
         _selectedTower = null;
     }
 
-    private void UpgradeTower(Tower tower)
+    private void UpgradeTower(Tower tower, LevelLoader.TowerUpgradeDefinition next)
     {
         if (tower == null) return;
+        if (next == null) return;
 
         var def = tower.Definition;
-        if (def == null || def.UpgradeLevels == null || def.UpgradeLevels.Count == 0) return;
+        if (def == null || def.Upgrades == null || def.Upgrades.Count == 0) return;
 
-        int nextIndex = tower.UpgradeLevel;
-        if (nextIndex < 0 || nextIndex >= def.UpgradeLevels.Count) return; // достигнут максимум
-
-        var next = def.UpgradeLevels[nextIndex];
-        int cost = next.UpgradeCost;
+        int cost = next.Cost;
         if (_uiManager.Money < cost) return;
 
+        if (string.IsNullOrWhiteSpace(next.TargetTowerId)) return;
+
+        var gameManager = GameManager.GetInstance();
+        if (!gameManager.TowerDefinitions.TryGetValue(next.TargetTowerId, out var targetDefinition))
+        {
+            Console.WriteLine($"Upgrade target '{next.TargetTowerId}' was not found for tower '{def.Id}'.");
+            return;
+        }
+
+        var upgradedBehavior = TowerBehaviorFactory.CreateTowerBehavior(targetDefinition);
+        var upgradedTower = new Tower(upgradedBehavior, tower.Position, targetDefinition)
+        {
+            Texture = tower.Texture ?? gameManager.DefaultTowerTexture
+        };
+
         _uiManager.Money -= cost;
-        tower.UpgradeLevel += 1;
-        tower.ApplyLevelStats();
+
+        int towerIndex = _towerController.towers.IndexOf(tower);
+        if (towerIndex >= 0)
+        {
+            _towerController.towers[towerIndex] = upgradedTower;
+        }
+        else
+        {
+            _towerController.AddTower(upgradedTower);
+        }
+
+        _selectedTower = upgradedTower;
 
         // обновляем UI панели управления
-        _uiManager.ShowTowerControl(tower);
+        _uiManager.ShowTowerControl(upgradedTower);
     }
 }

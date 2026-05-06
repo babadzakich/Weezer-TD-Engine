@@ -36,6 +36,8 @@ public class DamageDealerRegistry
 
     public static void Reset(string dllsDir, string configsDir, string behaviorDescriptionsDir)
     {
+        typeRegistry = new();
+        typeSpecsRegistry = new();
         typeBehaviorRegistry = loadConfigs(behaviorDescriptionsDir);
 
         var jsonOptions = new JsonSerializerOptions

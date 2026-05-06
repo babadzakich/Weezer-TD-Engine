@@ -1,0 +1,8 @@
+{
+  "id": "training_dummy",
+  "displayName": "Training Dummy",
+  "behaviorId": "training_dummy",
+  "baseHealth": 220,
+  "baseSpeed": 55,
+  "damage": 5
+}

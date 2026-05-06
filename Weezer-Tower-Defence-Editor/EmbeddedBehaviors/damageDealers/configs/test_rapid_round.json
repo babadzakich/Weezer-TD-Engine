@@ -1,0 +1,22 @@
+{
+  "name": "test_rapid_round",
+  "className": "TestRapidRoundBehavior",
+  "args": [
+    {
+      "name": "damage",
+      "value": 7
+    },
+    {
+      "name": "speed",
+      "value": 420
+    },
+    {
+      "name": "maxDistance",
+      "value": 520
+    },
+    {
+      "name": "hitRadius",
+      "value": 4
+    }
+  ]
+}

@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Xml.Linq;
-using EditorEngine.Towers;
 using EditorEngine.UI.FormUIComponents;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using MonoGame.Extended;
+using SimulationEngine.Infrastructure;
 
 namespace EditorEngine.UI;
 
@@ -74,19 +72,12 @@ public class EnemyEditor : IShowable
 
         var obj = new TypeSpecification() { Name = name, ClassName = className, Args = argValues };
 
-        var jsonRoot = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "WeezerTowerDefence",
-            "Editor",
-            "custom",
-            "enemies",
-            "configs"
-        );
+        var jsonRoot = PathService.GetEditorConfigDirectory("enemies");
 
 
         System.IO.Directory.CreateDirectory(jsonRoot);
         var jsonPath = System.IO.Path.Combine(jsonRoot, $"{name}.json");
-        Console.WriteLine($"Saving Damage Dealer config to: {jsonPath}");
+        Console.WriteLine($"Saving Enemy config to: {jsonPath}");
 
         var options = new JsonSerializerOptions
         {

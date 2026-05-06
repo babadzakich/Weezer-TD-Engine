@@ -55,31 +55,14 @@ public class DefinitionTowerBehavior : ITowerBehavior
     /// </summary>
     public void ApplyLevel(int level)
     {
-        if (level <= 0 || _definition.UpgradeLevels == null || _definition.UpgradeLevels.Count == 0)
+        if (_definition == null)
         {
-            _range = _definition.Range;
-            _fireRate = _definition.FireRate;
-            _damage = _definition.Damage > 0 ? _definition.Damage : 25f;
-            SyncProjectile();
             return;
         }
 
-        int index = level - 1;
-        if (index >= 0 && index < _definition.UpgradeLevels.Count)
-        {
-            var up = _definition.UpgradeLevels[index];
-            _range = up.Range > 0 ? up.Range : _definition.Range;
-            _fireRate = up.FireRate > 0 ? up.FireRate : _definition.FireRate;
-            _damage = up.Damage > 0 ? up.Damage : (_definition.Damage > 0 ? _definition.Damage : 25f);
-        }
-        else
-        {
-            // если уровень выше доступного - остаемся на последнем известном
-            var last = _definition.UpgradeLevels[_definition.UpgradeLevels.Count - 1];
-            _range = last.Range > 0 ? last.Range : _definition.Range;
-            _fireRate = last.FireRate > 0 ? last.FireRate : _definition.FireRate;
-            _damage = last.Damage > 0 ? last.Damage : (_definition.Damage > 0 ? _definition.Damage : 25f);
-        }
+        _range = _definition.Range;
+        _fireRate = _definition.FireRate;
+        _damage = _definition.Damage > 0 ? _definition.Damage : 25f;
         SyncProjectile();
     }
 
@@ -213,4 +196,3 @@ public class DefinitionTowerBehavior : ITowerBehavior
             null, color, angle, new Vector2(0, 0.5f), SpriteEffects.None, 0);
     }
 }
-

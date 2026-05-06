@@ -8,10 +8,14 @@ namespace SimulationEngine.Infrastructure
     /// </summary>
     public static class PathService
     {
-        private static readonly string localAppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WeezerTowerDefence");
-        private static readonly string developmentResourcesDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../Content");
+        private static readonly string localAppData = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "WeezerTowerDefence");
+
         public static string AppDataDirectory => localAppData;
-        public static string EditorDirectory => Path.Combine(localAppData, "Editor", "Custom");
+        public static string EditorDirectory => Path.Combine(localAppData, "Editor");
+        public static string EditorAssetsDirectory => Path.Combine(EditorDirectory, "Assets");
+        public static string EditorMapsDirectory => Path.Combine(EditorDirectory, "Maps");
         public static string SavesDirectory => Path.Combine(localAppData, "Saves");
         public static string DLLsDirectory => Path.Combine(localAppData, "DLLs");
         public static string LevelsDirectory => Path.Combine(localAppData, "Levels");
@@ -19,14 +23,10 @@ namespace SimulationEngine.Infrastructure
 
         static PathService()
         {
-            if (!Directory.Exists(localAppData))
-            {
-                _initializeDirectories();
-                // throw new DirectoryNotFoundException($"Development resources directory not found: {developmentResourcesDirectory}");
-            }
+            EnsureInitialized();
         }
-        
-        private static void _initializeDirectories()
+
+        public static void EnsureInitialized()
         {
             Directory.CreateDirectory(localAppData);
             Directory.CreateDirectory(EditorDirectory);
@@ -34,6 +34,16 @@ namespace SimulationEngine.Infrastructure
             Directory.CreateDirectory(DLLsDirectory);
             Directory.CreateDirectory(LevelsDirectory);
             Directory.CreateDirectory(CommonDirectory);
+            Directory.CreateDirectory(EditorAssetsDirectory);
+            Directory.CreateDirectory(EditorMapsDirectory);
+
+            foreach (var entityType in new[] { "towers", "enemies", "damageDealers" })
+            {
+                Directory.CreateDirectory(GetEditorEntityDirectory(entityType));
+                Directory.CreateDirectory(GetEditorBehaviorDirectory(entityType));
+                Directory.CreateDirectory(GetEditorConfigDirectory(entityType));
+                Directory.CreateDirectory(GetEntityDllDirectory(entityType));
+            }
         }
 
         public static string GetLevelArchivePath(string levelId) =>
@@ -42,6 +52,19 @@ namespace SimulationEngine.Infrastructure
         public static string GetCommonFilePath(string fileName) =>
             Path.Combine(CommonDirectory, fileName);
 
+        public static string GetEditorEntityDirectory(string entityType) =>
+            Path.Combine(EditorDirectory, entityType);
+
+        public static string GetEditorBehaviorDirectory(string entityType) =>
+            Path.Combine(GetEditorEntityDirectory(entityType), "behaviors");
+
+        public static string GetEditorConfigDirectory(string entityType) =>
+            Path.Combine(GetEditorEntityDirectory(entityType), "configs");
+
+        public static string GetEntityDllDirectory(string entityType) =>
+            Path.Combine(DLLsDirectory, entityType);
+        public static string GetEditorAssetPath(string assetName) =>
+            Path.Combine(EditorAssetsDirectory, assetName);
     }
     
 }

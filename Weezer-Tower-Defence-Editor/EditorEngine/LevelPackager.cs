@@ -11,6 +11,7 @@ using EditorEngine.Towers;
 using EditorEngine.DamageDealers;
 using IOPath = System.IO.Path;
 using System.Net.Http.Headers;
+using SimulationEngine.Infrastructure;
 
 namespace EditorEngine;
 
@@ -26,12 +27,8 @@ public static class LevelPackager
     public static void PackLevel(GameMap map, WaveSet waveSet, string outputPath)
     {
         // Создаём папку для уровня в $APP_DATA$/WeezerTowerDefence/Levels/{map.Id}
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
         var levelDir = System.IO.Path.Combine(
-            appData,
-            "WeezerTowerDefence",
-            "Levels",
+            PathService.LevelsDirectory,
             $"{map.Id}"
         );
 
@@ -43,6 +40,8 @@ public static class LevelPackager
 
         try
         {
+            // Собираем актуальные DLL непосредственно перед упаковкой уровня.
+            DllBuilder.BuildAll();
 
             // 1. Сохраняем карту
             string mapJson = IOPath.Combine(levelDir, $"{map.Id}.json");
@@ -54,10 +53,7 @@ public static class LevelPackager
 
             // 3. Сохраняем всех врагов. Господь узнает своих.
             string originalEnemiesDir = System.IO.Path.Combine(
-                appData,
-                "WeezerTowerDefence",
-                "Editor",
-                "custom",
+                PathService.EditorDirectory,
                 "enemies"
             );
 
@@ -67,10 +63,7 @@ public static class LevelPackager
 
             // 4. Создаём папку для башен
             string originalTowersDir = System.IO.Path.Combine(
-                appData,
-                "WeezerTowerDefence",
-                "Editor",
-                "custom",
+                PathService.EditorDirectory,
                 "towers"
             );
 
@@ -81,10 +74,7 @@ public static class LevelPackager
 
             // 5. Создаём папку для damage dealers
             string originalDamageDealersDir = System.IO.Path.Combine(
-                 appData,
-                 "WeezerTowerDefence",
-                 "Editor",
-                 "custom",
+                 PathService.EditorDirectory,
                  "damageDealers"
              );
 
@@ -96,11 +86,7 @@ public static class LevelPackager
             saveMoneyHealth(levelDir);
 
             // 8. Копируем все DLL-ки
-            string originalDLLs = System.IO.Path.Combine(
-                 appData,
-                 "WeezerTowerDefence",
-                 "DLLs"
-             );
+            string originalDLLs = PathService.DLLsDirectory;
 
             string dllsDir = IOPath.Combine(levelDir, "DLLs");
 
@@ -125,9 +111,9 @@ public static class LevelPackager
 
     static private void saveMoneyHealth(string exitPath) 
     {
-        if (!File.Exists(IOPath.Combine("Content", "MoneyHealth.json")))
+        var configPath = System.IO.Path.Combine(PathService.EditorDirectory, $"MoneyHealth.json");
+        if (!File.Exists(configPath))
         {
-            string configPath = System.IO.Path.Combine("Content", "MoneyHealth.json");
 
             var config = new
             {
@@ -140,7 +126,7 @@ public static class LevelPackager
             System.IO.File.WriteAllText(configPath, json);
         }
 
-        File.Copy(IOPath.Combine("Content", "MoneyHealth.json"), IOPath.Combine(exitPath, "MoneyHealth.json"), true);
+        File.Copy(configPath, IOPath.Combine(exitPath, "MoneyHealth.json"), true);
     }
 
 

@@ -3,18 +3,19 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using SimulationEngine.Infrastructure;
 
 namespace EditorEngine.Enemies;
 
 /// <summary>
-/// Реестр конфигураций врагов - загружает JSON файлы из EditorEngine/Enemies/Configs
+/// Реестр конфигураций врагов из AppData editor storage.
 /// </summary>
 public class EnemyConfigRegistry
 {
     private static EnemyConfigRegistry _instance;
     public static EnemyConfigRegistry Instance => _instance ??= new EnemyConfigRegistry();
 
-    private Dictionary<string, EnemyConfig> configs = new();
+    private readonly Dictionary<string, EnemyConfig> configs = new();
 
     private EnemyConfigRegistry()
     {
@@ -25,37 +26,8 @@ public class EnemyConfigRegistry
 
     private void LoadConfigs()
     {
-        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        string[] possiblePaths = new[]
-        {
-            Path.Combine("Content", "Enemies"),
-            Path.Combine("Weezer-Tower-Defence-Editor", "Content", "Enemies"),
-            Path.Combine("EditorEngine", "Enemies", "Configs"),
-            Path.Combine("Weezer-Tower-Defence-Editor", "EditorEngine", "Enemies", "Configs"),
-            Path.Combine(baseDir, "Content", "Enemies"),
-            Path.Combine("..", "..", "..", "EditorEngine", "Enemies", "Configs")
-        };
-
-        _activeConfigDir = possiblePaths.FirstOrDefault(Directory.Exists);
-
-        if (_activeConfigDir == null)
-        {
-            // Попробуем еще один вариант для Rider/Visual Studio
-            string projectRoot = Path.Combine(baseDir, "..", "..", "..");
-            string studioPath = Path.Combine(projectRoot, "Weezer-Tower-Defence-Editor", "Content", "Enemies");
-            if (Directory.Exists(studioPath))
-            {
-                _activeConfigDir = studioPath;
-            }
-        }
-
-        if (_activeConfigDir == null)
-        {
-            _activeConfigDir = Path.Combine("Content", "Enemies"); // fallback
-            Directory.CreateDirectory(_activeConfigDir);
-            Console.WriteLine($"[DEBUG_LOG] Created enemy configs directory: {Path.GetFullPath(_activeConfigDir)}");
-            return;
-        }
+        _activeConfigDir = PathService.GetEditorEntityDirectory("enemies");
+        Directory.CreateDirectory(_activeConfigDir);
 
         Console.WriteLine($"[DEBUG_LOG] Loading enemy configs from: {Path.GetFullPath(_activeConfigDir)}");
         var jsonFiles = Directory.GetFiles(_activeConfigDir, "*.json");
@@ -88,7 +60,7 @@ public class EnemyConfigRegistry
     public void SaveConfig(EnemyConfig config)
     {
         if (string.IsNullOrEmpty(_activeConfigDir))
-            _activeConfigDir = Path.Combine("Content", "Enemies");
+            _activeConfigDir = PathService.GetEditorEntityDirectory("enemies");
 
         Directory.CreateDirectory(_activeConfigDir);
         

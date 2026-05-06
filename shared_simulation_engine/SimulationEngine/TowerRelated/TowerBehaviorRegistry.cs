@@ -19,39 +19,25 @@ public class TowerBehaviorRegistry
     public static Dictionary<string, TypeSpecification> typeSpecsRegistry = new();
 
 
-    public static ITowerBehavior create(string name)
+    public static bool TryGetSpecification(string name, out TypeSpecification spec)
     {
-        var spec = typeSpecsRegistry[name];
-        var type = typeRegistry[spec.ClassName];
-        var behavior = typeBehaviorRegistry[spec.ClassName];
+        return typeSpecsRegistry.TryGetValue(name, out spec);
+    }
 
-        
-        var args = createArgs(behavior, spec);
+    public static bool TryGetType(string className, out Type type)
+    {
+        return typeRegistry.TryGetValue(className, out type);
+    }
 
-        Console.WriteLine($"Trying to create {type.Name}");
-        foreach (var arg in args)
-        {
-            Console.WriteLine(arg == null
-                ? "null"
-                : $"{arg} : {arg.GetType()}");
-        }
-
-        foreach (var ctor in type.GetConstructors())
-        {
-            Console.WriteLine(ctor);
-        }
-
-        ITowerBehavior instance;
-        if (spec.Args.Count == 0)
-            instance = (ITowerBehavior)Activator.CreateInstance(type);
-        else
-            instance = (ITowerBehavior)Activator.CreateInstance(type, createArgs(behavior, spec));
-
-        return instance;
+    public static bool TryGetBehaviorConfig(string className, out BehaviorConfig config)
+    {
+        return typeBehaviorRegistry.TryGetValue(className, out config);
     }
 
     public static void Reset(string dllsDir, string configsDir, string behaviorDescriptionsDir)
     {
+        typeRegistry = new();
+        typeSpecsRegistry = new();
         typeBehaviorRegistry = loadConfigs(behaviorDescriptionsDir);
 
         var jsonOptions = new JsonSerializerOptions
@@ -62,10 +48,22 @@ public class TowerBehaviorRegistry
         foreach (var jsonPath in Directory.EnumerateFiles(configsDir, "*.json"))
         {
             var json = File.ReadAllText(jsonPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Console.WriteLine($"Skipping empty tower config: {jsonPath}");
+                continue;
+            }
 
-            var spec = JsonSerializer.Deserialize<List<TypeSpecification>>(json, jsonOptions)[0];
-            if (spec == null)
+            var specs = JsonSerializer.Deserialize<List<TypeSpecification>>(json, jsonOptions);
+            if (specs == null || specs.Count == 0)
                 throw new Exception($"Failed to parse {jsonPath}");
+            var spec = specs[0];
+
+            if (string.IsNullOrWhiteSpace(spec.Name) || string.IsNullOrWhiteSpace(spec.ClassName))
+            {
+                Console.WriteLine($"Skipping invalid tower config without Name/ClassName: {jsonPath}");
+                continue;
+            }
 
             if (!typeBehaviorRegistry.ContainsKey(spec.ClassName))
                 throw new Exception(
@@ -88,7 +86,7 @@ public class TowerBehaviorRegistry
         }
     }
 
-    private static object[] createArgs(BehaviorConfig bc, TypeSpecification ts)
+    public static object[] CreateArgs(BehaviorConfig bc, TypeSpecification ts)
     {
         List<object> args = new();
         foreach (var argSpec in ts.Args)
@@ -134,10 +132,21 @@ public class TowerBehaviorRegistry
         foreach (var jsonPath in Directory.EnumerateFiles(behaviorDescriptionsDir, "*.json"))
         {
             var json = File.ReadAllText(jsonPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Console.WriteLine($"Skipping empty tower behavior config: {jsonPath}");
+                continue;
+            }
 
             var spec = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
             if (spec == null)
                 throw new Exception($"Failed to parse {jsonPath}");
+
+            if (string.IsNullOrWhiteSpace(spec.ClassName) || string.IsNullOrWhiteSpace(spec.FileName))
+            {
+                Console.WriteLine($"Skipping invalid tower behavior config without ClassName/FileName: {jsonPath}");
+                continue;
+            }
 
             result[spec.ClassName] = spec;
         }
