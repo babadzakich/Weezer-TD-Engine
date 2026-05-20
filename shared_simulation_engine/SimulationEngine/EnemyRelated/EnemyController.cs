@@ -39,6 +39,21 @@ public class EnemyController : Controller
         Enemies.Add(enemy);
     }
 
+    public Enemy FindEnemyById(int id)
+    {
+        return Enemies.Find(e => e.Id == id);
+    }
+
+    public void RemoveEnemy(Enemy enemy)
+    {
+        Enemies.Remove(enemy);
+    }
+
+    public void ClearEnemies()
+    {
+        Enemies.Clear();
+    }
+
     public void Update(GameTime gameTime)
     {
         for (int i = Enemies.Count - 1; i >= 0; i--)

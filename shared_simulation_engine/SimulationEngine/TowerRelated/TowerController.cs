@@ -35,6 +35,21 @@ public class TowerController : Controller
         towers.Add(tower);
     }
 
+    public Tower FindTowerById(int id)
+    {
+        return towers.Find(t => t.Id == id);
+    }
+
+    public void RemoveTower(Tower tower)
+    {
+        towers.Remove(tower);
+    }
+
+    public void ClearTowers()
+    {
+        towers.Clear();
+    }
+
     public void Update(GameTime deltaTime)
     {
         foreach (var tower in towers)

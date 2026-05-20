@@ -3,10 +3,13 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.EnemyRelated;
 using SimulationEngine;
+using SimulationEngine.Network;
 namespace SimulationEngine.TowerRelated;
 
 public class Tower
 {
+    public int Id { get; set; }
+    public string ZoneId { get; set; } = string.Empty;
     public ITowerBehavior Behavior { get; private set; }
     public LevelLoader.TowerDefinition Definition { get; }
     public Vector2 Position { get; set; }
@@ -17,6 +20,7 @@ public class Tower
 
     public Tower(ITowerBehavior behavior, Vector2 position, LevelLoader.TowerDefinition definition = null)
     {
+        Id = NetworkIdGenerator.NextTowerId();
         Position = position;
         UpgradeLevel = 0;
         Behavior = behavior;

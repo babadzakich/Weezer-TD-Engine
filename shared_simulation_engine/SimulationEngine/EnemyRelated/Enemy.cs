@@ -2,18 +2,29 @@ using System;
 using System.Runtime.InteropServices.Swift;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using SimulationEngine.Network;
 
 namespace SimulationEngine.EnemyRelated;
 
 public class Enemy
 {
+    public int Id { get; set; }
+    public string TypeId { get; set; } = string.Empty;
+    public string PathId { get; set; } = string.Empty;
+    public EnemyStatus Status { get; set; } = EnemyStatus.Normal;
     public Vector2 Position { get; set; }
     public Vector2 Velocity { get; set; }
     private Vector2 _previousPosition;
     private IEnemyType _type;
     private readonly MapRelated.Path _path;
     public int Health => _type.health;
+    public int CurrentHealth
+    {
+        get => _type.health;
+        set => _type.health = value;
+    }
     public int MaxHealth => _type.MaxHealth;
+    public float Speed => _type.speed;
     public int Damage => _type.Damage;
     public float HitRadius => _type.HitRadius;
     public bool isAlive { get; set; } = true;
@@ -23,6 +34,7 @@ public class Enemy
     
     public Enemy(IEnemyType enemyType, Vector2 position, MapRelated.Path path)
     {
+        Id = NetworkIdGenerator.NextEnemyId();
         _type = enemyType;
         Position = position;
         _previousPosition = position;

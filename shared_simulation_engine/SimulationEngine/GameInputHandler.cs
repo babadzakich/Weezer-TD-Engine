@@ -1,10 +1,12 @@
+using System;
+using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.MapRelated;
+using SimulationEngine.Network;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
-using System;
 using SimulationEngine.BulletRelated.Behaviors;
 
 namespace SimulationEngine;
@@ -14,17 +16,23 @@ public class GameInputHandler
     private readonly UIManager _uiManager;
     private readonly GameMap _map;
     private readonly TowerController _towerController;
+    private readonly IGameRequestSender _requestSender;
     
     private MouseState _previousMouseState;
     private BuildZone _selectedBuildZone;
     private Tower _selectedTower;
 
-    public GameInputHandler(UIManager uiManager, GameMap map, TowerController towerController)
+    public event Action<TowerPlacedEvent> TowerPlaced;
+    public event Action<TowerRemovedEvent> TowerRemoved;
+    public event Action<TowerUpgradedEvent> TowerUpgraded;
+
+    public GameInputHandler(UIManager uiManager, GameMap map, TowerController towerController, IGameRequestSender requestSender = null)
     {
         _uiManager = uiManager;
         _map = map;
         _towerController = towerController;
-        
+        _requestSender = requestSender;
+
         _uiManager.TowerSelectionPanel.OnTowerSelected += OnTowerSelectedFromPanel;
         _uiManager.OnTowerSellRequested += SellTower;
         _uiManager.OnTowerUpgradeRequested += UpgradeTower;
@@ -109,24 +117,32 @@ public class GameInputHandler
 
     private void OnTowerSelectedFromPanel(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition)
     {
-        // Проверяем, что у нас выбрана зона для строительства
         if (_selectedBuildZone == null) return;
-        
-        // Проверяем, хватает ли денег
         if (!_uiManager.CanAffordTower(towerBehavior))
         {
-            // TODO: показать сообщение о недостатке средств
             return;
         }
-        
-        // Создаём башню с выбранным поведением
-        ITowerBehavior behaviorInstance = towerBehavior;
-        LevelLoader.TowerDefinition towerDefinition = definition ?? towerBehavior.Definition;
 
+        var towerDefinition = definition ?? towerBehavior.Definition;
+
+        if (_requestSender != null)
+        {
+            var request = new BuildTowerRequest
+            {
+                RequesterId = "client",
+                ZoneId = _selectedBuildZone.Id,
+                TowerDefinitionId = towerDefinition?.Id ?? string.Empty
+            };
+            _ = _requestSender.SendRequestAsync(request, CancellationToken.None);
+            _uiManager.HideTowerSelection();
+            _selectedBuildZone = null;
+            return;
+        }
+
+        ITowerBehavior behaviorInstance = towerBehavior;
         if (towerBehavior is SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior defBehavior)
         {
             towerDefinition ??= defBehavior.Definition;
-            // новый экземпляр, чтобы состояния не пересекались
             behaviorInstance = new SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior(
                 towerDefinition,
                 new StandardBulletBehavior(25f, 300f, 500f));
@@ -139,14 +155,20 @@ public class GameInputHandler
         var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, towerDefinition);
         tower.Texture = GameManager.GetInstance().DefaultTowerTexture;
         _towerController.AddTower(tower);
-        
-        // Списываем деньги и занимаем зону
+
         _uiManager.PurchaseTower(towerBehavior);
         _selectedBuildZone.Occupy(tower);
-        
-        // Закрываем панель выбора
         _uiManager.HideTowerSelection();
         _selectedBuildZone = null;
+
+        TowerPlaced?.Invoke(new TowerPlacedEvent
+        {
+            TowerId = tower.Id,
+            ZoneId = tower.ZoneId,
+            BehaviorId = tower.Definition?.Id ?? string.Empty,
+            Owner = "master",
+            Cost = tower.Behavior.Cost
+        });
     }
 
     private Tower FindTowerAtPosition(Vector2 position)
@@ -173,11 +195,21 @@ public class GameInputHandler
     private void SellTower(Tower tower)
     {
         if (tower == null) return;
-        
-        // Возвращаем деньги
+
+        if (_requestSender != null)
+        {
+            var request = new SellTowerRequest
+            {
+                RequesterId = "client",
+                TowerId = tower.Id
+            };
+            _ = _requestSender.SendRequestAsync(request, CancellationToken.None);
+            _uiManager.HideTowerControl();
+            _selectedTower = null;
+            return;
+        }
+
         _uiManager.SellTower(tower);
-        
-        // Освобождаем зону строительства
         foreach (var zone in _map.BuildZones)
         {
             if (Vector2.Distance(zone.Position, tower.Position) < 10)
@@ -186,19 +218,36 @@ public class GameInputHandler
                 break;
             }
         }
-        
-        // Удаляем башню
         _towerController.towers.Remove(tower);
-        
-        // Скрываем панель управления
         _uiManager.HideTowerControl();
         _selectedTower = null;
+
+        TowerRemoved?.Invoke(new TowerRemovedEvent
+        {
+            TowerId = tower.Id,
+            ZoneId = tower.ZoneId,
+            Refund = (int)(tower.Behavior.Cost * 0.7f)
+        });
     }
 
     private void UpgradeTower(Tower tower, LevelLoader.TowerUpgradeDefinition next)
     {
         if (tower == null) return;
         if (next == null) return;
+
+        if (_requestSender != null)
+        {
+            var request = new UpgradeTowerRequest
+            {
+                RequesterId = "client",
+                TowerId = tower.Id,
+                TargetTowerId = next.TargetTowerId
+            };
+            _ = _requestSender.SendRequestAsync(request, CancellationToken.None);
+            _uiManager.HideTowerControl();
+            _selectedTower = null;
+            return;
+        }
 
         var def = tower.Definition;
         if (def == null || def.Upgrades == null || def.Upgrades.Count == 0) return;
@@ -234,8 +283,15 @@ public class GameInputHandler
         }
 
         _selectedTower = upgradedTower;
-
-        // обновляем UI панели управления
         _uiManager.ShowTowerControl(upgradedTower);
+
+        TowerUpgraded?.Invoke(new TowerUpgradedEvent
+        {
+            TowerId = tower.Id,
+            BehaviorId = next.TargetTowerId,
+            PrevLevel = tower.UpgradeLevel,
+            Level = tower.UpgradeLevel + 1,
+            Cost = cost
+        });
     }
 }

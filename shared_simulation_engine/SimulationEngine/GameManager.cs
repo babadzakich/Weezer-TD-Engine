@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SimulationEngine.BulletRelated;
 using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.EnemyRelated;
 using SimulationEngine.MapRelated;
+using SimulationEngine.Network;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
@@ -32,6 +34,8 @@ public class GameManager
     public Texture2D DefaultBulletTexture { get; set; }
 
     private readonly GameInputHandler _inputHandler;
+    private readonly IGameRequestSender _requestSender;
+    private readonly IGameNetworkSession _networkSession;
 
     public event Action Defeat;
     public event Action Win;
@@ -64,7 +68,9 @@ public class GameManager
         Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions,
         WaveController waveController = null,
         EnemyController enemyController = null,
-        DamageDealerController damageDealerController = null)
+        DamageDealerController damageDealerController = null,
+        IGameRequestSender requestSender = null,
+        IGameNetworkSession networkSession = null)
     {
         if (_instance != null)
         {
@@ -82,7 +88,9 @@ public class GameManager
             towerDefinitions,
             waveController,
             enemyController,
-            damageDealerController);
+            damageDealerController,
+            requestSender,
+            networkSession);
 
         return _instance;
     }
@@ -92,10 +100,10 @@ public class GameManager
         int screenHeight,
         GameMap map,
         TowerController towerController,
+        Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions,
         WaveController waveController = null,
         EnemyController enemyController = null,
-        DamageDealerController damageDealerController = null,
-        Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions = null)
+        DamageDealerController damageDealerController = null)
     {
         return getInstance(
             screenWidth,
@@ -108,7 +116,9 @@ public class GameManager
             towerDefinitions,
             waveController,
             enemyController,
-            damageDealerController);
+            damageDealerController,
+            null,
+            null);
     }
 
     private GameManager(
@@ -122,7 +132,9 @@ public class GameManager
         Dictionary<string, LevelLoader.TowerDefinition> towerDefinitions,
         WaveController waveController = null,
         EnemyController enemyController = null,
-        DamageDealerController damageDealerController = null)
+        DamageDealerController damageDealerController = null,
+        IGameRequestSender requestSender = null,
+        IGameNetworkSession networkSession = null)
     {
         UIManager = new UIManager(screenWidth, screenHeight);
         Map = map;
@@ -131,8 +143,10 @@ public class GameManager
         EnemyController = enemyController;
         DamageDealerController = damageDealerController ?? DamageDealerController.GetInstance(null);
         TowerDefinitions = towerDefinitions ?? new Dictionary<string, LevelLoader.TowerDefinition>();
+        _requestSender = requestSender;
+        _networkSession = networkSession;
 
-        _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
+        _inputHandler = new GameInputHandler(UIManager, Map, TowerController, _requestSender);
 
         UIManager.OnStartWaveRequested += StartWave;
 
@@ -224,6 +238,8 @@ public class GameManager
             Console.WriteLine("Win detected");
             Win?.Invoke();
         }
+
+        _networkSession?.Update(gameTime);
     }
 
     public void Draw(SpriteBatch spriteBatch, Texture2D pixelTexture, SpriteFont font = null)
@@ -237,6 +253,12 @@ public class GameManager
 
     public void StartWave()
     {
+        if (_requestSender != null)
+        {
+            _ = _requestSender.SendRequestAsync(new StartWaveRequest(), CancellationToken.None);
+            return;
+        }
+
         if (WaveController != null &&
             !WaveController.IsWaveActive &&
             WaveController.CurrentWaveIndex < WaveController.TotalWaves)

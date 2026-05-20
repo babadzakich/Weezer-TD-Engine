@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,7 +18,8 @@ namespace SimulationEngine.Network;
 public enum GamePacketKind : byte
 {
     FrameDelta    = 1,
-    StateSnapshot = 2
+    StateSnapshot = 2,
+    ClientRequest = 3
 }
 
 public readonly struct GamePacket
@@ -26,6 +28,7 @@ public readonly struct GamePacket
     public GamePacketKind Kind     { get; init; }
     public FrameDelta     Delta    { get; init; }
     public StateSnapshot  Snapshot { get; init; }
+    public ClientRequest  Request  { get; init; }
 }
 
 
@@ -42,6 +45,10 @@ public sealed class UdpGameTransport : IAsyncDisposable
     private uint _nextMsgId;
 
     public event Action<GamePacket> MessageReceived;
+
+    public bool HasPeers => _peersById.Count > 0;
+
+    public IReadOnlyCollection<string> PeerIds => _peersById.Keys.ToList();
 
     public UdpGameTransport(int localPort)
     {
@@ -69,6 +76,12 @@ public sealed class UdpGameTransport : IAsyncDisposable
     {
         if (!_peersById.TryGetValue(peerId, out var peer)) return Task.CompletedTask;
         return SendAsync(peer, GamePacketKind.StateSnapshot, FrameDeltaSerializer.Serialize(snapshot), ct);
+    }
+
+    public Task SendClientRequestAsync(string peerId, ClientRequest request, CancellationToken ct)
+    {
+        if (!_peersById.TryGetValue(peerId, out var peer)) return Task.CompletedTask;
+        return SendAsync(peer, GamePacketKind.ClientRequest, JsonSerializer.SerializeToUtf8Bytes(request), ct);
     }
 
     public Task BroadcastFrameDeltaAsync(FrameDelta delta, CancellationToken ct)
@@ -142,6 +155,12 @@ public sealed class UdpGameTransport : IAsyncDisposable
                         var snap = FrameDeltaSerializer.DeserializeSnapshot(msgData);
                         if (snap is null) continue;
                         packet = new GamePacket { PeerId = peer.Id, Kind = kind, Snapshot = snap };
+                        break;
+
+                    case GamePacketKind.ClientRequest:
+                        var request = JsonSerializer.Deserialize<ClientRequest>(msgData);
+                        if (request is null) continue;
+                        packet = new GamePacket { PeerId = peer.Id, Kind = kind, Request = request };
                         break;
 
                     default: continue;
