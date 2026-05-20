@@ -10,29 +10,16 @@ using System.Threading.Tasks;
 
 namespace SimulationEngine.Network;
 
-// ---------------------------------------------------------------------------
-// Типы пакетов
-// ---------------------------------------------------------------------------
-
-public enum GamePacketKind : byte
-{
-    FrameDelta    = 1,
-    StateSnapshot = 2
-}
-
 public readonly struct GamePacket
 {
-    public string         PeerId   { get; init; }
-    public GamePacketKind Kind     { get; init; }
-    public FrameDelta     Delta    { get; init; }
-    public StateSnapshot  Snapshot { get; init; }
+    public string     PeerId { get; init; }
+    public FrameDelta Delta  { get; init; }
 }
-
 
 public sealed class UdpGameTransport : IAsyncDisposable
 {
     private const int Mtu            = 1400;
-    private const int HeaderSize     = 6;               // msgId(4) + fragIdx(1) + totalFrags(1)
+    private const int HeaderSize     = 6;  
     private const int MaxFragPayload = Mtu - HeaderSize;
 
     private readonly UdpClient _udpClient;
@@ -57,52 +44,37 @@ public sealed class UdpGameTransport : IAsyncDisposable
 
     public void Start() => _ = RunReceiveLoopAsync(_cts.Token);
 
-    // --- Отправка ---
-
     public Task SendFrameDeltaAsync(string peerId, FrameDelta delta, CancellationToken ct)
     {
         if (!_peersById.TryGetValue(peerId, out var peer)) return Task.CompletedTask;
-        return SendAsync(peer, GamePacketKind.FrameDelta, FrameDeltaSerializer.Serialize(delta), ct);
-    }
-
-    public Task SendSnapshotAsync(string peerId, StateSnapshot snapshot, CancellationToken ct)
-    {
-        if (!_peersById.TryGetValue(peerId, out var peer)) return Task.CompletedTask;
-        return SendAsync(peer, GamePacketKind.StateSnapshot, FrameDeltaSerializer.Serialize(snapshot), ct);
+        return SendAsync(peer, FrameDeltaSerializer.Serialize(delta), ct);
     }
 
     public Task BroadcastFrameDeltaAsync(FrameDelta delta, CancellationToken ct)
     {
         var payload = FrameDeltaSerializer.Serialize(delta);
-        return Task.WhenAll(_peersById.Values.Select(p => SendAsync(p, GamePacketKind.FrameDelta, payload, ct)));
+        return Task.WhenAll(_peersById.Values.Select(p => SendAsync(p, payload, ct)));
     }
 
-    private async Task SendAsync(PeerState peer, GamePacketKind kind, byte[] payload, CancellationToken ct)
+    private async Task SendAsync(PeerState peer, byte[] payload, CancellationToken ct)
     {
-        // Склеиваем [1B kind][payload], потом режем на фрагменты
-        var full = new byte[1 + payload.Length];
-        full[0] = (byte)kind;
-        payload.CopyTo(full, 1);
-
         uint msgId     = Interlocked.Increment(ref _nextMsgId);
-        int totalFrags = (full.Length + MaxFragPayload - 1) / MaxFragPayload;
+        int totalFrags = (payload.Length + MaxFragPayload - 1) / MaxFragPayload;
 
         for (int i = 0; i < totalFrags; i++)
         {
             int offset  = i * MaxFragPayload;
-            int fragLen = Math.Min(MaxFragPayload, full.Length - offset);
+            int fragLen = Math.Min(MaxFragPayload, payload.Length - offset);
 
             var udpPacket = new byte[HeaderSize + fragLen];
             BinaryPrimitives.WriteUInt32LittleEndian(udpPacket, msgId);
             udpPacket[4] = (byte)i;
             udpPacket[5] = (byte)totalFrags;
-            full.AsSpan(offset, fragLen).CopyTo(udpPacket.AsSpan(HeaderSize));
+            payload.AsSpan(offset, fragLen).CopyTo(udpPacket.AsSpan(HeaderSize));
 
             await _udpClient.SendAsync(udpPacket, peer.Endpoint, ct);
         }
     }
-
-    // --- Приём ---
 
     private async Task RunReceiveLoopAsync(CancellationToken ct)
     {
@@ -124,30 +96,10 @@ public sealed class UdpGameTransport : IAsyncDisposable
                 var assembled = peer.Reassembler.Add(msgId, fragIdx, totalFrags, raw.AsMemory(HeaderSize));
                 if (assembled is null) continue;
 
-                // Первый байт = kind, остальное = JSON payload
-                if (assembled.Length < 2) continue;
-                var kind    = (GamePacketKind)assembled[0];
-                var msgData = assembled.AsSpan(1);
+                var delta = FrameDeltaSerializer.Deserialize(assembled);
+                if (delta is null) continue;
 
-                GamePacket packet;
-                switch (kind)
-                {
-                    case GamePacketKind.FrameDelta:
-                        var delta = FrameDeltaSerializer.Deserialize(msgData);
-                        if (delta is null) continue;
-                        packet = new GamePacket { PeerId = peer.Id, Kind = kind, Delta = delta };
-                        break;
-
-                    case GamePacketKind.StateSnapshot:
-                        var snap = FrameDeltaSerializer.DeserializeSnapshot(msgData);
-                        if (snap is null) continue;
-                        packet = new GamePacket { PeerId = peer.Id, Kind = kind, Snapshot = snap };
-                        break;
-
-                    default: continue;
-                }
-
-                MessageReceived?.Invoke(packet);
+                MessageReceived?.Invoke(new GamePacket { PeerId = peer.Id, Delta = delta });
             }
             catch (OperationCanceledException) { break; }
             catch (ObjectDisposedException)    { break; }
@@ -164,25 +116,12 @@ public sealed class UdpGameTransport : IAsyncDisposable
     }
 }
 
-// ---------------------------------------------------------------------------
-// PeerState
-// ---------------------------------------------------------------------------
-
 internal sealed class PeerState(string id, IPEndPoint endpoint)
 {
     public string             Id          { get; } = id;
     public IPEndPoint         Endpoint    { get; } = endpoint;
     public MessageReassembler Reassembler { get; } = new();
 }
-
-// ---------------------------------------------------------------------------
-// MessageReassembler
-//
-// Собирает фрагменты одного сообщения.
-// Правила дропа:
-//   • msgId ≤ lastCompleted → старый, выбрасываем (более свежее уже доставлено).
-//   • Сборка завершена → дропаем все незавершённые сборки с меньшим msgId.
-// ---------------------------------------------------------------------------
 
 internal sealed class MessageReassembler
 {
@@ -204,7 +143,6 @@ internal sealed class MessageReassembler
         _buffer.Remove(msgId);
         _lastCompleted = msgId;
 
-        // Дропаем незавершённые сборки более старых сообщений — они уже устарели
         foreach (var old in _buffer.Keys.Where(k => k < msgId).ToList())
             _buffer.Remove(old);
 
