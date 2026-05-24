@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -21,10 +22,10 @@ public class GameRunner : Game
 {
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
-    private Texture2D _bulletTexture;
     private Texture2D _towerTexture;
     private Texture2D _enemyTexture;
     private Texture2D _pixel;
+    private Texture2D _pathTexture;
     private SpriteFont _font;
 
     private DamageDealerController damageDealerController;
@@ -34,13 +35,28 @@ public class GameRunner : Game
     private GameManager gameManager;
     private GameMap gameMap;
 
+    private Matrix _scaleMatrix = Matrix.Identity;
+    private const int VirtualWidth = 1600;
+    private const int VirtualHeight = 900;
+
     private LevelSelectionPanel _levelSelectionPanel;
-    private GameState _currentState = GameState.LevelSelection;
+    private MainMenuPanel _mainMenuPanel;
+    private MultiplayerMenuPanel _multiplayerMenuPanel;
+    private LobbyBrowserPanel _lobbyBrowserPanel;
+    private LobbyPanel _lobbyPanel;
+    
+    private GameState _currentState = GameState.MainMenu;
+    private bool _isSelectingLevelForLobby = false;
     private bool _showInstructions = false;
     private KeyboardState _previousKeyboardState;
+    private MouseState _previousMouseState;
 
     public enum GameState
     {
+        MainMenu,
+        MultiplayerMenu,
+        LobbyBrowser,
+        Lobby,
         LevelSelection,
         Playing
     }
@@ -49,8 +65,8 @@ public class GameRunner : Game
     {
         _graphics = new GraphicsDeviceManager(this)
         {
-            PreferredBackBufferWidth = 1600,
-            PreferredBackBufferHeight = 900
+            PreferredBackBufferWidth = VirtualWidth,
+            PreferredBackBufferHeight = VirtualHeight
         };
         var commonRoot = PathService.CommonDirectory;
 
@@ -61,12 +77,84 @@ public class GameRunner : Game
         
         // Разрешаем изменение размера окна
         Window.AllowUserResizing = true;
+        Window.ClientSizeChanged += (s, e) => UpdateScaleMatrix();
+    }
+
+    private void UpdateScaleMatrix()
+    {
+        float scaleX = (float)GraphicsDevice.Viewport.Width / VirtualWidth;
+        float scaleY = (float)GraphicsDevice.Viewport.Height / VirtualHeight;
+        _scaleMatrix = Matrix.CreateScale(scaleX, scaleY, 1.0f);
     }
 
     protected override void Initialize()
     {
-        _levelSelectionPanel = new LevelSelectionPanel(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
-        _levelSelectionPanel.OnLevelSelected += LoadLevel;
+        PathService.EnsureInitialized();
+        EnemyRegistry.GraphicsDevice = GraphicsDevice;
+        
+        UpdateScaleMatrix();
+        
+        int width = VirtualWidth;
+        int height = VirtualHeight;
+
+        _mainMenuPanel = new MainMenuPanel(width, height);
+        _multiplayerMenuPanel = new MultiplayerMenuPanel(width, height);
+        _lobbyBrowserPanel = new LobbyBrowserPanel(width, height);
+        _lobbyPanel = new LobbyPanel(width, height);
+        _levelSelectionPanel = new LevelSelectionPanel(width, height);
+
+        // Wiring Main Menu
+        _mainMenuPanel.OnSingleplayerClicked += () => {
+            _isSelectingLevelForLobby = false;
+            _levelSelectionPanel.SetMultiplayerMode(false);
+            _currentState = GameState.LevelSelection;
+            _levelSelectionPanel.RefreshLevelList();
+        };
+        _mainMenuPanel.OnMultiplayerClicked += () => _currentState = GameState.MultiplayerMenu;
+
+        // Wiring Multiplayer Menu
+        _multiplayerMenuPanel.OnCreateLobbyClicked += () => {
+            _isSelectingLevelForLobby = true;
+            _levelSelectionPanel.SetMultiplayerMode(true);
+            _currentState = GameState.LevelSelection;
+            _levelSelectionPanel.RefreshLevelList();
+        };
+        _multiplayerMenuPanel.OnJoinLobbyClicked += () => {
+            _currentState = GameState.LobbyBrowser;
+            _lobbyBrowserPanel.RefreshLobbies();
+        };
+        _multiplayerMenuPanel.OnBackClicked += () => _currentState = GameState.MainMenu;
+
+        // Wiring Lobby Browser
+        _lobbyBrowserPanel.OnBackClicked += () => _currentState = GameState.MultiplayerMenu;
+        _lobbyBrowserPanel.OnLobbySelected += (lobby) => {
+            _currentState = GameState.Lobby;
+            _lobbyPanel.LoadMockLobby(lobby.Name, lobby.MaxPlayers);
+        };
+
+        // Wiring Lobby
+        _lobbyPanel.OnLeaveClicked += () => _currentState = GameState.MultiplayerMenu;
+        _lobbyPanel.OnStartClicked += () => {
+             // В мультиплеере игра начинается сразу для всех
+             // Здесь будет логика синхронного старта
+             Console.WriteLine("Lobby start clicked - implementation for sync start goes here");
+        };
+
+        _levelSelectionPanel.OnLevelSelectedExtended += (levelPath, maxPlayers) => {
+            if (_isSelectingLevelForLobby)
+            {
+                _currentState = GameState.Lobby;
+                string mapName = System.IO.Path.GetFileNameWithoutExtension(levelPath);
+                _lobbyPanel.LoadMockLobby($"Lobby: {mapName}", maxPlayers);
+            }
+        };
+
+        _levelSelectionPanel.OnLevelSelected += (levelPath) => {
+            if (!_isSelectingLevelForLobby)
+            {
+                LoadLevel(levelPath);
+            }
+        };
 
         base.Initialize();
     }
@@ -95,6 +183,7 @@ public class GameRunner : Game
             var loadedLevel = LevelLoader.LoadFromArchive(levelArchivePath);
             
             gameMap = loadedLevel.Map;
+            gameMap.PathTexture = _pathTexture; // Устанавливаем текстуру дорожки
             
             // Инициализируем контроллеры
             damageDealerController = DamageDealerController.GetInstance(this);
@@ -197,57 +286,158 @@ public class GameRunner : Game
 
         _levelSelectionPanel.LoadContent(_font, GraphicsDevice);
 
-        // Создаём временную текстуру для башни (синий квадрат 40x40)
-        _towerTexture = new Texture2D(GraphicsDevice, 40, 40);
-        Color[] towerData = new Color[40 * 40];
-        for (int i = 0; i < towerData.Length; i++) towerData[i] = Color.Blue;
-        _towerTexture.SetData(towerData);
+        // Пытаемся загрузить картинку башни из файла
+        string towerImagePath = PathService.GetCommonFilePath("tower.png");
+        if (File.Exists(towerImagePath))
+        {
+            try
+            {
+                using (var stream = File.OpenRead(towerImagePath))
+                {
+                    _towerTexture = Texture2D.FromStream(GraphicsDevice, stream);
+                    Console.WriteLine($"Tower sprite loaded from: {towerImagePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading tower image: {ex.Message}. Falling back to procedural.");
+                _towerTexture = CreateProceduralTowerTexture();
+            }
+        }
+        else
+        {
+            _towerTexture = CreateProceduralTowerTexture();
+        }
 
         // Создаём временную текстуру для врага (зелёный квадрат 30x30)
         _enemyTexture = new Texture2D(GraphicsDevice, 30, 30);
         Color[] enemyData = new Color[30 * 30];
         for (int i = 0; i < enemyData.Length; i++) enemyData[i] = Color.Green;
         _enemyTexture.SetData(enemyData);
+        
+        EnemyRegistry.DefaultTexture = _enemyTexture;
+
+        // Создаём процедурную текстуру камня для дорожки (64x64)
+        _pathTexture = new Texture2D(GraphicsDevice, 64, 64);
+        Color[] pathData = new Color[64 * 64];
+        Random rand = new Random();
+        for (int i = 0; i < pathData.Length; i++)
+        {
+            int x = i % 64;
+            int y = i / 64;
+            
+            // Базовый серый цвет с шумом
+            int gray = rand.Next(100, 150);
+            
+            // Добавляем "текстурность" (небольшие пятна)
+            if (rand.Next(100) > 95) gray -= 30;
+            if (rand.Next(100) > 95) gray += 30;
+            
+            // Темная рамка для эффекта плитки/камней
+            if (x < 2 || x > 61 || y < 2 || y > 61) gray -= 40;
+            
+            gray = Math.Clamp(gray, 0, 255);
+            pathData[i] = new Color(gray, gray, gray);
+        }
+        _pathTexture.SetData(pathData);
+    }
+
+    private Texture2D CreateProceduralTowerTexture()
+    {
+        Texture2D texture = new Texture2D(GraphicsDevice, 40, 40);
+        Color[] towerData = new Color[40 * 40];
+        for (int y = 0; y < 40; y++)
+        {
+            for (int x = 0; x < 40; x++)
+            {
+                int i = y * 40 + x;
+                Color color = Color.Transparent;
+
+                if (y >= 30) color = (x % 10 < 2 || y % 5 == 0) ? Color.DarkGray : Color.Gray;
+                else if (y >= 8 && x >= 5 && x <= 34)
+                {
+                    color = (x == 5 || x == 34) ? Color.Black : Color.SaddleBrown;
+                    if (y >= 15 && y <= 20 && x >= 18 && x <= 21) color = Color.Yellow;
+                }
+                else if (y < 8 && x >= 3 && x <= 36)
+                {
+                    bool isTooth = (x % 10 < 6);
+                    if (isTooth || y >= 5) color = Color.DimGray;
+                }
+                towerData[i] = color;
+            }
+        }
+        texture.SetData(towerData);
+        return texture;
     }
 
     protected override void Update(GameTime gameTime)
     {
         KeyboardState ks = Keyboard.GetState();
+        MouseState ms = Mouse.GetState();
+
+        // Трансформируем координаты мыши в виртуальное пространство (1600x900)
+        float scaleX = (float)VirtualWidth / GraphicsDevice.Viewport.Width;
+        float scaleY = (float)VirtualHeight / GraphicsDevice.Viewport.Height;
+        MouseState virtualMs = new MouseState(
+            (int)(ms.X * scaleX),
+            (int)(ms.Y * scaleY),
+            ms.ScrollWheelValue,
+            ms.LeftButton,
+            ms.MiddleButton,
+            ms.RightButton,
+            ms.XButton1,
+            ms.XButton2
+        );
+        
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || ks.IsKeyDown(Keys.Escape))
             Exit();
 
-        if (_currentState == GameState.LevelSelection)
+        switch (_currentState)
         {
-            _levelSelectionPanel.Update(ks, _previousKeyboardState);
-        }
-        else
-        {
-            if (_showInstructions)
-            {
-                if ((ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter)) ||
-                    (ks.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space)))
+            case GameState.MainMenu:
+                _mainMenuPanel.Update(gameTime, virtualMs, _previousMouseState);
+                break;
+            case GameState.MultiplayerMenu:
+                _multiplayerMenuPanel.Update(gameTime, virtualMs, _previousMouseState);
+                break;
+            case GameState.LobbyBrowser:
+                _lobbyBrowserPanel.Update(gameTime, virtualMs, _previousMouseState);
+                break;
+            case GameState.Lobby:
+                _lobbyPanel.Update(gameTime, virtualMs, _previousMouseState);
+                break;
+            case GameState.LevelSelection:
+                _levelSelectionPanel.Update(ks, _previousKeyboardState);
+                break;
+            case GameState.Playing:
+                if (_showInstructions)
                 {
-                    _showInstructions = false;
+                    if ((ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter)) ||
+                        (ks.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space)))
+                    {
+                        _showInstructions = false;
+                    }
                 }
-            }
-            else
-            {
-                gameManager?.Update(gameTime);
-                
-                // Запуск волны по Enter
-                if (ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter))
+                else
                 {
-                    gameManager?.StartWave();
-                }
+                    gameManager?.Update(gameTime);
+                    
+                    if (ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter))
+                    {
+                        gameManager?.StartWave();
+                    }
 
-                if (ks.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
-                {
-                    ReturnToMenu();
+                    if (ks.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
+                    {
+                        ReturnToMenu();
+                    }
                 }
-            }
+                break;
         }
 
         _previousKeyboardState = ks;
+        _previousMouseState = virtualMs;
         base.Update(gameTime);
     }
 
@@ -255,20 +445,36 @@ public class GameRunner : Game
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        _spriteBatch.Begin();
+        // Применяем матрицу масштабирования для всех элементов отрисовки
+        _spriteBatch.Begin(transformMatrix: _scaleMatrix);
 
-        if (_currentState == GameState.LevelSelection)
+        switch (_currentState)
         {
-            _levelSelectionPanel.Draw(_spriteBatch);
-        }
-        else if (gameManager != null)
-        {
-            gameManager.Draw(_spriteBatch, _pixel, _font);
-            
-            if (_showInstructions)
-            {
-                DrawInstructions();
-            }
+            case GameState.MainMenu:
+                _mainMenuPanel.Draw(_spriteBatch, _pixel, _font);
+                break;
+            case GameState.MultiplayerMenu:
+                _multiplayerMenuPanel.Draw(_spriteBatch, _pixel, _font);
+                break;
+            case GameState.LobbyBrowser:
+                _lobbyBrowserPanel.Draw(_spriteBatch, _pixel, _font);
+                break;
+            case GameState.Lobby:
+                _lobbyPanel.Draw(_spriteBatch, _pixel, _font);
+                break;
+            case GameState.LevelSelection:
+                _levelSelectionPanel.Draw(_spriteBatch);
+                break;
+            case GameState.Playing:
+                if (gameManager != null)
+                {
+                    gameManager.Draw(_spriteBatch, _pixel, _font);
+                    if (_showInstructions)
+                    {
+                        DrawInstructions();
+                    }
+                }
+                break;
         }
 
         _spriteBatch.End();

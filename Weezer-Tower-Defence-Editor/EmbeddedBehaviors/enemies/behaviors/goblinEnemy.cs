@@ -4,7 +4,7 @@ using SimulationEngine.MapRelated;
 
 namespace SimulationEngine.EnemyRelated.EnemyTypes;
 
-public class TrainingDummyEnemyType : IEnemyType
+public class GoblinEnemyType : IEnemyType
 {
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex;
@@ -17,7 +17,7 @@ public class TrainingDummyEnemyType : IEnemyType
 
     private Texture2D _texture;
 
-    public TrainingDummyEnemyType(int health, float speed, int damage, float hitRadius)
+    public GoblinEnemyType(int health, float speed, int damage, float hitRadius)
     {
         MaxHealth = health;
         this.health = health;
@@ -86,12 +86,12 @@ public class TrainingDummyEnemyType : IEnemyType
             return _placeholderTexture;
         }
 
-        const int size = 24;
+        const int size = 20;
         _placeholderTexture = new Texture2D(device, size, size);
         var data = new Color[size * size];
         for (int i = 0; i < data.Length; i++)
         {
-            data[i] = new Color(200, 80, 80);
+            data[i] = Color.Green;
         }
 
         _placeholderTexture.SetData(data);

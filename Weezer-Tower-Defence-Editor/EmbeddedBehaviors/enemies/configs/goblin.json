@@ -1,0 +1,22 @@
+{
+  "name": "goblin",
+  "className": "GoblinEnemyType",
+  "args": [
+    {
+      "name": "health",
+      "value": 100
+    },
+    {
+      "name": "speed",
+      "value": 60
+    },
+    {
+      "name": "damage",
+      "value": 10
+    },
+    {
+      "name": "hitRadius",
+      "value": 10
+    }
+  ]
+}

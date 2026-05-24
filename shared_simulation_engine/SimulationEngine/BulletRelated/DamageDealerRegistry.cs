@@ -40,6 +40,12 @@ public class DamageDealerRegistry
         typeSpecsRegistry = new();
         typeBehaviorRegistry = loadConfigs(behaviorDescriptionsDir);
 
+        if (!Directory.Exists(configsDir))
+        {
+            Console.WriteLine($"Warning: Damage dealer configs directory not found: {configsDir}");
+            return;
+        }
+
         var jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -64,10 +70,18 @@ public class DamageDealerRegistry
             typeSpecsRegistry[spec.Name] = spec;
 
             var dllPath = Path.Combine(dllsDir, typeBehaviorRegistry[spec.ClassName].FileName + ".dll");
-            var assembly = Assembly.LoadFrom(dllPath);
-            var type = assembly
-                .GetTypes()
-                .FirstOrDefault(t => t.Name == spec.ClassName);
+            var dllBytes = File.ReadAllBytes(dllPath);
+            var assembly = Assembly.Load(dllBytes);
+            Type type = null;
+            try
+            {
+                type = assembly.GetTypes().FirstOrDefault(t => t.Name == spec.ClassName);
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                type = ex.Types.FirstOrDefault(t => t != null && t.Name == spec.ClassName);
+            }
+            
             if (type == null)
                 throw new Exception($"Type '{spec.ClassName}' not found in assembly '{dllPath}'");
             typeRegistry[spec.ClassName] = type;
@@ -109,6 +123,12 @@ public class DamageDealerRegistry
     private static Dictionary<string, BehaviorConfig> loadConfigs(string behaviorDescriptionsDir)
     {
         Dictionary<string, BehaviorConfig> result = new();
+
+        if (!Directory.Exists(behaviorDescriptionsDir))
+        {
+            Console.WriteLine($"Warning: Damage dealer behavior descriptions directory not found: {behaviorDescriptionsDir}");
+            return result;
+        }
 
         var jsonOptions = new JsonSerializerOptions
         {

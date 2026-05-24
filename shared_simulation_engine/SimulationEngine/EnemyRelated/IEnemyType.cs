@@ -11,6 +11,7 @@ namespace SimulationEngine.EnemyRelated
         public int Damage { get; set; } // Урон, который враг наносит базе
         public float HitRadius { get; set; } // Радиус хитбокса врага
         void TakeDamage(float amount);
+        void SetTexture(Texture2D texture) { }
         public void Update(Enemy enemy, GameTime gameTime, MapRelated.Path path);
         public void Draw(Enemy enemy, SpriteBatch spriteBatch);
     }

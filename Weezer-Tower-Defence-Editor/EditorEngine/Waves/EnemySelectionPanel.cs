@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EditorEngine.UI;
 using EditorEngine.Enemies;
 using Microsoft.Xna.Framework;
@@ -66,24 +67,23 @@ public class EnemySelectionPanel
         sb.DrawString(font, "Enemy Type:", new Vector2(panelRect.X + 10, y), Color.White);
         y += 25;
 
-        EnemyRegistry enemyRegistry = EnemyRegistry.Instance;
-        Dictionary<string, TypeSpecification> enemies = enemyRegistry.enemies;
+        // Используем EnemyRegistry для получения списка всех конфигураций монстров
+        var enemyConfigs = EnemyRegistry.Instance.enemies.Keys.OrderBy(name => name).ToList();
 
-        if (enemies.Keys.Count == 0)
+        if (enemyConfigs.Count == 0)
         {
-            sb.DrawString(font, "No enemies found. Create one beforehand", new Vector2(panelRect.X + 10, y), Color.Red);
+            sb.DrawString(font, "No enemies defined! Use Enemy Editor.", new Vector2(panelRect.X + 10, y), Color.Red);
             y += 30;
         }
         else
         {
-            foreach (var enemy in enemies.Keys)
+            foreach (var enemyName in enemyConfigs)
             {
-                Color buttonColor = selectedEnemyTypeId == enemy ? Color.Green : Color.Gray;
+                Color buttonColor = selectedEnemyTypeId == enemyName ? Color.Green : Color.Gray;
                 Rectangle enemyRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 35);
                 sb.Draw(pixel, enemyRect, buttonColor * 0.6f);
                 
-                // Информация о враге с его поведением
-                sb.DrawString(font, enemy, new Vector2(enemyRect.X + 5, enemyRect.Y + 8), Color.White);
+                sb.DrawString(font, enemyName, new Vector2(enemyRect.X + 5, enemyRect.Y + 8), Color.White);
                 
                 y += 40;
             }
@@ -162,16 +162,17 @@ public class EnemySelectionPanel
 
         int y = panelRect.Y + 50 + 25;
 
+        // Используем EnemyRegistry для получения списка всех конфигураций монстров
+        var enemyConfigs = EnemyRegistry.Instance.enemies.Keys.OrderBy(name => name).ToList();
 
-        EnemyRegistry enemyRegistry = EnemyRegistry.Instance;
-        Dictionary<string, TypeSpecification> enemies = enemyRegistry.enemies;
-        // Проверка кликов по типам врагов
-        foreach (var enemy in enemies.Keys)
+        // Проверка кликов по конфигурациям врагов
+        foreach (var enemyName in enemyConfigs)
         {
             Rectangle enemyRect = new Rectangle(panelRect.X + 10, y, panelRect.Width - 20, 35);
             if (enemyRect.Contains(mousePosition))
             {
-                selectedEnemyTypeId = enemy;
+                Console.WriteLine($"Selected enemy config: {enemyName}");
+                selectedEnemyTypeId = enemyName;
                 return;
             }
             y += 40;

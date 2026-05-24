@@ -40,6 +40,12 @@ public class TowerBehaviorRegistry
         typeSpecsRegistry = new();
         typeBehaviorRegistry = loadConfigs(behaviorDescriptionsDir);
 
+        if (!Directory.Exists(configsDir))
+        {
+            Console.WriteLine($"Warning: Tower configs directory not found: {configsDir}");
+            return;
+        }
+
         var jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -54,10 +60,39 @@ public class TowerBehaviorRegistry
                 continue;
             }
 
-            var specs = JsonSerializer.Deserialize<List<TypeSpecification>>(json, jsonOptions);
-            if (specs == null || specs.Count == 0)
-                throw new Exception($"Failed to parse {jsonPath}");
-            var spec = specs[0];
+            TypeSpecification spec = null;
+            try 
+            {
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    var specs = JsonSerializer.Deserialize<List<TypeSpecification>>(json, jsonOptions);
+                    if (specs != null && specs.Count > 0)
+                    {
+                        spec = specs[0];
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning: Tower config {jsonPath} is an empty list. Skipping.");
+                        continue;
+                    }
+                }
+                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    spec = JsonSerializer.Deserialize<TypeSpecification>(json, jsonOptions);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to parse tower config {jsonPath}: {ex.Message}. Skipping.");
+                continue;
+            }
+
+            if (spec == null)
+            {
+                Console.WriteLine($"Warning: Could not deserialize tower config {jsonPath}. Skipping.");
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(spec.Name) || string.IsNullOrWhiteSpace(spec.ClassName))
             {
@@ -66,20 +101,38 @@ public class TowerBehaviorRegistry
             }
 
             if (!typeBehaviorRegistry.ContainsKey(spec.ClassName))
-                throw new Exception(
-                    $"Behavior class '{spec.ClassName}' not found (config: {jsonPath})"
-                );
+            {
+                Console.WriteLine($"Warning: Behavior class '{spec.ClassName}' not found (config: {jsonPath}). Skipping.");
+                continue;
+            }
 
             if (typeSpecsRegistry.ContainsKey(spec.Name))
-                throw new Exception($"Duplicate damage dealer config: {spec.Name}");
+            {
+                Console.WriteLine($"Warning: Duplicate tower config name: {spec.Name} (file: {jsonPath}). Skipping.");
+                continue;
+            }
 
             typeSpecsRegistry[spec.Name] = spec;
 
             var dllPath = Path.Combine(dllsDir, typeBehaviorRegistry[spec.ClassName].FileName + ".dll");
-            var assembly = Assembly.LoadFrom(dllPath);
-            var type = assembly
-                .GetTypes()
-                .FirstOrDefault(t => t.Name == spec.ClassName);
+            if (!File.Exists(dllPath))
+            {
+                Console.WriteLine($"Warning: DLL not found for tower behavior '{spec.ClassName}': {dllPath}. Skipping.");
+                continue;
+            }
+
+            var dllBytes = File.ReadAllBytes(dllPath);
+            var assembly = Assembly.Load(dllBytes);
+            Type type = null;
+            try
+            {
+                type = assembly.GetTypes().FirstOrDefault(t => t.Name == spec.ClassName);
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                type = ex.Types.FirstOrDefault(t => t != null && t.Name == spec.ClassName);
+            }
+
             if (type == null)
                 throw new Exception($"Type '{spec.ClassName}' not found in assembly '{dllPath}'");
             typeRegistry[spec.ClassName] = type;
@@ -123,6 +176,12 @@ public class TowerBehaviorRegistry
     private static Dictionary<string, BehaviorConfig> loadConfigs(string behaviorDescriptionsDir)
     {
         Dictionary<string, BehaviorConfig> result = new();
+
+        if (!Directory.Exists(behaviorDescriptionsDir))
+        {
+            Console.WriteLine($"Warning: Tower behavior descriptions directory not found: {behaviorDescriptionsDir}");
+            return result;
+        }
 
         var jsonOptions = new JsonSerializerOptions
         {

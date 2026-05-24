@@ -1,0 +1,22 @@
+{
+  "name": "orc",
+  "className": "OrcEnemyType",
+  "args": [
+    {
+      "name": "health",
+      "value": 250
+    },
+    {
+      "name": "speed",
+      "value": 40
+    },
+    {
+      "name": "damage",
+      "value": 25
+    },
+    {
+      "name": "hitRadius",
+      "value": 15
+    }
+  ]
+}

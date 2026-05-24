@@ -24,6 +24,15 @@ public class BasicEnemyType : IEnemyType
     {
         _texture = texture;
     }
+
+    public BasicEnemyType(int health, float speed, int damage, float hitRadius)
+    {
+        this.health = health;
+        this.MaxHealth = health;
+        this.speed = speed;
+        this.Damage = damage;
+        this.HitRadius = hitRadius;
+    }
     
     private static Texture2D GetPlaceholderTexture(GraphicsDevice device, Color color)
     {
@@ -81,15 +90,16 @@ public class BasicEnemyType : IEnemyType
 
     public void Draw(Enemy enemy, SpriteBatch spriteBatch)
     {
-        if (_texture != null)
-        {
-            spriteBatch.Draw(_texture, enemy.Position, Color.White);
-        }
-        else
-        {
-            // Рисуем красный квадратик как заглушку
-            var placeholder = GetPlaceholderTexture(spriteBatch.GraphicsDevice, Color.Red);
-            spriteBatch.Draw(placeholder, enemy.Position, Color.White);
-        }
+        var texture = _texture ?? GetPlaceholderTexture(spriteBatch.GraphicsDevice, Color.Red);
+        spriteBatch.Draw(
+            texture, 
+            enemy.Position, 
+            null,
+            Color.White,
+            0f,
+            new Vector2(texture.Width / 2f, texture.Height / 2f),
+            1f,
+            SpriteEffects.None,
+            0f);
     }
 }

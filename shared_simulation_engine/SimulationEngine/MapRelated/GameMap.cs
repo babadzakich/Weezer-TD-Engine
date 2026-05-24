@@ -22,6 +22,9 @@ public class GameMap
     public int Width { get; set; }
     public int Height { get; set; }
 
+    public Texture2D PathTexture { get; set; }
+    public float PathWidth { get; set; } = 40f;
+
     public GameMap(string id, string name, int width, int height)
     {
         Id = id;
@@ -101,10 +104,21 @@ public class GameMap
         {
             var pathPoints = path.GetSmoothPath();
 
-            // Рисуем сглаженный путь (жёлтые линии)
-            for (int i = 0; i < pathPoints.Count - 1; i++)
+            if (PathTexture != null)
             {
-                DrawLine(spriteBatch, pixel, pathPoints[i], pathPoints[i + 1], Color.Yellow, 3);
+                // Рисуем текстурированную дорожку
+                for (int i = 0; i < pathPoints.Count - 1; i++)
+                {
+                    DrawPathSegment(spriteBatch, PathTexture, pathPoints[i], pathPoints[i + 1], PathWidth);
+                }
+            }
+            else
+            {
+                // Рисуем сглаженный путь (жёлтые линии) - fallback
+                for (int i = 0; i < pathPoints.Count - 1; i++)
+                {
+                    DrawLine(spriteBatch, pixel, pathPoints[i], pathPoints[i + 1], Color.Yellow, 3);
+                }
             }
         }
 
@@ -128,6 +142,18 @@ public class GameMap
             Color color = defense.IsDestroyed ? Color.Gray : Color.Blue;
             DrawCircle(spriteBatch, pixel, defense.Position, 15, color);
         }
+    }
+
+    private void DrawPathSegment(SpriteBatch spriteBatch, Texture2D texture, Vector2 start, Vector2 end, float width)
+    {
+        Vector2 edge = end - start;
+        float angle = (float)System.Math.Atan2(edge.Y, edge.X);
+        float length = edge.Length();
+
+        // Рисуем сегмент текстуры, растягивая его по длине участка
+        spriteBatch.Draw(texture,
+            new Rectangle((int)start.X, (int)start.Y, (int)length + 1, (int)width),
+            null, Color.White, angle, new Vector2(0, texture.Height / 2f), SpriteEffects.None, 0);
     }
 
     private void DrawLine(SpriteBatch spriteBatch, Texture2D pixel, Vector2 start, Vector2 end, Color color, float thickness)

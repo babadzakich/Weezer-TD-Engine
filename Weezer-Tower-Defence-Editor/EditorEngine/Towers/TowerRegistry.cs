@@ -75,9 +75,10 @@ public class TowerRegistry
 
     //         if (!File.Exists(dllPath))
     //             throw new FileNotFoundException(dllPath);
-
-    //         var assembly = Assembly.LoadFrom(dllPath);
-
+    //
+    //         var dllBytes = File.ReadAllBytes(dllPath);
+    //         var assembly = Assembly.Load(dllBytes);
+    //
     //         var type = assembly
     //             .GetTypes()
     //             .FirstOrDefault(t => t.Name == config.ClassName);
@@ -119,9 +120,34 @@ public class TowerRegistry
                 continue;
             }
 
-            var spec = JsonSerializer.Deserialize<List<TypeSpecification>>(json, jsonOptions) ?? throw new Exception($"Failed to parse {jsonPath}");
-            if (spec.Count == 0)
-                throw new Exception($"No tower levels in {jsonPath}");
+            List<TypeSpecification> spec = null;
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    spec = JsonSerializer.Deserialize<List<TypeSpecification>>(json, jsonOptions);
+                }
+                else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    var singleSpec = JsonSerializer.Deserialize<TypeSpecification>(json, jsonOptions);
+                    if (singleSpec != null)
+                    {
+                        spec = new List<TypeSpecification> { singleSpec };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to parse tower config {jsonPath}: {ex.Message}. Skipping.");
+                continue;
+            }
+
+            if (spec == null || spec.Count == 0)
+            {
+                Console.WriteLine($"Warning: No tower levels or invalid format in {jsonPath}. Skipping.");
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(spec[0].Name) || string.IsNullOrWhiteSpace(spec[0].ClassName))
             {
@@ -129,16 +155,12 @@ public class TowerRegistry
                 continue;
             }
 
-            var className = spec[0].ClassName;
-
-        //    if  (!behaviors.ContainsKey(className))
-        //         throw new Exception(
-        //             $"Behavior class '{className}' not found (config: {jsonPath})"
-        //         );
-
             var name = spec[0].Name;
             if (result.ContainsKey(name))
-                throw new Exception($"Duplicate damage dealer config: {name}");
+            {
+                Console.WriteLine($"Warning: Duplicate tower config name '{name}' in {jsonPath}. Skipping.");
+                continue;
+            }
 
             result[name] = spec;
         }

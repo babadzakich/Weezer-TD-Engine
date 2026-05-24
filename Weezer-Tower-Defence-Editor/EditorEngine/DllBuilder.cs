@@ -52,7 +52,16 @@ namespace EditorEngine
         private static void RecreateDllDirectories()
         {
             if (Directory.Exists(PathService.DLLsDirectory))
-                Directory.Delete(PathService.DLLsDirectory, recursive: true);
+            {
+                try
+                {
+                    Directory.Delete(PathService.DLLsDirectory, recursive: true);
+                }
+                catch (IOException ex)
+                {
+                    Console.WriteLine($"Warning: Could not fully clean DLLs directory: {ex.Message}");
+                }
+            }
 
             Directory.CreateDirectory(PathService.DLLsDirectory);
 

@@ -13,13 +13,15 @@ public class EnemyRegistry
     public static EnemyRegistry Instance => _instance ??= new EnemyRegistry();
     private EnemyRegistry()
     {
-        // loadClasses();
+        loadClasses();
         loadConfigs();
     }
 
     public void Update()
     {
         enemies = new();
+        behaviorDescriptions = new();
+        loadClasses();
         loadConfigs();
     }
 
@@ -27,66 +29,79 @@ public class EnemyRegistry
     public Dictionary<string, Type> behaviors = new();
     public Dictionary<string, TypeSpecification> enemies = new();
 
+    private void loadClasses()
+    {
+        var jsonRoot = Path.Combine(
+            PathService.EditorDirectory,
+            "enemies",
+            "behaviors"
+        );
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
+        if (!Directory.Exists(jsonRoot))
+            return;
 
-    /// <summary>
-    /// This method loads damage dealer behavior as classes from dll. 
-    /// It uses json files to find out which dll to load and which class to look for
-    /// Also json-s describe constructor arguments
-    /// </summary>
-    // private void loadClasses()
-    // {
+        foreach (var jsonPath in Directory.EnumerateFiles(jsonRoot, "*.json"))
+        {
+            try
+            {
+                var json = File.ReadAllText(jsonPath);
+                var config = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
+                if (config == null) continue;
 
-    //     var jsonRoot = System.IO.Path.Combine(
-    //         PathService.EditorDirectory,
-    //         "enemies",
-    //         "behaviors"
-    //     );
-    //     var jsonOptions = new JsonSerializerOptions
-    //     {
-    //         PropertyNameCaseInsensitive = true
-    //     };
+                behaviorDescriptions[config.ClassName] = config;
 
-    //     if (!Directory.Exists(jsonRoot))
-    //         throw new DirectoryNotFoundException(jsonRoot);
+                var dllPath = Path.Combine(
+                    PathService.DLLsDirectory,
+                    "enemies",
+                    $"{config.FileName}.dll"
+                );
 
-    //     foreach (var jsonPath in Directory.EnumerateFiles(jsonRoot, "*.json"))
-    //     {
-    //         var json = File.ReadAllText(jsonPath);
-    //         Console.WriteLine($"Loading behavior from {jsonPath}");
+                if (File.Exists(dllPath))
+                {
+                    var dllBytes = File.ReadAllBytes(dllPath);
+                    var assembly = Assembly.Load(dllBytes);
+                    var type = assembly.GetTypes().FirstOrDefault(t => t.Name == config.ClassName);
+                    if (type != null)
+                    {
+                        behaviors[config.ClassName] = type;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to load behavior from {jsonPath}: {ex.Message}");
+            }
+        }
 
-    //         var config = JsonSerializer.Deserialize<BehaviorConfig>(json, jsonOptions);
-    //         if (config == null)
-    //             throw new Exception($"Failed to parse {jsonPath}");
+        // Добавляем встроенные поведения из движка
+        AddBuiltInBehaviors();
+    }
 
-    //         if (behaviorDescriptions.ContainsKey(config.ClassName))
-    //             throw new Exception($"Duplicate behavior name: {config.ClassName}");
-
-    //         behaviorDescriptions[config.ClassName] = config;
-
-    //         var dllPath = Path.Combine(
-    //             PathService.DLLsDirectory,
-    //             "enemies",
-    //             $"{config.FileName}.dll"
-    //          );
-
-    //         if (!File.Exists(dllPath))
-    //             throw new FileNotFoundException(dllPath);
-
-    //         var assembly = Assembly.LoadFrom(dllPath);
-    //         var type = assembly
-    //             .GetTypes()
-    //             .FirstOrDefault(t => t.Name == config.ClassName);
-    //         if (type == null)
-    //             throw new Exception(
-    //                 $"Type {config.ClassName} not found in {dllPath}"
-    //             );
-    //         if (behaviors.ContainsKey(config.ClassName))
-    //             throw new Exception($"Duplicate behavior class: {config.ClassName}");
-
-    //         behaviors[config.ClassName] = type;
-    //     }
-    // }
+    private void AddBuiltInBehaviors()
+    {
+        // Базовый враг
+        if (!behaviorDescriptions.ContainsKey("BasicEnemyType"))
+        {
+            var basicConfig = new BehaviorConfig
+            {
+                Name = "Basic Enemy",
+                ClassName = "BasicEnemyType",
+                FileName = "internal",
+                Args = new List<ArgConfig>
+                {
+                    new ArgConfig { Name = "health", Type = "int" },
+                    new ArgConfig { Name = "speed", Type = "float" },
+                    new ArgConfig { Name = "damage", Type = "int" },
+                    new ArgConfig { Name = "hitRadius", Type = "float" }
+                }
+            };
+            behaviorDescriptions[basicConfig.ClassName] = basicConfig;
+        }
+    }
 
     private void loadConfigs()
     {
