@@ -46,23 +46,38 @@ public class EnemyTypeRegistry
     /// </summary>
     private void LoadEnemyTypes()
     {
-        var assembly = Assembly.GetExecutingAssembly();
+        // 1. Загружаем классы врагов из namespace EditorEngine.Enemies.Types
+        LoadFromAssembly(Assembly.GetExecutingAssembly(), "EditorEngine.Enemies.Types");
+        
+        // 2. Загружаем классы врагов из SimulationEngine (встроенные типы)
+        LoadFromAssembly(typeof(IEnemyType).Assembly, "SimulationEngine.EnemyRelated.EnemyTypes");
+    }
+
+    private void LoadFromAssembly(Assembly assembly, string namespacePrefix)
+    {
         var enemyTypes = assembly.GetTypes()
             .Where(t => typeof(IEnemyType).IsAssignableFrom(t) && 
                         !t.IsInterface && 
                         !t.IsAbstract &&
                         t.Namespace != null &&
-                        t.Namespace.StartsWith("EditorEngine.Enemies.Types"));
+                        t.Namespace.StartsWith(namespacePrefix));
 
         foreach (var type in enemyTypes)
         {
             try
             {
-                var instance = Activator.CreateInstance(type) as IEnemyType;
+                // Ищем конструктор без параметров
+                var constructor = type.GetConstructor(Type.EmptyTypes);
+                if (constructor == null) continue;
+
+                var instance = constructor.Invoke(null) as IEnemyType;
                 
                 if (instance != null)
                 {
                     string id = type.Name.Replace("EnemyType", "").Replace("Type", "").ToLower();
+                    
+                    if (_enemyTypes.ContainsKey(id)) continue;
+
                     string displayName = FormatDisplayName(type.Name);
                     
                     var info = new EnemyTypeInfo
@@ -76,12 +91,12 @@ public class EnemyTypeRegistry
                     };
                     
                     _enemyTypes[id] = info;
-                    Console.WriteLine($"Loaded enemy type: {displayName} (ID: {id})");
+                    Console.WriteLine($"Loaded enemy type: {displayName} (ID: {id}) from {assembly.GetName().Name}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to load enemy type {type.Name}: {ex.Message}");
+                Console.WriteLine($"Failed to load enemy type {type.Name} from {assembly.GetName().Name}: {ex.Message}");
             }
         }
     }

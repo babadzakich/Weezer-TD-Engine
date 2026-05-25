@@ -137,7 +137,6 @@ public class GameInputHandler
         }
 
         var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, towerDefinition);
-        tower.Texture = GameManager.GetInstance().DefaultTowerTexture;
         _towerController.AddTower(tower);
         
         // Списываем деньги и занимаем зону
@@ -218,7 +217,7 @@ public class GameInputHandler
         var upgradedBehavior = TowerBehaviorFactory.CreateTowerBehavior(targetDefinition);
         var upgradedTower = new Tower(upgradedBehavior, tower.Position, targetDefinition)
         {
-            Texture = tower.Texture ?? gameManager.DefaultTowerTexture
+            Texture = _towerController.GetTowerTexture(targetDefinition)
         };
 
         _uiManager.Money -= cost;

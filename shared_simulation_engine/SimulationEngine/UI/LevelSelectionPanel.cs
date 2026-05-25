@@ -12,17 +12,25 @@ public class LevelSelectionPanel
 {
     private List<string> _levels = new();
     private int _selectedIndex = 0;
+    private int _selectedMaxPlayers = 4; // Default
     private bool _isOpen = true;
     private bool _isFailure = false;
+    private bool _isMultiplayerMode = false;
     private SpriteFont _font;
     private Texture2D _pixel;
     private int _screenWidth;
     private int _screenHeight;
 
+    public event Action<string, int> OnLevelSelectedExtended;
     public event Action<string> OnLevelSelected;
 
     public bool IsOpen => _isOpen;
     public bool IsFailure => _isFailure;
+
+    public void SetMultiplayerMode(bool enabled)
+    {
+        _isMultiplayerMode = enabled;
+    }
 
     public LevelSelectionPanel(int screenWidth, int screenHeight)
     {
@@ -74,14 +82,36 @@ public class LevelSelectionPanel
             _selectedIndex++;
             if (_selectedIndex >= _levels.Count) _selectedIndex = 0;
         }
+
+        // Выбор количества игроков в мультиплеере (клавиши Left/Right)
+        if (_isMultiplayerMode)
+        {
+            if (ks.IsKeyDown(Keys.Left) && prevKs.IsKeyUp(Keys.Left))
+            {
+                _selectedMaxPlayers = Math.Max(1, _selectedMaxPlayers - 1);
+            }
+            if (ks.IsKeyDown(Keys.Right) && prevKs.IsKeyUp(Keys.Right))
+            {
+                _selectedMaxPlayers = Math.Min(10, _selectedMaxPlayers + 1);
+            }
+        }
+
         if ((ks.IsKeyDown(Keys.Enter) && prevKs.IsKeyUp(Keys.Enter)) ||
             (ks.IsKeyDown(Keys.Space) && prevKs.IsKeyUp(Keys.Space)))
         {
             _isOpen = false;
 
             var levelPath = PathService.GetLevelArchivePath(_levels[_selectedIndex]);
-            Console.WriteLine($"Selected level: {levelPath}");
-            OnLevelSelected?.Invoke(levelPath);
+            Console.WriteLine($"Selected level: {levelPath}, Max Players: {_selectedMaxPlayers}");
+            
+            if (_isMultiplayerMode)
+            {
+                OnLevelSelectedExtended?.Invoke(levelPath, _selectedMaxPlayers);
+            }
+            else
+            {
+                OnLevelSelected?.Invoke(levelPath);
+            }
         }
     }
 
@@ -93,11 +123,18 @@ public class LevelSelectionPanel
 
         if (_font == null) return;
 
-        string title = "SELECT LEVEL";
+        string title = _isMultiplayerMode ? "СОЗДАНИЕ ЛОББИ: ВЫБОР КАРТЫ" : "SELECT LEVEL";
         Vector2 titleSize = _font.MeasureString(title);
         spriteBatch.DrawString(_font, title, new Vector2(_screenWidth / 2 - titleSize.X / 2, 100), Color.Yellow);
 
-        int startY = 200;
+        if (_isMultiplayerMode)
+        {
+            string slotsText = $"КОЛИЧЕСТВО МЕСТ: < {_selectedMaxPlayers} > (Left/Right)";
+            Vector2 slotsSize = _font.MeasureString(slotsText);
+            spriteBatch.DrawString(_font, slotsText, new Vector2(_screenWidth / 2 - slotsSize.X / 2, 150), Color.Cyan);
+        }
+
+        int startY = 220;
         for (int i = 0; i < _levels.Count; i++)
         {
             Color color = (i == _selectedIndex) ? Color.Cyan : Color.White;
@@ -118,7 +155,7 @@ public class LevelSelectionPanel
                 Color.Red);
         }
 
-        string hint = "Use UP/DOWN to select, ENTER to start";
+        string hint = _isMultiplayerMode ? "UP/DOWN: Карта | LEFT/RIGHT: Места | ENTER: Создать" : "Use UP/DOWN to select, ENTER to start";
         Vector2 hintSize = _font.MeasureString(hint);
         spriteBatch.DrawString(_font, hint, new Vector2(_screenWidth / 2 - hintSize.X / 2, _screenHeight - 100), Color.Gray);
     }

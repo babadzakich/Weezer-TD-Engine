@@ -25,7 +25,6 @@ public class ExampleCustomTower : ITowerBehavior
     
     // Можно добавить свои поля для внутренней логики
     private float _cooldown;
-    private Vector2? _lastTarget;
 
     public ExampleCustomTower()
     {

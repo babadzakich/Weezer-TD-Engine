@@ -151,8 +151,19 @@ public class DefinitionTowerBehavior : ITowerBehavior
 
         if (texture != null)
         {
-            spriteBatch.Draw(texture, tower.Position, null, Color.White, 0f,
-                new Vector2(texture.Width / 2f, texture.Height / 2f), 1f, SpriteEffects.None, 0f);
+            // Вычисляем пропорциональное масштабирование (80x80 - максимальный размер)
+            float scale = Math.Min(80f / texture.Width, 80f / texture.Height);
+            int targetWidth = (int)(texture.Width * scale);
+            int targetHeight = (int)(texture.Height * scale);
+
+            Rectangle destRect = new Rectangle(
+                (int)tower.Position.X - targetWidth / 2,
+                (int)tower.Position.Y - targetHeight / 2,
+                targetWidth,
+                targetHeight
+            );
+
+            spriteBatch.Draw(texture, destRect, null, Color.White, 0f, Vector2.Zero, SpriteEffects.None, 0f);
         }
         else
         {

@@ -1,8 +1,0 @@
-{
-  "Id": "orc",
-  "DisplayName": "Orc Warrior",
-  "BehaviorId": "standard",
-  "BaseHealth": 300,
-  "BaseSpeed": 40.0,
-  "Damage": 25
-}

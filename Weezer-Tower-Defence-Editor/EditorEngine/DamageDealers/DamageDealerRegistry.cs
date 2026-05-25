@@ -89,9 +89,10 @@ public class DamageDealerRegistry
 
     //         if (!File.Exists(dllPath))
     //             throw new FileNotFoundException(dllPath);
-
-    //         var assembly = Assembly.LoadFrom(dllPath);
-
+    //
+    //         var dllBytes = File.ReadAllBytes(dllPath);
+    //         var assembly = Assembly.Load(dllBytes);
+    //
     //         var type = assembly
     //             .GetTypes()
     //             .FirstOrDefault(t => t.Name == config.ClassName);
