@@ -21,7 +21,6 @@ public class LaserTowerBehavior : ITowerBehavior
     public LevelLoader.TowerDefinition Definition { get; set; }
     
     private Vector2? currentTarget;
-    private IDamageDealerBehavior laserDamageBehavior;
 
     public LaserTowerBehavior()
     {

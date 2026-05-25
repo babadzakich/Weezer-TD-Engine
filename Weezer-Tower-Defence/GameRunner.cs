@@ -26,6 +26,7 @@ public class GameRunner : Game
     private Texture2D _enemyTexture;
     private Texture2D _pixel;
     private Texture2D _pathTexture;
+    private Texture2D _bulletTexture;
     private SpriteFont _font;
 
     private DamageDealerController damageDealerController;
@@ -187,19 +188,13 @@ public class GameRunner : Game
             
             // Инициализируем контроллеры
             damageDealerController = DamageDealerController.GetInstance(this);
+            damageDealerController.DefaultTexture = _bulletTexture; // Устанавливаем текстуру пуль по умолчанию
+            
             towerController = TowerController.GetInstance(this);
+            towerController.DefaultTexture = _towerTexture; // Устанавливаем текстуру башен по умолчанию
+            
             enemyController = EnemyController.GetInstance(this, gameMap);
             waveController = WaveController.GetInstance(enemyController, gameMap);
-
-            // Назначаем текстуры пулям (важно сделать это после инициализации контроллера)
-            if (damageDealerController != null)
-            {
-                foreach (var bullet in damageDealerController.DamageDealers)
-                {
-                    bullet.Texture = _pixel;
-                }
-            }
-            
 
             
             // Загружаем волны из уровня
@@ -309,6 +304,29 @@ public class GameRunner : Game
             _towerTexture = CreateProceduralTowerTexture();
         }
 
+        // Пытаемся загрузить картинку пули из файла
+        string bulletImagePath = PathService.GetCommonFilePath("bullet.png");
+        if (File.Exists(bulletImagePath))
+        {
+            try
+            {
+                using (var stream = File.OpenRead(bulletImagePath))
+                {
+                    _bulletTexture = Texture2D.FromStream(GraphicsDevice, stream);
+                    Console.WriteLine($"Bullet sprite loaded from: {bulletImagePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading bullet image: {ex.Message}. Falling back to procedural.");
+                _bulletTexture = CreateProceduralBulletTexture();
+            }
+        }
+        else
+        {
+            _bulletTexture = CreateProceduralBulletTexture();
+        }
+
         // Создаём временную текстуру для врага (зелёный квадрат 30x30)
         _enemyTexture = new Texture2D(GraphicsDevice, 30, 30);
         Color[] enemyData = new Color[30 * 30];
@@ -344,30 +362,83 @@ public class GameRunner : Game
 
     private Texture2D CreateProceduralTowerTexture()
     {
-        Texture2D texture = new Texture2D(GraphicsDevice, 40, 40);
-        Color[] towerData = new Color[40 * 40];
-        for (int y = 0; y < 40; y++)
+        Texture2D texture = new Texture2D(GraphicsDevice, 80, 80);
+        Color[] towerData = new Color[80 * 80];
+        for (int y = 0; y < 80; y++)
         {
-            for (int x = 0; x < 40; x++)
+            for (int x = 0; x < 80; x++)
             {
-                int i = y * 40 + x;
+                int i = y * 80 + x;
                 Color color = Color.Transparent;
 
-                if (y >= 30) color = (x % 10 < 2 || y % 5 == 0) ? Color.DarkGray : Color.Gray;
-                else if (y >= 8 && x >= 5 && x <= 34)
+                // Основание (камень) - нижние 20 пикселей
+                if (y >= 60)
                 {
-                    color = (x == 5 || x == 34) ? Color.Black : Color.SaddleBrown;
-                    if (y >= 15 && y <= 20 && x >= 18 && x <= 21) color = Color.Yellow;
+                    color = (x % 20 < 4 || y % 10 == 0) ? Color.DarkGray : Color.Gray;
                 }
-                else if (y < 8 && x >= 3 && x <= 36)
+                // Основная часть (дерево/камень) - от 16 до 60
+                else if (y >= 16 && x >= 10 && x <= 69)
                 {
-                    bool isTooth = (x % 10 < 6);
-                    if (isTooth || y >= 5) color = Color.DimGray;
+                    color = (x == 10 || x == 69) ? Color.Black : Color.SaddleBrown;
+                    // Окно - по центру
+                    if (y >= 30 && y <= 40 && x >= 36 && x <= 43) color = Color.Yellow;
+                }
+                // Зубцы башни (верх) - верхние 16 пикселей
+                else if (y < 16 && x >= 6 && x <= 73)
+                {
+                    bool isTooth = (x % 20 < 12);
+                    if (isTooth || y >= 10) color = Color.DimGray;
                 }
                 towerData[i] = color;
             }
         }
         texture.SetData(towerData);
+        return texture;
+    }
+
+    private Texture2D CreateProceduralBulletTexture()
+    {
+        int size = 32;
+        Texture2D texture = new Texture2D(GraphicsDevice, size, size);
+        Color[] data = new Color[size * size];
+        
+        float centerX = size / 2f;
+        float centerY = size / 2f;
+        float radius = size / 2f - 2;
+        
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - centerX;
+                float dy = y - centerY;
+                float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+                
+                if (dist <= radius)
+                {
+                    // Базовый цвет (темно-серый металл)
+                    int shade = 60 + (int)(dist / radius * 40);
+                    Color color = new Color(shade, shade, shade);
+                    
+                    // Добавляем блик (смещение от центра)
+                    float lx = x - (centerX - 5);
+                    float ly = y - (centerY - 5);
+                    float lDist = (float)Math.Sqrt(lx * lx + ly * ly);
+                    if (lDist < 8)
+                    {
+                        float intensity = 1.0f - (lDist / 8f);
+                        color = Color.Lerp(color, Color.White, intensity * 0.8f);
+                    }
+                    
+                    data[y * size + x] = color;
+                }
+                else
+                {
+                    data[y * size + x] = Color.Transparent;
+                }
+            }
+        }
+        texture.SetData(data);
         return texture;
     }
 

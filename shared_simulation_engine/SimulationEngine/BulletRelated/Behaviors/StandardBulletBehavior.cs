@@ -24,18 +24,35 @@ namespace SimulationEngine.BulletRelated.Behaviors
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {
-            // Используем текстуру и HitRadius из самой пули
-            // Если текстура не создана, создаём её на основе HitRadius пули
+            // Если текстура не создана, создаём её (запасной вариант)
             if (damageDealer.Texture == null)
             {
                 CreateBulletTexture(damageDealer, spriteBatch);
             }
             
-            // Рисуем пулю как круг белого цвета, центрированный по позиции
             if (damageDealer.Texture != null)
             {
-                spriteBatch.Draw(damageDealer.Texture, damageDealer.Position, null, Color.White, 0f,
-                    new Vector2(damageDealer.Texture.Width / 2f, damageDealer.Texture.Height / 2f), 1f, SpriteEffects.None, 0f);
+                // Масштабируем пулю под её радиус попадания (HitRadius)
+                // Визуальный размер обычно чуть больше физического радиуса для красоты
+                float visualSize = damageDealer.HitRadius * 4f; 
+                Rectangle destRect = new Rectangle(
+                    (int)damageDealer.Position.X,
+                    (int)damageDealer.Position.Y,
+                    (int)visualSize,
+                    (int)visualSize
+                );
+
+                // Рисуем с учетом поворота по направлению полета
+                spriteBatch.Draw(
+                    damageDealer.Texture, 
+                    destRect, 
+                    null, 
+                    Color.White, 
+                    damageDealer.Rotation, 
+                    new Vector2(damageDealer.Texture.Width / 2f, damageDealer.Texture.Height / 2f), 
+                    SpriteEffects.None, 
+                    0f
+                );
             }
         }
 

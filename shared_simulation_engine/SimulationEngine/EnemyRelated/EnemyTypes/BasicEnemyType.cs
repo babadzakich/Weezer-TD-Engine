@@ -10,7 +10,6 @@ public class BasicEnemyType : IEnemyType
     private Texture2D _texture;
     private static Texture2D _placeholderTexture;
     private int _currentWaypointIndex = 0;
-    private int _maxHealth = 100;
     public int health { get; set; } = 100;
     public int MaxHealth { get; set; } = 100;
 

@@ -1,3 +1,5 @@
+using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
@@ -7,8 +9,10 @@ public class TowerController : Controller
 {
     public readonly List<Tower> towers;
     private static TowerController _instance;
+    private readonly Dictionary<string, Microsoft.Xna.Framework.Graphics.Texture2D> _textureCache = new();
 
     private readonly Game _engine;
+    public Microsoft.Xna.Framework.Graphics.Texture2D DefaultTexture { get; set; }
     
     private TowerController(Game engine)
     {
@@ -32,7 +36,42 @@ public class TowerController : Controller
 
     public void AddTower(Tower tower)
     {
+        if (tower.Texture == null)
+        {
+            tower.Texture = GetTowerTexture(tower.Definition);
+        }
         towers.Add(tower);
+    }
+
+    public Microsoft.Xna.Framework.Graphics.Texture2D GetTowerTexture(LevelLoader.TowerDefinition definition)
+    {
+        if (definition == null) return DefaultTexture;
+
+        // Пытаемся найти в кэше
+        if (_textureCache.TryGetValue(definition.Id, out var cached)) return cached;
+
+        // Пытаемся загрузить из папки кастомных башен
+        string customPath = System.IO.Path.Combine(Infrastructure.PathService.GetEntityDllDirectory("towers"), $"{definition.Id}.png");
+        
+        if (System.IO.File.Exists(customPath))
+        {
+            try
+            {
+                using (var stream = System.IO.File.OpenRead(customPath))
+                {
+                    var texture = Microsoft.Xna.Framework.Graphics.Texture2D.FromStream(_engine.GraphicsDevice, stream);
+                    _textureCache[definition.Id] = texture;
+                    Console.WriteLine($"Loaded custom tower sprite: {customPath}");
+                    return texture;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading custom tower sprite {definition.Id}: {ex.Message}");
+            }
+        }
+
+        return DefaultTexture;
     }
 
     public void Update(GameTime deltaTime)

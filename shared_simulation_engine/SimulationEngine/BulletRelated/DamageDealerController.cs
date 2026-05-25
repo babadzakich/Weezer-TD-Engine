@@ -1,3 +1,5 @@
+using System;
+using System;
 using Microsoft.Xna.Framework;
 using System.Collections.Generic;
 using SimulationEngine.EnemyRelated;
@@ -9,6 +11,8 @@ public class DamageDealerController : Controller
     public List<DamageDealer> DamageDealers => damageDealers;
     public readonly List<DamageDealer> damageDealers;
     private static DamageDealerController _instance;
+    private readonly Dictionary<string, Microsoft.Xna.Framework.Graphics.Texture2D> _textureCache = new();
+    public Microsoft.Xna.Framework.Graphics.Texture2D DefaultTexture { get; set; }
 
     private readonly Game _engine;
 
@@ -34,7 +38,52 @@ public class DamageDealerController : Controller
 
     public void AddDamageDealer(DamageDealer damageDealer)
     {
+        if (damageDealer.Texture == null || damageDealer.Texture == DefaultTexture)
+        {
+            damageDealer.Texture = GetBulletTexture(damageDealer);
+        }
         damageDealers.Add(damageDealer);
+    }
+
+    public Microsoft.Xna.Framework.Graphics.Texture2D GetBulletTexture(DamageDealer damageDealer)
+    {
+        if (damageDealer?.Behavior == null) return DefaultTexture;
+
+        // Используем имя класса поведения как ключ для поиска спрайта (например, TestBaseRoundBehavior)
+        string className = damageDealer.Behavior.GetType().Name;
+        
+        // Пытаемся найти в кэше
+        if (_textureCache.TryGetValue(className, out var cached)) return cached;
+
+        // Ищем файл. Мы проверяем два варианта: полное имя класса и имя в нижнем регистре (более привычно для ID)
+        // Также проверяем имя без "Behavior"
+        string shortName = className.Replace("Behavior", "");
+        string[] possibleNames = { className, shortName, shortName.ToLower() };
+        string baseDir = Infrastructure.PathService.GetEntityDllDirectory("damageDealers");
+
+        foreach (var name in possibleNames)
+        {
+            string customPath = System.IO.Path.Combine(baseDir, $"{name}.png");
+            if (System.IO.File.Exists(customPath))
+            {
+                try
+                {
+                    using (var stream = System.IO.File.OpenRead(customPath))
+                    {
+                        var texture = Microsoft.Xna.Framework.Graphics.Texture2D.FromStream(_engine.GraphicsDevice, stream);
+                        _textureCache[className] = texture;
+                        Console.WriteLine($"Loaded unique projectile sprite: {customPath}");
+                        return texture;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading unique projectile sprite {name}: {ex.Message}");
+                }
+            }
+        }
+
+        return DefaultTexture;
     }
 
     public void RemoveDamageDealer(DamageDealer damageDealer)
