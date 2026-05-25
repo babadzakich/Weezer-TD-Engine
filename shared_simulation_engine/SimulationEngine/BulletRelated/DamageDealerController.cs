@@ -10,8 +10,10 @@ public class DamageDealerController : Controller
 {
     public List<DamageDealer> DamageDealers => damageDealers;
     public readonly List<DamageDealer> damageDealers;
+    private readonly List<Infrastructure.VisualEffect> _activeEffects = new();
     private static DamageDealerController _instance;
     private readonly Dictionary<string, Microsoft.Xna.Framework.Graphics.Texture2D> _textureCache = new();
+    private readonly Dictionary<string, Microsoft.Xna.Framework.Graphics.Texture2D> _explosionCache = new();
     public Microsoft.Xna.Framework.Graphics.Texture2D DefaultTexture { get; set; }
 
     private readonly Game _engine;
@@ -95,6 +97,13 @@ public class DamageDealerController : Controller
     {
         var enemyController = GameManager.GetInstance().EnemyController;
 
+        // Обновление эффектов
+        for (int i = _activeEffects.Count - 1; i >= 0; i--)
+        {
+            _activeEffects[i].Update(deltaTime);
+            if (!_activeEffects[i].IsActive) _activeEffects.RemoveAt(i);
+        }
+
         for (int i = damageDealers.Count - 1; i >= 0; i--)
         {
             var damageDealer = damageDealers[i];
@@ -110,7 +119,6 @@ public class DamageDealerController : Controller
                 continue;
 
             // Collision check: circle-circle intersection
-            // two circles intersect if distance between centers <= sum of radiuses
             foreach (var enemy in enemyController.Enemies)
             {
                 if (!enemy.isAlive)
@@ -124,6 +132,9 @@ public class DamageDealerController : Controller
                 if (distance <= combinedRadius)
                 {
                     enemy.TakeDamage(damageDealer.Behavior.Damage);
+                    
+                    // Спавним взрыв
+                    SpawnExplosion(damageDealer);
 
                     // Single-hit bullet: deactivate and remove
                     damageDealer.IsActive = false;
@@ -134,11 +145,48 @@ public class DamageDealerController : Controller
         }
     }
 
+    private void SpawnExplosion(DamageDealer bullet)
+    {
+        if (bullet?.Behavior == null) return;
+        
+        string className = bullet.Behavior.GetType().Name;
+        string shortName = className.Replace("Behavior", "");
+        
+        if (!_explosionCache.TryGetValue(shortName, out var explosionTexture))
+        {
+            // Пытаемся найти текстуру [Name]_explosion.png
+            string baseDir = Infrastructure.PathService.GetEntityDllDirectory("damageDealers");
+            string path = System.IO.Path.Combine(baseDir, $"{shortName}_explosion.png");
+            
+            if (System.IO.File.Exists(path))
+            {
+                try {
+                    using (var stream = System.IO.File.OpenRead(path)) {
+                        explosionTexture = Microsoft.Xna.Framework.Graphics.Texture2D.FromStream(_engine.GraphicsDevice, stream);
+                        _explosionCache[shortName] = explosionTexture;
+                    }
+                } catch { }
+            }
+        }
+
+        if (explosionTexture != null)
+        {
+            // Создаем эффект: 5 кадров (в ряд), длительность 0.3 сек, масштаб по радиусу пули
+            var effect = new Infrastructure.VisualEffect(explosionTexture, bullet.Position, 5, 0.3f, bullet.HitRadius / 5f);
+            _activeEffects.Add(effect);
+        }
+    }
+
     public void Draw(Microsoft.Xna.Framework.Graphics.SpriteBatch spriteBatch)
     {
         foreach (var damageDealer in damageDealers)
         {
             damageDealer.Draw(spriteBatch);
+        }
+
+        foreach (var effect in _activeEffects)
+        {
+            effect.Draw(spriteBatch);
         }
     }
 }

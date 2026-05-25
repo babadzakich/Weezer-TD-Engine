@@ -516,8 +516,16 @@ public class GameRunner : Game
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        // Применяем матрицу масштабирования для всех элементов отрисовки
-        _spriteBatch.Begin(transformMatrix: _scaleMatrix);
+        // Используем SamplerState.PointClamp чтобы спрайты были четкими и не "двоились" при анимации
+        _spriteBatch.Begin(
+            SpriteSortMode.Deferred, 
+            BlendState.AlphaBlend, 
+            SamplerState.PointClamp, 
+            null, 
+            null, 
+            null, 
+            _scaleMatrix
+        );
 
         switch (_currentState)
         {
