@@ -359,8 +359,12 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         {
             if (ni.OperationalStatus != OperationalStatus.Up) continue;
             if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-            // Пропускаем Docker/виртуальные интерфейсы
-            if (ni.Name.StartsWith("docker") || ni.Name.StartsWith("br-") || ni.Name.StartsWith("veth")) continue;
+            if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel) continue;
+            // Пропускаем виртуальные интерфейсы (Linux: docker/br-/veth, Windows: Hyper-V/VMware/VirtualBox)
+            var n = ni.Name;
+            if (n.StartsWith("docker") || n.StartsWith("br-") || n.StartsWith("veth") ||
+                n.StartsWith("vEthernet") || n.Contains("VMware") || n.Contains("VirtualBox") ||
+                n.Contains("Loopback") || n.Contains("Pseudo")) continue;
 
             foreach (var ua in ni.GetIPProperties().UnicastAddresses)
             {
