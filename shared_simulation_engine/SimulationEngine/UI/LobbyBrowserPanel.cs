@@ -18,7 +18,7 @@ public class LobbyBrowserPanel
         public int MaxPlayers { get; set; }
     }
 
-    private readonly LocalLobbyDiscovery _discoveryService;
+    private readonly ILobbyDiscovery _discoveryService;
     private List<LobbyInfo> _lobbies = new();
     private Button _backButton;
     private Button _refreshButton;
@@ -29,7 +29,7 @@ public class LobbyBrowserPanel
     public event Action OnBackClicked;
     public event Action<LobbyInfo> OnLobbySelected;
 
-    public LobbyBrowserPanel(int screenWidth, int screenHeight, LocalLobbyDiscovery discoveryService)
+    public LobbyBrowserPanel(int screenWidth, int screenHeight, ILobbyDiscovery discoveryService)
     {
         _screenWidth = screenWidth;
         _screenHeight = screenHeight;

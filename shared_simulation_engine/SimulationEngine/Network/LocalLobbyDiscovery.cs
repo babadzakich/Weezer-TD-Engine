@@ -34,7 +34,7 @@ internal sealed record LocalLobbyEntry(
     bool IsGameStarted = false,
     string? RaftEndpoint = null);
 
-public sealed class LocalLobbyDiscovery : IDisposable
+public sealed class LocalLobbyDiscovery : ILobbyDiscovery
 {
     private const string LocalLobbyFileName = "WeezerTD_LocalLobbies.json";
     private static readonly string LocalLobbyFilePath = Path.Combine(Path.GetTempPath(), LocalLobbyFileName);

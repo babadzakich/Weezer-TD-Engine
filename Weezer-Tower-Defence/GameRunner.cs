@@ -46,7 +46,7 @@ public class GameRunner : Game
     private MultiplayerMenuPanel _multiplayerMenuPanel;
     private LobbyBrowserPanel _lobbyBrowserPanel;
     private LobbyPanel _lobbyPanel;
-    private LocalLobbyDiscovery _lobbyDiscovery;
+    private ILobbyDiscovery _lobbyDiscovery;
     private string? _currentLobbyId;
     private string _currentLobbyName = string.Empty;
     private string _playerName = string.Empty;
@@ -107,7 +107,7 @@ public class GameRunner : Game
 
         _mainMenuPanel = new MainMenuPanel(width, height);
         _multiplayerMenuPanel = new MultiplayerMenuPanel(width, height);
-        _lobbyDiscovery = new LocalLobbyDiscovery();
+        _lobbyDiscovery = new UdpLobbyDiscovery();
         _playerName = $"Player_{Environment.MachineName}_{Guid.NewGuid():N}";
         _lobbyBrowserPanel = new LobbyBrowserPanel(width, height, _lobbyDiscovery);
         _lobbyPanel = new LobbyPanel(width, height, _lobbyDiscovery);
