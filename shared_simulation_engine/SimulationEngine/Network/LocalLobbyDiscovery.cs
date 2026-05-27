@@ -19,7 +19,8 @@ public sealed record LocalLobbyPlayerInfo(
     string PlayerName,
     bool IsHost,
     int Ping,
-    int MaxPlayers);
+    int MaxPlayers,
+    string? RaftEndpoint = null);
 
 internal sealed record LocalLobbyEntry(
     string InstanceId,
@@ -30,7 +31,8 @@ internal sealed record LocalLobbyEntry(
     int Ping,
     int MaxPlayers,
     DateTimeOffset LastUpdated,
-    bool IsGameStarted = false);
+    bool IsGameStarted = false,
+    string? RaftEndpoint = null);
 
 public sealed class LocalLobbyDiscovery : IDisposable
 {
@@ -113,7 +115,8 @@ public sealed class LocalLobbyDiscovery : IDisposable
                     entry.PlayerName,
                     entry.IsHost,
                     entry.Ping,
-                    entry.MaxPlayers))
+                    entry.MaxPlayers,
+                    entry.RaftEndpoint))
                 .ToArray();
         }
         finally
@@ -122,7 +125,7 @@ public sealed class LocalLobbyDiscovery : IDisposable
         }
     }
 
-    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0)
+    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string? raftEndpoint = null)
     {
         EnsureNotDisposed();
         _ownEntry = new LocalLobbyEntry(
@@ -133,13 +136,14 @@ public sealed class LocalLobbyDiscovery : IDisposable
             true,
             ping,
             maxPlayers,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            RaftEndpoint: raftEndpoint);
 
         SaveOwnEntry();
         return _ownEntry.LobbyId;
     }
 
-    public bool JoinLobby(string lobbyId, string playerName, int ping = 0)
+    public bool JoinLobby(string lobbyId, string playerName, int ping = 0, string? raftEndpoint = null)
     {
         EnsureNotDisposed();
         AcquireMutex();
@@ -164,7 +168,8 @@ public sealed class LocalLobbyDiscovery : IDisposable
                 false,
                 ping,
                 hostEntry.MaxPlayers,
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow,
+                RaftEndpoint: raftEndpoint);
 
             UpdateOwnEntry(entries, _ownEntry);
             SaveEntries(entries);
@@ -266,6 +271,29 @@ public sealed class LocalLobbyDiscovery : IDisposable
             var entries = LoadEntries();
             var hostEntry = entries.FirstOrDefault(e => e.LobbyId == lobbyId && e.IsHost);
             return hostEntry is not null && hostEntry.IsGameStarted;
+        }
+        finally
+        {
+            ReleaseMutex();
+        }
+    }
+
+    /// <summary>
+    /// Возвращает список (instanceId, raftEndpoint) всех игроков в лобби у которых задан RaftEndpoint.
+    /// Используется чтобы построить список peers для RaftNode перед стартом игры.
+    /// </summary>
+    public IReadOnlyList<(string InstanceId, string RaftEndpoint)> GetRaftPeers(string lobbyId)
+    {
+        EnsureNotDisposed();
+        AcquireMutex();
+        try
+        {
+            var entries = LoadEntries();
+            PruneStale(entries);
+            return entries
+                .Where(e => e.LobbyId == lobbyId && e.RaftEndpoint is not null && e.InstanceId != _instanceId)
+                .Select(e => (e.InstanceId, e.RaftEndpoint!))
+                .ToArray();
         }
         finally
         {
