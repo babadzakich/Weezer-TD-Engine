@@ -13,6 +13,7 @@ using SimulationEngine.WaveRelated;
 using SimulationEngine.EnemyRelated.EnemyTypes;
 using SimulationEngine;
 using SimulationEngine.UI;
+using SimulationEngine.Network;
 using System.Linq;
 using SimulationEngine.Infrastructure;
 
@@ -45,6 +46,12 @@ public class GameRunner : Game
     private MultiplayerMenuPanel _multiplayerMenuPanel;
     private LobbyBrowserPanel _lobbyBrowserPanel;
     private LobbyPanel _lobbyPanel;
+    private LocalLobbyDiscovery _lobbyDiscovery;
+    private string? _currentLobbyId;
+    private string _currentLobbyName = string.Empty;
+    private string _playerName = string.Empty;
+    private string _currentLobbyLevelPath = string.Empty;
+    private bool _gameStartingInLobby = false;
     
     private GameState _currentState = GameState.MainMenu;
     private bool _isSelectingLevelForLobby = false;
@@ -100,8 +107,10 @@ public class GameRunner : Game
 
         _mainMenuPanel = new MainMenuPanel(width, height);
         _multiplayerMenuPanel = new MultiplayerMenuPanel(width, height);
-        _lobbyBrowserPanel = new LobbyBrowserPanel(width, height);
-        _lobbyPanel = new LobbyPanel(width, height);
+        _lobbyDiscovery = new LocalLobbyDiscovery();
+        _playerName = $"Player_{Environment.MachineName}_{Guid.NewGuid():N}";
+        _lobbyBrowserPanel = new LobbyBrowserPanel(width, height, _lobbyDiscovery);
+        _lobbyPanel = new LobbyPanel(width, height, _lobbyDiscovery);
         _levelSelectionPanel = new LevelSelectionPanel(width, height);
 
         // Wiring Main Menu
@@ -129,24 +138,46 @@ public class GameRunner : Game
         // Wiring Lobby Browser
         _lobbyBrowserPanel.OnBackClicked += () => _currentState = GameState.MultiplayerMenu;
         _lobbyBrowserPanel.OnLobbySelected += (lobby) => {
-            _currentState = GameState.Lobby;
-            _lobbyPanel.LoadMockLobby(lobby.Name, lobby.MaxPlayers);
+            if (_lobbyDiscovery.JoinLobby(lobby.LobbyId, _playerName))
+            {
+                _currentLobbyId = lobby.LobbyId;
+                _currentLobbyName = lobby.Name;
+                _currentState = GameState.Lobby;
+                RefreshCurrentLobbyState();
+            }
+            else
+            {
+                Console.WriteLine($"Failed to join lobby {lobby.LobbyId}");
+            }
         };
 
         // Wiring Lobby
-        _lobbyPanel.OnLeaveClicked += () => _currentState = GameState.MultiplayerMenu;
+        _lobbyPanel.OnLeaveClicked += () => {
+            _lobbyDiscovery?.LeaveLobby();
+            _currentLobbyId = null;
+            _currentLobbyName = string.Empty;
+            _currentLobbyLevelPath = string.Empty;
+            _gameStartingInLobby = false;
+            _currentState = GameState.MultiplayerMenu;
+        };
         _lobbyPanel.OnStartClicked += () => {
-             // В мультиплеере игра начинается сразу для всех
-             // Здесь будет логика синхронного старта
-             Console.WriteLine("Lobby start clicked - implementation for sync start goes here");
+             if (!string.IsNullOrEmpty(_currentLobbyLevelPath))
+             {
+                 _lobbyDiscovery.SignalGameStart();
+                 _gameStartingInLobby = true;
+             }
         };
 
         _levelSelectionPanel.OnLevelSelectedExtended += (levelPath, maxPlayers) => {
             if (_isSelectingLevelForLobby)
             {
                 _currentState = GameState.Lobby;
+                _currentLobbyLevelPath = levelPath;
                 string mapName = System.IO.Path.GetFileNameWithoutExtension(levelPath);
-                _lobbyPanel.LoadMockLobby($"Lobby: {mapName}", maxPlayers);
+                string lobbyName = $"Lobby: {mapName}";
+                _currentLobbyName = lobbyName;
+                _currentLobbyId = _lobbyDiscovery.HostLobby(lobbyName, maxPlayers, _playerName);
+                RefreshCurrentLobbyState();
             }
         };
 
@@ -251,6 +282,26 @@ public class GameRunner : Game
             Console.WriteLine(ex.StackTrace);
             ReturnToMenu();
         }
+    }
+
+    private void RefreshCurrentLobbyState()
+    {
+        if (string.IsNullOrEmpty(_currentLobbyId)) return;
+
+        var players = _lobbyDiscovery.GetLobbyPlayers(_currentLobbyId);
+        if (players.Count == 0)
+        {
+            // Если лобби полностью пропало, возвращаемся в меню
+            _lobbyDiscovery.LeaveLobby();
+            _currentLobbyId = null;
+            _currentLobbyName = string.Empty;
+            _currentLobbyLevelPath = string.Empty;
+            _gameStartingInLobby = false;
+            _currentState = GameState.MultiplayerMenu;
+            return;
+        }
+
+        _lobbyPanel.LoadLobby(_currentLobbyName, players[0].MaxPlayers, players, _lobbyDiscovery.InstanceId);
     }
 
     private void ReturnToMenu()
@@ -476,7 +527,18 @@ public class GameRunner : Game
                 _lobbyBrowserPanel.Update(gameTime, virtualMs, _previousMouseState);
                 break;
             case GameState.Lobby:
+                _lobbyDiscovery.KeepAlive();
+                RefreshCurrentLobbyState();
                 _lobbyPanel.Update(gameTime, virtualMs, _previousMouseState);
+                
+                // Check if game is starting and load level for all players
+                if (_gameStartingInLobby && !string.IsNullOrEmpty(_currentLobbyId) && !string.IsNullOrEmpty(_currentLobbyLevelPath))
+                {
+                    if (_lobbyDiscovery.IsLobbyGameStarting(_currentLobbyId))
+                    {
+                        LoadLevel(_currentLobbyLevelPath);
+                    }
+                }
                 break;
             case GameState.LevelSelection:
                 _levelSelectionPanel.Update(ks, _previousKeyboardState);

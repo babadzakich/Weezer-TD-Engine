@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SimulationEngine.Network;
 
 namespace SimulationEngine.UI;
 
@@ -10,12 +11,14 @@ public class LobbyBrowserPanel
 {
     public class LobbyInfo
     {
+        public string LobbyId { get; set; }
         public string Name { get; set; }
         public int Ping { get; set; }
         public int CurrentPlayers { get; set; }
         public int MaxPlayers { get; set; }
     }
 
+    private readonly LocalLobbyDiscovery _discoveryService;
     private List<LobbyInfo> _lobbies = new();
     private Button _backButton;
     private Button _refreshButton;
@@ -26,10 +29,11 @@ public class LobbyBrowserPanel
     public event Action OnBackClicked;
     public event Action<LobbyInfo> OnLobbySelected;
 
-    public LobbyBrowserPanel(int screenWidth, int screenHeight)
+    public LobbyBrowserPanel(int screenWidth, int screenHeight, LocalLobbyDiscovery discoveryService)
     {
         _screenWidth = screenWidth;
         _screenHeight = screenHeight;
+        _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
 
         _backButton = new Button(new Vector2(50, _screenHeight - 100), new Vector2(200, 50), "Назад");
         _refreshButton = new Button(new Vector2(_screenWidth - 250, _screenHeight - 100), new Vector2(200, 50), "Обновить");
@@ -45,12 +49,18 @@ public class LobbyBrowserPanel
         _lobbies.Clear();
         _selectedIndex = -1;
 
-        // ЗАГЛУШКА: Здесь в будущем будет логика парсинга сети на наличие лобби
-        // Placeholder for network discovery logic
-        
-        _lobbies.Add(new LobbyInfo { Name = "Super Tower Defense", Ping = 45, CurrentPlayers = 2, MaxPlayers = 4 });
-        _lobbies.Add(new LobbyInfo { Name = "Pro Gamers Only", Ping = 120, CurrentPlayers = 1, MaxPlayers = 2 });
-        _lobbies.Add(new LobbyInfo { Name = "Casual Match", Ping = 32, CurrentPlayers = 3, MaxPlayers = 4 });
+        var discovered = _discoveryService.GetAvailableLobbies();
+        foreach (var lobby in discovered)
+        {
+            _lobbies.Add(new LobbyInfo
+            {
+                LobbyId = lobby.LobbyId,
+                Name = lobby.Name,
+                Ping = lobby.Ping,
+                CurrentPlayers = lobby.CurrentPlayers,
+                MaxPlayers = lobby.MaxPlayers
+            });
+        }
     }
 
     public void Update(GameTime gameTime, MouseState mouseState, MouseState previousMouseState)
@@ -90,17 +100,26 @@ public class LobbyBrowserPanel
         spriteBatch.DrawString(font, "Места", new Vector2(_screenWidth / 2 + 250, startY), Color.LightGray);
 
         startY = 250;
-        for (int i = 0; i < _lobbies.Count; i++)
+        if (_lobbies.Count == 0)
         {
-            var lobby = _lobbies[i];
-            Color color = (i == _selectedIndex) ? Color.Cyan : Color.White;
+            string emptyMessage = "Нет доступных лобби";
+            Vector2 emptySize = font.MeasureString(emptyMessage);
+            spriteBatch.DrawString(font, emptyMessage, new Vector2(_screenWidth / 2 - emptySize.X / 2, startY), Color.LightGray);
+        }
+        else
+        {
+            for (int i = 0; i < _lobbies.Count; i++)
+            {
+                var lobby = _lobbies[i];
+                Color color = (i == _selectedIndex) ? Color.Cyan : Color.White;
 
-            spriteBatch.DrawString(font, lobby.Name, new Vector2(_screenWidth / 2 - 400, startY + i * 50), color);
-            spriteBatch.DrawString(font, $"{lobby.Ping}ms", new Vector2(_screenWidth / 2 + 100, startY + i * 50), color);
-            spriteBatch.DrawString(font, $"{lobby.CurrentPlayers}/{lobby.MaxPlayers}", new Vector2(_screenWidth / 2 + 250, startY + i * 50), color);
-            
-            // Разделительная линия
-            spriteBatch.Draw(pixel, new Rectangle(_screenWidth / 2 - 400, startY + i * 50 + 40, 800, 1), Color.Gray * 0.5f);
+                spriteBatch.DrawString(font, lobby.Name, new Vector2(_screenWidth / 2 - 400, startY + i * 50), color);
+                spriteBatch.DrawString(font, $"{lobby.Ping}ms", new Vector2(_screenWidth / 2 + 100, startY + i * 50), color);
+                spriteBatch.DrawString(font, $"{lobby.CurrentPlayers}/{lobby.MaxPlayers}", new Vector2(_screenWidth / 2 + 250, startY + i * 50), color);
+                
+                // Разделительная линия
+                spriteBatch.Draw(pixel, new Rectangle(_screenWidth / 2 - 400, startY + i * 50 + 40, 800, 1), Color.Gray * 0.5f);
+            }
         }
 
         _backButton.Draw(spriteBatch, pixel, font);
