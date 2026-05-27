@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -18,7 +19,6 @@ namespace SimulationEngine.Network;
 public sealed class UdpLobbyDiscovery : ILobbyDiscovery
 {
     private const int BroadcastPort = 27015;
-    private static readonly IPEndPoint BroadcastEp = new(IPAddress.Broadcast, BroadcastPort);
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
@@ -215,7 +215,8 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
                     HostPort = _mainPort
                 };
             }
-            Send(BroadcastEp, msg);
+            foreach (var ep in GetSubnetBroadcastEndpoints())
+                Send(ep, msg);
             try { await Task.Delay(2000, ct); } catch (OperationCanceledException) { return; }
         }
     }
@@ -347,6 +348,37 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
             _mainSock.Send(bytes, ep);
         }
         catch { }
+    }
+
+    // Возвращает реальные subnet broadcast адреса всех активных IPv4 интерфейсов.
+    // Используем их вместо 255.255.255.255, который многие роутеры не форвардят.
+    private static IReadOnlyList<IPEndPoint> GetSubnetBroadcastEndpoints()
+    {
+        var result = new List<IPEndPoint>();
+        foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (ni.OperationalStatus != OperationalStatus.Up) continue;
+            if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+            // Пропускаем Docker/виртуальные интерфейсы
+            if (ni.Name.StartsWith("docker") || ni.Name.StartsWith("br-") || ni.Name.StartsWith("veth")) continue;
+
+            foreach (var ua in ni.GetIPProperties().UnicastAddresses)
+            {
+                if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                if (ua.IPv4Mask == null) continue;
+
+                var ip   = ua.Address.GetAddressBytes();
+                var mask = ua.IPv4Mask.GetAddressBytes();
+                var bcast = new byte[4];
+                for (int i = 0; i < 4; i++)
+                    bcast[i] = (byte)(ip[i] | ~mask[i]);
+
+                result.Add(new IPEndPoint(new IPAddress(bcast), BroadcastPort));
+            }
+        }
+        if (result.Count == 0)
+            result.Add(new IPEndPoint(IPAddress.Broadcast, BroadcastPort));
+        return result;
     }
 
     private static T Deser<T>(byte[] data) where T : class
