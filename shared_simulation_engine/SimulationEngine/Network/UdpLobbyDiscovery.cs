@@ -58,16 +58,26 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
 
     // ─── Host ──────────────────────────────────────────────────────────────
 
-    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string raftEndpoint = null)
+    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string raftEndpoint = null, string levelArchiveName = null)
     {
         var lobbyId = Guid.NewGuid().ToString("N");
         lock (_lock)
         {
-            _host = new HostState(lobbyId, lobbyName, hostName, maxPlayers);
+            _host = new HostState(lobbyId, lobbyName, hostName, maxPlayers, levelArchiveName);
             _host.AddPlayer(InstanceId, hostName, isHost: true, raftEndpoint, endpoint: null);
         }
         _ = Task.Run(() => AnnounceLoopAsync(_cts.Token));
         return lobbyId;
+    }
+
+    public string GetCurrentLobbyLevelName()
+    {
+        lock (_lock)
+        {
+            if (_host != null) return _host.LevelArchiveName;
+            if (_client != null) return _client.LevelArchiveName;
+            return null;
+        }
     }
 
     // ─── Client ────────────────────────────────────────────────────────────
@@ -111,7 +121,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
 
         lock (_lock)
         {
-            _client = new ClientState(lobbyId, entry.HostEndpoint, resp.Players ?? new PlayerDto[0]);
+            _client = new ClientState(lobbyId, entry.HostEndpoint, resp.Players ?? new PlayerDto[0], resp.LevelArchiveName);
         }
         return true;
     }
@@ -232,7 +242,8 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
                     MaxPlayers = _host.MaxPlayers,
                     CurrentPlayers = _host.PlayerCount,
                     IsGameStarted = _host.IsGameStarted,
-                    HostPort = _mainPort
+                    HostPort = _mainPort,
+                    LevelArchiveName = _host.LevelArchiveName
                 };
             }
             foreach (var ep in GetSubnetBroadcastEndpoints())
@@ -313,7 +324,8 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
                 MaxPlayers = _host.MaxPlayers,
                 CurrentPlayers = _host.PlayerCount,
                 IsGameStarted = _host.IsGameStarted,
-                HostPort = _mainPort
+                HostPort = _mainPort,
+                LevelArchiveName = _host.LevelArchiveName
             };
         }
         var replyEp = new IPEndPoint(from.Address, probe.ReplyPort > 0 ? probe.ReplyPort : from.Port);
@@ -347,7 +359,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
                 return;
             }
             _host.AddPlayer(req.PlayerId, req.PlayerName, isHost: false, req.RaftEndpoint, from);
-            Send(from, new JoinResponseMsg { Accepted = true, Players = _host.GetPlayerDtos() });
+            Send(from, new JoinResponseMsg { Accepted = true, Players = _host.GetPlayerDtos(), LevelArchiveName = _host.LevelArchiveName });
             PushState();
         }
     }
@@ -476,15 +488,17 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         public string LobbyName { get; }
         public string HostName { get; }
         public int MaxPlayers { get; }
+        public string LevelArchiveName { get; }
         public bool IsGameStarted { get; set; }
         public int PlayerCount => _players.Count;
 
-        public HostState(string lobbyId, string lobbyName, string hostName, int maxPlayers)
+        public HostState(string lobbyId, string lobbyName, string hostName, int maxPlayers, string levelArchiveName)
         {
             LobbyId = lobbyId;
             LobbyName = lobbyName;
             HostName = hostName;
             MaxPlayers = maxPlayers;
+            LevelArchiveName = levelArchiveName;
         }
 
         public void AddPlayer(string id, string name, bool isHost, string raftEp, IPEndPoint endpoint)
@@ -556,12 +570,14 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         public string LobbyId { get; }
         public IPEndPoint HostEndpoint { get; }
         public bool IsGameStarted { get; set; }
+        public string LevelArchiveName { get; }
 
-        public ClientState(string lobbyId, IPEndPoint hostEndpoint, PlayerDto[] players)
+        public ClientState(string lobbyId, IPEndPoint hostEndpoint, PlayerDto[] players, string levelArchiveName)
         {
             LobbyId = lobbyId;
             HostEndpoint = hostEndpoint;
             _players = players;
+            LevelArchiveName = levelArchiveName;
         }
 
         public void UpdatePlayers(PlayerDto[] players) => _players = players;
@@ -590,6 +606,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         public int CurrentPlayers { get; set; }
         public bool IsGameStarted { get; set; }
         public int HostPort { get; set; }
+        public string LevelArchiveName { get; set; }
     }
 
     private sealed class ProbeMsg : BaseMsg
@@ -612,6 +629,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         public JoinResponseMsg() { T = "joinr"; }
         public bool Accepted { get; set; }
         public PlayerDto[] Players { get; set; }
+        public string LevelArchiveName { get; set; }
     }
 
     private sealed class KeepAliveMsg : BaseMsg

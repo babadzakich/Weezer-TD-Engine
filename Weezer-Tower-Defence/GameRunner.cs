@@ -51,8 +51,7 @@ public class GameRunner : Game
     private string _currentLobbyName = string.Empty;
     private string _playerName = string.Empty;
     private string _currentLobbyLevelPath = string.Empty;
-    private bool _gameStartingInLobby = false;
-    
+
     private GameState _currentState = GameState.MainMenu;
     private bool _isSelectingLevelForLobby = false;
     private bool _showInstructions = false;
@@ -157,14 +156,12 @@ public class GameRunner : Game
             _currentLobbyId = null;
             _currentLobbyName = string.Empty;
             _currentLobbyLevelPath = string.Empty;
-            _gameStartingInLobby = false;
             _currentState = GameState.MultiplayerMenu;
         };
         _lobbyPanel.OnStartClicked += () => {
              if (!string.IsNullOrEmpty(_currentLobbyLevelPath))
              {
                  _lobbyDiscovery.SignalGameStart();
-                 _gameStartingInLobby = true;
              }
         };
 
@@ -173,10 +170,11 @@ public class GameRunner : Game
             {
                 _currentState = GameState.Lobby;
                 _currentLobbyLevelPath = levelPath;
+                string archiveName = System.IO.Path.GetFileName(levelPath);
                 string mapName = System.IO.Path.GetFileNameWithoutExtension(levelPath);
                 string lobbyName = $"Lobby: {mapName}";
                 _currentLobbyName = lobbyName;
-                _currentLobbyId = _lobbyDiscovery.HostLobby(lobbyName, maxPlayers, _playerName);
+                _currentLobbyId = _lobbyDiscovery.HostLobby(lobbyName, maxPlayers, _playerName, levelArchiveName: archiveName);
                 RefreshCurrentLobbyState();
             }
         };
@@ -296,7 +294,6 @@ public class GameRunner : Game
             _currentLobbyId = null;
             _currentLobbyName = string.Empty;
             _currentLobbyLevelPath = string.Empty;
-            _gameStartingInLobby = false;
             _currentState = GameState.MultiplayerMenu;
             return;
         }
@@ -530,11 +527,24 @@ public class GameRunner : Game
                 _lobbyDiscovery.KeepAlive();
                 RefreshCurrentLobbyState();
                 _lobbyPanel.Update(gameTime, virtualMs, _previousMouseState);
-                
-                // Check if game is starting and load level for all players
-                if (_gameStartingInLobby && !string.IsNullOrEmpty(_currentLobbyId) && !string.IsNullOrEmpty(_currentLobbyLevelPath))
+
+                // Game start: host выставляет _gameStartingInLobby в OnStartClicked;
+                // клиент детектирует старт через IsLobbyGameStarting и берёт уровень из discovery.
+                if (!string.IsNullOrEmpty(_currentLobbyId) && _lobbyDiscovery.IsLobbyGameStarting(_currentLobbyId))
                 {
-                    if (_lobbyDiscovery.IsLobbyGameStarting(_currentLobbyId))
+                    if (string.IsNullOrEmpty(_currentLobbyLevelPath))
+                    {
+                        var levelName = _lobbyDiscovery.GetCurrentLobbyLevelName();
+                        if (!string.IsNullOrEmpty(levelName))
+                        {
+                            var candidate = System.IO.Path.Combine(PathService.LevelsDirectory, levelName);
+                            if (System.IO.File.Exists(candidate))
+                                _currentLobbyLevelPath = candidate;
+                            else
+                                Console.WriteLine($"[GameRunner] Уровень \"{levelName}\" не найден локально в {PathService.LevelsDirectory}");
+                        }
+                    }
+                    if (!string.IsNullOrEmpty(_currentLobbyLevelPath))
                     {
                         LoadLevel(_currentLobbyLevelPath);
                     }

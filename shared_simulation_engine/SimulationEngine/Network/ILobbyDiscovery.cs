@@ -10,8 +10,9 @@ public interface ILobbyDiscovery : IDisposable
     string CurrentLobbyId { get; }
     bool IsHost { get; }
 
-    string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string raftEndpoint = null);
+    string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string raftEndpoint = null, string levelArchiveName = null);
     bool JoinLobby(string lobbyId, string playerName, int ping = 0, string raftEndpoint = null);
+    string GetCurrentLobbyLevelName();
     IReadOnlyList<LocalLobbyInfo> GetAvailableLobbies();
     IReadOnlyList<LocalLobbyPlayerInfo> GetLobbyPlayers(string lobbyId);
     void LeaveLobby();

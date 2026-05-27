@@ -125,7 +125,7 @@ public sealed class LocalLobbyDiscovery : ILobbyDiscovery
         }
     }
 
-    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string? raftEndpoint = null)
+    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string? raftEndpoint = null, string? levelArchiveName = null)
     {
         EnsureNotDisposed();
         _ownEntry = new LocalLobbyEntry(
@@ -142,6 +142,8 @@ public sealed class LocalLobbyDiscovery : ILobbyDiscovery
         SaveOwnEntry();
         return _ownEntry.LobbyId;
     }
+
+    public string GetCurrentLobbyLevelName() => null;
 
     public bool JoinLobby(string lobbyId, string playerName, int ping = 0, string? raftEndpoint = null)
     {
