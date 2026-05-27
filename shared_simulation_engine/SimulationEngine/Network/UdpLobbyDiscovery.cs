@@ -267,8 +267,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         OnRemoteTowerPlace?.Invoke(msg.BuildZoneId, msg.TowerDefId);
         if (isHost && rebroadcast != null)
         {
-            foreach (var ep in rebroadcast)
-                if (!ep.Equals(from)) Send(ep, msg);
+            foreach (var ep in rebroadcast) Send(ep, msg);
         }
     }
 
@@ -285,8 +284,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         OnRemoteWaveStart?.Invoke();
         if (isHost && rebroadcast != null)
         {
-            foreach (var ep in rebroadcast)
-                if (!ep.Equals(from)) Send(ep, msg);
+            foreach (var ep in rebroadcast) Send(ep, msg);
         }
     }
 
