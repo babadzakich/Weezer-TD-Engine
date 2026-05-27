@@ -35,6 +35,9 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
     private ClientState _client;
     private TaskCompletionSource<JoinResponseMsg> _pendingJoin;
 
+    public event Action<string, string> OnRemoteTowerPlace;
+    public event Action OnRemoteWaveStart;
+
     public string InstanceId { get; } = Guid.NewGuid().ToString("N");
     public string PlayerName { get; } = $"Player_{Environment.MachineName}_{Guid.NewGuid():N}";
     public string CurrentLobbyId { get { lock (_lock) return _host?.LobbyId ?? _client?.LobbyId; } }
@@ -211,6 +214,82 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         }
     }
 
+    // ─── Game sync ─────────────────────────────────────────────────────────
+    //
+    // Хост-авторитет: клиент шлёт событие хосту, хост применяет у себя
+    // и рассылает всем клиентам. Хост, инициирующий событие сам,
+    // тоже применяет локально и рассылает.
+
+    public void BroadcastTowerPlace(string buildZoneId, string towerDefId)
+    {
+        var msg = new TowerPlaceMsg { BuildZoneId = buildZoneId, TowerDefId = towerDefId };
+        lock (_lock)
+        {
+            if (_host != null)
+            {
+                OnRemoteTowerPlace?.Invoke(buildZoneId, towerDefId);
+                foreach (var ep in _host.GetClientEndpoints()) Send(ep, msg);
+            }
+            else if (_client != null)
+            {
+                Send(_client.HostEndpoint, msg);
+            }
+        }
+    }
+
+    public void BroadcastWaveStart()
+    {
+        var msg = new WaveStartMsg();
+        lock (_lock)
+        {
+            if (_host != null)
+            {
+                OnRemoteWaveStart?.Invoke();
+                foreach (var ep in _host.GetClientEndpoints()) Send(ep, msg);
+            }
+            else if (_client != null)
+            {
+                Send(_client.HostEndpoint, msg);
+            }
+        }
+    }
+
+    private void HandleTowerPlace(TowerPlaceMsg msg, IPEndPoint from)
+    {
+        if (msg == null) return;
+        bool isHost;
+        List<IPEndPoint> rebroadcast = null;
+        lock (_lock)
+        {
+            isHost = _host != null;
+            if (isHost) rebroadcast = _host.GetClientEndpoints();
+        }
+        OnRemoteTowerPlace?.Invoke(msg.BuildZoneId, msg.TowerDefId);
+        if (isHost && rebroadcast != null)
+        {
+            foreach (var ep in rebroadcast)
+                if (!ep.Equals(from)) Send(ep, msg);
+        }
+    }
+
+    private void HandleWaveStart(WaveStartMsg msg, IPEndPoint from)
+    {
+        if (msg == null) return;
+        bool isHost;
+        List<IPEndPoint> rebroadcast = null;
+        lock (_lock)
+        {
+            isHost = _host != null;
+            if (isHost) rebroadcast = _host.GetClientEndpoints();
+        }
+        OnRemoteWaveStart?.Invoke();
+        if (isHost && rebroadcast != null)
+        {
+            foreach (var ep in rebroadcast)
+                if (!ep.Equals(from)) Send(ep, msg);
+        }
+    }
+
     public IReadOnlyList<(string InstanceId, string RaftEndpoint)> GetRaftPeers(string lobbyId)
     {
         lock (_lock)
@@ -303,6 +382,8 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
             case "state": HandleStateMsg(Deser<LobbyStateMsg>(r.Buffer)); break;
             case "start": HandleStartMsg(Deser<GameStartMsg>(r.Buffer)); break;
             case "ann":   RegisterDiscovered(Deser<AnnounceMsg>(r.Buffer), r.RemoteEndPoint.Address); break;
+            case "tplace": HandleTowerPlace(Deser<TowerPlaceMsg>(r.Buffer), r.RemoteEndPoint); break;
+            case "wstart": HandleWaveStart(Deser<WaveStartMsg>(r.Buffer), r.RemoteEndPoint); break;
         }
     }
 
@@ -657,6 +738,18 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
     {
         public GameStartMsg() { T = "start"; }
         public string LobbyId { get; set; } = string.Empty;
+    }
+
+    private sealed class TowerPlaceMsg : BaseMsg
+    {
+        public TowerPlaceMsg() { T = "tplace"; }
+        public string BuildZoneId { get; set; } = string.Empty;
+        public string TowerDefId { get; set; } = string.Empty;
+    }
+
+    private sealed class WaveStartMsg : BaseMsg
+    {
+        public WaveStartMsg() { T = "wstart"; }
     }
 
     private sealed class PlayerDto

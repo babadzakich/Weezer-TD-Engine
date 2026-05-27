@@ -7,6 +7,7 @@ using SimulationEngine.BulletRelated;
 using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.EnemyRelated;
 using SimulationEngine.MapRelated;
+using SimulationEngine.Network;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
@@ -32,6 +33,7 @@ public class GameManager
     public Texture2D DefaultBulletTexture { get; set; }
 
     private readonly GameInputHandler _inputHandler;
+    private ILobbyDiscovery _discovery;
 
     public event Action Defeat;
     public event Action Win;
@@ -134,7 +136,7 @@ public class GameManager
 
         _inputHandler = new GameInputHandler(UIManager, Map, TowerController);
 
-        UIManager.OnStartWaveRequested += StartWave;
+        UIManager.OnStartWaveRequested += RequestStartWave;
 
         UIManager.Money = startingMoney;
         UIManager.Lives = startingLives;
@@ -235,7 +237,17 @@ public class GameManager
         UIManager.Draw(spriteBatch, pixelTexture, font);
     }
 
-    public void StartWave()
+    public void StartWave() => RequestStartWave();
+
+    private void RequestStartWave()
+    {
+        if (_discovery != null)
+            _discovery.BroadcastWaveStart();
+        else
+            ApplyStartWave();
+    }
+
+    public void ApplyStartWave()
     {
         if (WaveController != null &&
             !WaveController.IsWaveActive &&
@@ -243,6 +255,17 @@ public class GameManager
         {
             WaveController.StartNextWave();
         }
+    }
+
+    public void AttachDiscovery(ILobbyDiscovery discovery)
+    {
+        if (_discovery != null) return;
+        _discovery = discovery;
+        if (_discovery == null) return;
+        _discovery.OnRemoteTowerPlace += (bzId, tdId) => _inputHandler.ApplyTowerPlacement(bzId, tdId);
+        _discovery.OnRemoteWaveStart += ApplyStartWave;
+        _inputHandler.Discovery = _discovery;
+        _inputHandler.TowerDefinitions = TowerDefinitions;
     }
 
     public void AddMoney(int amount)

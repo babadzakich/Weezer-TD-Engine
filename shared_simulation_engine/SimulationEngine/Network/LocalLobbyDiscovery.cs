@@ -289,6 +289,12 @@ public sealed class LocalLobbyDiscovery : ILobbyDiscovery
         // File-based discovery работает только локально, probe не нужен.
     }
 
+    public event Action<string, string> OnRemoteTowerPlace { add { } remove { } }
+    public event Action OnRemoteWaveStart { add { } remove { } }
+
+    public void BroadcastTowerPlace(string buildZoneId, string towerDefId) { }
+    public void BroadcastWaveStart() { }
+
     public IReadOnlyList<(string InstanceId, string RaftEndpoint)> GetRaftPeers(string lobbyId)
     {
         EnsureNotDisposed();

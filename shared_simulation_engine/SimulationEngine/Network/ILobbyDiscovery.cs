@@ -5,10 +5,16 @@ namespace SimulationEngine.Network;
 
 public interface ILobbyDiscovery : IDisposable
 {
+    event Action<string, string> OnRemoteTowerPlace;
+    event Action OnRemoteWaveStart;
+
     string InstanceId { get; }
     string PlayerName { get; }
     string CurrentLobbyId { get; }
     bool IsHost { get; }
+
+    void BroadcastTowerPlace(string buildZoneId, string towerDefId);
+    void BroadcastWaveStart();
 
     string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string raftEndpoint = null, string levelArchiveName = null);
     bool JoinLobby(string lobbyId, string playerName, int ping = 0, string raftEndpoint = null);

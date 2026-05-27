@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.MapRelated;
+using SimulationEngine.Network;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
@@ -14,17 +15,20 @@ public class GameInputHandler
     private readonly UIManager _uiManager;
     private readonly GameMap _map;
     private readonly TowerController _towerController;
-    
+
     private MouseState _previousMouseState;
     private BuildZone _selectedBuildZone;
     private Tower _selectedTower;
+
+    public ILobbyDiscovery Discovery { get; set; }
+    public System.Collections.Generic.Dictionary<string, LevelLoader.TowerDefinition> TowerDefinitions { get; set; }
 
     public GameInputHandler(UIManager uiManager, GameMap map, TowerController towerController)
     {
         _uiManager = uiManager;
         _map = map;
         _towerController = towerController;
-        
+
         _uiManager.TowerSelectionPanel.OnTowerSelected += OnTowerSelectedFromPanel;
         _uiManager.OnTowerSellRequested += SellTower;
         _uiManager.OnTowerUpgradeRequested += UpgradeTower;
@@ -109,43 +113,47 @@ public class GameInputHandler
 
     private void OnTowerSelectedFromPanel(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition)
     {
-        // Проверяем, что у нас выбрана зона для строительства
         if (_selectedBuildZone == null) return;
-        
-        // Проверяем, хватает ли денег
-        if (!_uiManager.CanAffordTower(towerBehavior))
-        {
-            // TODO: показать сообщение о недостатке средств
-            return;
-        }
-        
-        // Создаём башню с выбранным поведением
-        ITowerBehavior behaviorInstance = towerBehavior;
-        LevelLoader.TowerDefinition towerDefinition = definition ?? towerBehavior.Definition;
+        if (!_uiManager.CanAffordTower(towerBehavior)) return;
 
-        if (towerBehavior is SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior defBehavior)
+        var towerDef = definition ?? towerBehavior.Definition;
+        var zone = _selectedBuildZone;
+
+        _uiManager.HideTowerSelection();
+        _selectedBuildZone = null;
+
+        if (Discovery != null)
         {
-            towerDefinition ??= defBehavior.Definition;
-            // новый экземпляр, чтобы состояния не пересекались
-            behaviorInstance = new SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior(
-                towerDefinition,
-                new StandardBulletBehavior(25f, 300f, 500f));
+            // В мультиплеере: шлём событие, локально применим когда получим ответ от хоста
+            Discovery.BroadcastTowerPlace(zone.Id, towerDef.Id);
         }
         else
         {
-            behaviorInstance.Definition = towerDefinition;
+            ApplyTowerPlacement(zone.Id, towerDef.Id);
         }
+    }
 
-        var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, towerDefinition);
+    /// <summary>Применяет постановку башни локально. Вызывается либо в singleplayer напрямую,
+    /// либо по событию OnRemoteTowerPlace от сети.</summary>
+    public void ApplyTowerPlacement(string buildZoneId, string towerDefId)
+    {
+        var zone = _map.BuildZones.Find(z => z.Id == buildZoneId);
+        if (zone == null || zone.IsOccupied) return;
+
+        LevelLoader.TowerDefinition def = null;
+        TowerDefinitions?.TryGetValue(towerDefId, out def);
+        if (def == null) return;
+
+        var behavior = new SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior(
+            def,
+            new StandardBulletBehavior(25f, 300f, 500f));
+
+        var tower = new Tower(behavior, zone.Position, def);
         _towerController.AddTower(tower);
-        
-        // Списываем деньги и занимаем зону
-        _uiManager.PurchaseTower(towerBehavior);
-        _selectedBuildZone.Occupy(tower);
-        
-        // Закрываем панель выбора
-        _uiManager.HideTowerSelection();
-        _selectedBuildZone = null;
+
+        // Списываем деньги локально у каждого игрока (общая экономика "по умолчанию")
+        if (_uiManager.Money >= def.Cost) _uiManager.Money -= def.Cost;
+        zone.Occupy(tower);
     }
 
     private Tower FindTowerAtPosition(Vector2 position)

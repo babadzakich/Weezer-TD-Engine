@@ -269,7 +269,13 @@ public class GameRunner : Game
 
             gameManager.Defeat += () => ReturnToMenu();
             gameManager.Win += () => ReturnToMenu();
-            
+
+            // Если это мультиплеерная сессия — подключаем сетевой синк
+            if (!string.IsNullOrEmpty(_currentLobbyId))
+            {
+                gameManager.AttachDiscovery(_lobbyDiscovery);
+            }
+
             _currentState = GameState.Playing;
             _showInstructions = true;
             Console.WriteLine("Level loaded successfully!");
