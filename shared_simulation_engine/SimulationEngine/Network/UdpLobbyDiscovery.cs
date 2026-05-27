@@ -186,7 +186,9 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
             catch { return; }
             if (addr == null) return;
         }
-        Send(new IPEndPoint(addr, BroadcastPort), new ProbeMsg { ReplyPort = _mainPort });
+        var ep = new IPEndPoint(addr, BroadcastPort);
+        Console.WriteLine($"[UdpLobbyDiscovery] Шлю probe на {ep}, replyPort={_mainPort}");
+        Send(ep, new ProbeMsg { ReplyPort = _mainPort });
     }
 
     public bool IsLobbyGameStarting(string lobbyId)
@@ -299,7 +301,11 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         AnnounceMsg msg;
         lock (_lock)
         {
-            if (_host == null) return;
+            if (_host == null)
+            {
+                Console.WriteLine($"[UdpLobbyDiscovery] probe от {from.Address} — но мы не хост, игнор");
+                return;
+            }
             msg = new AnnounceMsg
             {
                 LobbyId = _host.LobbyId,
@@ -311,7 +317,9 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
             };
         }
         var replyEp = new IPEndPoint(from.Address, probe.ReplyPort > 0 ? probe.ReplyPort : from.Port);
-        Send(replyEp, msg);
+        Console.WriteLine($"[UdpLobbyDiscovery] probe от {from.Address}, отвечаю ann на {replyEp}");
+        // Отвечаем с того же сокета (порт 27015), чтобы conntrack/NAT/файрвол пропустили
+        SendVia(_discoverySock, replyEp, msg);
     }
 
     private void RegisterDiscovered(AnnounceMsg ann, IPAddress sourceAddr)
@@ -321,7 +329,10 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         lock (_lock)
         {
             if (_host?.LobbyId != ann.LobbyId)
+            {
                 _discovered[ann.LobbyId] = new DiscoveredEntry(ann.LobbyId, ann.LobbyName, ann.MaxPlayers, ann.CurrentPlayers, hostEp, DateTimeOffset.UtcNow);
+                Console.WriteLine($"[UdpLobbyDiscovery] Получен ann \"{ann.LobbyName}\" от {sourceAddr}, hostEp={hostEp}");
+            }
         }
     }
 
@@ -391,14 +402,19 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
             Send(ep, msg);
     }
 
-    private void Send(IPEndPoint ep, object msg)
+    private void Send(IPEndPoint ep, object msg) => SendVia(_mainSock, ep, msg);
+
+    private static void SendVia(UdpClient sock, IPEndPoint ep, object msg)
     {
         try
         {
             var bytes = JsonSerializer.SerializeToUtf8Bytes(msg, msg.GetType(), Json);
-            _mainSock.Send(bytes, ep);
+            sock.Send(bytes, ep);
         }
-        catch { }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[UdpLobbyDiscovery] Send error: {e.Message}");
+        }
     }
 
     // Возвращает реальные subnet broadcast адреса всех активных IPv4 интерфейсов.
