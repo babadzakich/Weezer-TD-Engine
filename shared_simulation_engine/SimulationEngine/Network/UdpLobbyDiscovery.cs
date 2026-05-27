@@ -171,6 +171,24 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         return true;
     }
 
+    /// <summary>
+    /// Fallback для случаев когда broadcast не работает (например, телефонные хотспоты
+    /// не форвардят broadcast между клиентами). Шлёт unicast probe на указанный IP,
+    /// хост отвечает своим announce'ом, и лобби появляется в списке.
+    /// </summary>
+    public void ProbeHost(string ipOrHost)
+    {
+        if (string.IsNullOrWhiteSpace(ipOrHost)) return;
+        IPAddress addr;
+        if (!IPAddress.TryParse(ipOrHost.Trim(), out addr))
+        {
+            try { addr = Dns.GetHostAddresses(ipOrHost.Trim()).FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork); }
+            catch { return; }
+            if (addr == null) return;
+        }
+        Send(new IPEndPoint(addr, BroadcastPort), new ProbeMsg { ReplyPort = _mainPort });
+    }
+
     public bool IsLobbyGameStarting(string lobbyId)
     {
         lock (_lock)
@@ -228,16 +246,16 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
             try
             {
                 var r = await _discoverySock.ReceiveAsync(ct);
+                var bm = Deser<BaseMsg>(r.Buffer);
+                if (bm?.T == "probe")
+                {
+                    var probe = Deser<ProbeMsg>(r.Buffer);
+                    HandleProbe(probe, r.RemoteEndPoint);
+                    continue;
+                }
                 var ann = Deser<AnnounceMsg>(r.Buffer);
                 if (ann?.T != "ann") continue;
-
-                var hostEp = new IPEndPoint(r.RemoteEndPoint.Address, ann.HostPort);
-                lock (_lock)
-                {
-                    // Не добавляем своё лобби
-                    if (_host?.LobbyId != ann.LobbyId)
-                        _discovered[ann.LobbyId] = new DiscoveredEntry(ann.LobbyId, ann.LobbyName, ann.MaxPlayers, ann.CurrentPlayers, hostEp, DateTimeOffset.UtcNow);
-                }
+                RegisterDiscovered(ann, r.RemoteEndPoint.Address);
             }
             catch (OperationCanceledException) { break; }
             catch (ObjectDisposedException) { break; }
@@ -271,6 +289,39 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
             case "leave": HandleLeaveMsg(Deser<LeaveMsg>(r.Buffer)); break;
             case "state": HandleStateMsg(Deser<LobbyStateMsg>(r.Buffer)); break;
             case "start": HandleStartMsg(Deser<GameStartMsg>(r.Buffer)); break;
+            case "ann":   RegisterDiscovered(Deser<AnnounceMsg>(r.Buffer), r.RemoteEndPoint.Address); break;
+        }
+    }
+
+    private void HandleProbe(ProbeMsg probe, IPEndPoint from)
+    {
+        if (probe == null) return;
+        AnnounceMsg msg;
+        lock (_lock)
+        {
+            if (_host == null) return;
+            msg = new AnnounceMsg
+            {
+                LobbyId = _host.LobbyId,
+                LobbyName = _host.LobbyName,
+                MaxPlayers = _host.MaxPlayers,
+                CurrentPlayers = _host.PlayerCount,
+                IsGameStarted = _host.IsGameStarted,
+                HostPort = _mainPort
+            };
+        }
+        var replyEp = new IPEndPoint(from.Address, probe.ReplyPort > 0 ? probe.ReplyPort : from.Port);
+        Send(replyEp, msg);
+    }
+
+    private void RegisterDiscovered(AnnounceMsg ann, IPAddress sourceAddr)
+    {
+        if (ann == null) return;
+        var hostEp = new IPEndPoint(sourceAddr, ann.HostPort);
+        lock (_lock)
+        {
+            if (_host?.LobbyId != ann.LobbyId)
+                _discovered[ann.LobbyId] = new DiscoveredEntry(ann.LobbyId, ann.LobbyName, ann.MaxPlayers, ann.CurrentPlayers, hostEp, DateTimeOffset.UtcNow);
         }
     }
 
@@ -523,6 +574,12 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery
         public int CurrentPlayers { get; set; }
         public bool IsGameStarted { get; set; }
         public int HostPort { get; set; }
+    }
+
+    private sealed class ProbeMsg : BaseMsg
+    {
+        public ProbeMsg() { T = "probe"; }
+        public int ReplyPort { get; set; }
     }
 
     private sealed class JoinRequestMsg : BaseMsg

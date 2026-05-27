@@ -20,4 +20,5 @@ public interface ILobbyDiscovery : IDisposable
     bool SignalGameStart();
     bool IsLobbyGameStarting(string lobbyId);
     IReadOnlyList<(string InstanceId, string RaftEndpoint)> GetRaftPeers(string lobbyId);
+    void ProbeHost(string ipOrHost);
 }

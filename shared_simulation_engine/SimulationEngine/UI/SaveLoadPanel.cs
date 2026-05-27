@@ -178,7 +178,8 @@ public class TextInput : UIElement
     public Color BackgroundColor { get; set; }
     public Color TextColor { get; set; }
     public int MaxLength { get; set; }
-    
+    public bool AllowDigitsAndDots { get; set; }
+
     private bool _isFocused;
     private KeyboardState _previousKeyState;
 
@@ -230,10 +231,19 @@ public class TextInput : UIElement
                         string keyString = key.ToString();
                         if (keyString.Length == 1)
                         {
-                            char c = keyState.IsKeyDown(Keys.LeftShift) || keyState.IsKeyDown(Keys.RightShift) 
-                                ? char.ToUpper(keyString[0]) 
+                            char c = keyState.IsKeyDown(Keys.LeftShift) || keyState.IsKeyDown(Keys.RightShift)
+                                ? char.ToUpper(keyString[0])
                                 : char.ToLower(keyString[0]);
                             Text += c;
+                        }
+                        else if (AllowDigitsAndDots)
+                        {
+                            if (key >= Keys.D0 && key <= Keys.D9)
+                                Text += (char)('0' + (key - Keys.D0));
+                            else if (key >= Keys.NumPad0 && key <= Keys.NumPad9)
+                                Text += (char)('0' + (key - Keys.NumPad0));
+                            else if (key == Keys.OemPeriod || key == Keys.Decimal)
+                                Text += '.';
                         }
                     }
                 }

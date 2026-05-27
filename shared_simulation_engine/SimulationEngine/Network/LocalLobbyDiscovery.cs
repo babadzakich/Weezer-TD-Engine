@@ -282,6 +282,11 @@ public sealed class LocalLobbyDiscovery : ILobbyDiscovery
     /// Возвращает список (instanceId, raftEndpoint) всех игроков в лобби у которых задан RaftEndpoint.
     /// Используется чтобы построить список peers для RaftNode перед стартом игры.
     /// </summary>
+    public void ProbeHost(string ipOrHost)
+    {
+        // File-based discovery работает только локально, probe не нужен.
+    }
+
     public IReadOnlyList<(string InstanceId, string RaftEndpoint)> GetRaftPeers(string lobbyId)
     {
         EnsureNotDisposed();

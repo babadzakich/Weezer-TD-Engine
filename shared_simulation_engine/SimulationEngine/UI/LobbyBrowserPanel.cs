@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SimulationEngine.Network;
+using SimulationEngine.Persistence;
 
 namespace SimulationEngine.UI;
 
@@ -22,6 +23,8 @@ public class LobbyBrowserPanel
     private List<LobbyInfo> _lobbies = new();
     private Button _backButton;
     private Button _refreshButton;
+    private Button _probeButton;
+    private TextInput _ipInput;
     private int _screenWidth;
     private int _screenHeight;
     private int _selectedIndex = -1;
@@ -38,10 +41,31 @@ public class LobbyBrowserPanel
         _backButton = new Button(new Vector2(50, _screenHeight - 100), new Vector2(200, 50), "Назад");
         _refreshButton = new Button(new Vector2(_screenWidth - 250, _screenHeight - 100), new Vector2(200, 50), "Обновить");
 
+        _ipInput = new TextInput(new Vector2(_screenWidth / 2 - 230, _screenHeight - 170), new Vector2(280, 40), "IP хоста")
+        {
+            AllowDigitsAndDots = true,
+            MaxLength = 15
+        };
+        _probeButton = new Button(new Vector2(_screenWidth / 2 + 60, _screenHeight - 170), new Vector2(220, 40), "Подключиться по IP");
+
         _backButton.OnClick += () => OnBackClicked?.Invoke();
         _refreshButton.OnClick += RefreshLobbies;
+        _probeButton.OnClick += ProbeManualIp;
 
         RefreshLobbies();
+    }
+
+    private void ProbeManualIp()
+    {
+        var ip = _ipInput.Text;
+        if (string.IsNullOrWhiteSpace(ip)) return;
+        _discoveryService.ProbeHost(ip);
+        // Дадим хосту ~600мс на ответ, затем обновим список
+        System.Threading.Tasks.Task.Run(async () =>
+        {
+            await System.Threading.Tasks.Task.Delay(600);
+            RefreshLobbies();
+        });
     }
 
     public void RefreshLobbies()
@@ -67,6 +91,8 @@ public class LobbyBrowserPanel
     {
         _backButton.Update(gameTime, mouseState, previousMouseState);
         _refreshButton.Update(gameTime, mouseState, previousMouseState);
+        _probeButton.Update(gameTime, mouseState, previousMouseState);
+        _ipInput.Update(gameTime, mouseState, previousMouseState);
 
         // Логика выбора лобби кликом
         if (mouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed)
@@ -122,6 +148,8 @@ public class LobbyBrowserPanel
             }
         }
 
+        _ipInput.Draw(spriteBatch, pixel, font);
+        _probeButton.Draw(spriteBatch, pixel, font);
         _backButton.Draw(spriteBatch, pixel, font);
         _refreshButton.Draw(spriteBatch, pixel, font);
     }
