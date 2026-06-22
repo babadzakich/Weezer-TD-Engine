@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -12,6 +13,12 @@ public class EnemyController : Controller
 
     private Game _engine;
     private GameMap _gameMap;
+    private int _nextNetworkId = 1;
+    private readonly Dictionary<int, Enemy> _enemiesById = new();
+
+    public event Action<Enemy> OnEnemySpawned;
+    public event Action<Enemy> OnEnemyKilled;
+    public event Action<Enemy> OnEnemyReachedGoal;
 
     private EnemyController(Game engine, GameMap gameMap)
     {
@@ -36,7 +43,21 @@ public class EnemyController : Controller
 
     public void AddEnemy(Enemy enemy)
     {
+        if (enemy.NetworkId < 0)
+            enemy.NetworkId = _nextNetworkId++;
+        _enemiesById[enemy.NetworkId] = enemy;
         Enemies.Add(enemy);
+        OnEnemySpawned?.Invoke(enemy);
+    }
+
+    public Enemy GetByNetworkId(int networkId)
+        => _enemiesById.TryGetValue(networkId, out var e) ? e : null;
+
+    public void RemoveEnemy(Enemy enemy)
+    {
+        if (enemy.NetworkId >= 0)
+            _enemiesById.Remove(enemy.NetworkId);
+        Enemies.Remove(enemy);
     }
 
     public void Update(GameTime gameTime)
@@ -50,15 +71,23 @@ public class EnemyController : Controller
             }
             else
             {
-                // Враг достиг конца пути - наносим урон базе
-                if (_gameMap != null)
+                if (!enemy.isKilled)
                 {
-                    var defensePoint = _gameMap.GetDefensePoint(enemy.GetDefensePointId());
-                    if (defensePoint != null && !enemy.isKilled)
+                    // Enemy reached defense point
+                    if (_gameMap != null)
                     {
-                        defensePoint.TakeDamage(enemy.Damage);
+                        var defensePoint = _gameMap.GetDefensePoint(enemy.GetDefensePointId());
+                        defensePoint?.TakeDamage(enemy.Damage);
                     }
+                    OnEnemyReachedGoal?.Invoke(enemy);
                 }
+                else
+                {
+                    OnEnemyKilled?.Invoke(enemy);
+                }
+
+                if (enemy.NetworkId >= 0)
+                    _enemiesById.Remove(enemy.NetworkId);
                 Enemies.RemoveAt(i);
             }
         }

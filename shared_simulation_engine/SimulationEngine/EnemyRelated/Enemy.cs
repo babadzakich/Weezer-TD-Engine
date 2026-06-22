@@ -18,9 +18,15 @@ public class Enemy
     public float HitRadius => _type.HitRadius;
     public bool isAlive { get; set; } = true;
     public bool isKilled { get; set; } = false;
-    
+
+    public int NetworkId { get; set; } = -1;
+    public string TypeId { get; set; } = "";
+    public string SpawnPointId { get; set; } = "";
+    public float Speed => _type.speed;
+
     public string GetDefensePointId() => _path.DefensePointId;
-    
+    public string PathId => _path?.Id ?? "";
+
     public Enemy(IEnemyType enemyType, Vector2 position, MapRelated.Path path)
     {
         _type = enemyType;

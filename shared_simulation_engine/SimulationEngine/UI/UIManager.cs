@@ -25,6 +25,8 @@ public class UIManager
     public int Money { get => ResourcePanel.Money; set => ResourcePanel.Money = value; }
     public int Lives { get => ResourcePanel.Lives; set => ResourcePanel.Lives = value; }
     public int Wave { get => ResourcePanel.Wave; set => ResourcePanel.Wave = value; }
+    // Local player's instance id (set by the host/client launcher)
+    public string LocalPlayerInstanceId { get; set; } = string.Empty;
 
     public event Action OnStartWaveRequested;
     public event Action<Tower> OnTowerSellRequested;
@@ -112,7 +114,9 @@ public class UIManager
         bool isMaxLevel = tower.Definition == null ||
                           tower.Definition.Upgrades == null ||
                           tower.Definition.Upgrades.Count == 0;
-        TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel);
+        bool isOwner = tower.OwnerInstanceId == LocalPlayerInstanceId;
+        Console.WriteLine($"[Owner] ShowTowerControl: tower.OwnerInstanceId='{tower.OwnerInstanceId}' LocalPlayerInstanceId='{LocalPlayerInstanceId}' isOwner={isOwner}");
+        TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel, isOwner);
     }
 
     public void HideTowerControl()
@@ -151,7 +155,8 @@ public class UIManager
             bool isMaxLevel = tower.Definition == null ||
                               tower.Definition.Upgrades == null ||
                               tower.Definition.Upgrades.Count == 0;
-            TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel);
+            bool isOwner = tower.OwnerInstanceId == LocalPlayerInstanceId;
+            TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel, isOwner);
         }
 
         foreach (var element in _allElements)

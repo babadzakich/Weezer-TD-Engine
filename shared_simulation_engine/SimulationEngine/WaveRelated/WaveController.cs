@@ -25,6 +25,9 @@ namespace SimulationEngine.WaveRelated
         private Texture2D _enemyTexture;
         private static WaveController _instance;
 
+        public event Action<int> OnWaveStarted;
+        public event Action<int> OnWaveEnded;
+
         private WaveController(EnemyController enemyController, GameMap gameMap)
         {
             _waves = new List<Wave>();
@@ -69,7 +72,8 @@ namespace SimulationEngine.WaveRelated
 
             _waveActive = true;
             _spawnTimer = 0f;
-            
+            OnWaveStarted?.Invoke(_currentWaveIndex);
+
             Wave currentWave = _waves[_currentWaveIndex];
             _remainingEnemies.Clear();
             
@@ -122,8 +126,10 @@ namespace SimulationEngine.WaveRelated
             // Сразу после этого игра заканчивается, потому что нет проверки на живых врагов
             if (allSpawned)
             {
+                int endedIdx = _currentWaveIndex;
                 _waveActive = false;
                 _currentWaveIndex++;
+                OnWaveEnded?.Invoke(endedIdx);
             }
         }
 
@@ -155,7 +161,11 @@ namespace SimulationEngine.WaveRelated
                             Console.WriteLine($"Using factory to create enemy: {group.EnemyStringId}");
                             // Используем фабрику для создания врага по строковому ID
                             IEnemyType enemyType = EnemyRegistry.create(group.EnemyStringId);
-                            enemy = new Enemy(enemyType, spawnPoint.Position, path);
+                            enemy = new Enemy(enemyType, spawnPoint.Position, path)
+                        {
+                            TypeId = group.EnemyStringId,
+                            SpawnPointId = spawnPoint.Id,
+                        };
                             //enemy = EnemyTypeFactory.Instance.CreateEnemy(group.EnemyStringId, spawnPoint.Position, path);
                         }
                         else

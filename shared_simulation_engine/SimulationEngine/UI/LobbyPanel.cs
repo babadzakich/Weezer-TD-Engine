@@ -28,12 +28,12 @@ public class LobbyPanel
     private string _lobbyName = string.Empty;
     private int _maxPlayers = 4;
     private string _localPlayerInstanceId = string.Empty;
-    private LocalLobbyDiscovery _discoveryService;
+    private ILobbyDiscovery _discoveryService;
 
     public event Action OnLeaveClicked;
     public event Action OnStartClicked;
 
-    public LobbyPanel(int screenWidth, int screenHeight, LocalLobbyDiscovery discoveryService = null)
+    public LobbyPanel(int screenWidth, int screenHeight, ILobbyDiscovery discoveryService = null)
     {
         _screenWidth = screenWidth;
         _screenHeight = screenHeight;
@@ -59,7 +59,7 @@ public class LobbyPanel
         }
     }
 
-    public void LoadLobby(string name, int maxPlayers, IEnumerable<LocalLobbyPlayerInfo> players, string localPlayerInstanceId, LocalLobbyDiscovery discoveryService = null)
+    public void LoadLobby(string name, int maxPlayers, IEnumerable<LocalLobbyPlayerInfo> players, string localPlayerInstanceId, ILobbyDiscovery discoveryService = null)
     {
         _lobbyName = name;
         _maxPlayers = maxPlayers;

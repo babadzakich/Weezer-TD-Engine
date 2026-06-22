@@ -35,6 +35,14 @@ public class GameManager
 
     public event Action Defeat;
     public event Action Win;
+    /// <summary>Fired when the client loses network connectivity (10-s countdown expired).</summary>
+    public event Action Disconnected;
+
+    public bool IsNetworkClient { get; private set; } = false;
+    public Network.GameSyncManager SyncManager { get; private set; }
+
+    private bool _isDisconnecting;
+    private double _disconnectTimer;
 
     private static GameManager _instance;
 
@@ -195,19 +203,82 @@ public class GameManager
         UIManager.AddAvailableTower(fallbackBehavior, basicDef);
     }
 
+    /// <summary>Switches this instance into network-client mode (no local simulation).</summary>
+    public void SetNetworkMode(bool isClient, Network.GameSyncManager syncManager)
+    {
+        IsNetworkClient = isClient;
+        SyncManager = syncManager;
+        _inputHandler.SyncManager = syncManager;
+        _inputHandler.IsNetworkClient = isClient;
+    }
+
+    public void TriggerDefeat() => Defeat?.Invoke();
+    public void TriggerWin()    => Win?.Invoke();
+
+    /// <summary>
+    /// Called by GameSyncManager when this client wins a Raft election.
+    /// Switches from client-only mode (applying deltas) to host mode (running simulation).
+    /// </summary>
+    public void PromoteToHost()
+    {
+        IsNetworkClient = false;
+        UIManager.StartWaveButton.IsEnabled = true;
+        Console.WriteLine("[GameManager] Promoted to game master.");
+    }
+
+    /// <summary>
+    /// Called when the network is detected as broken (Raft couldn't reach any peer).
+    /// Shows a connection-lost overlay and fires Disconnected after 10 seconds.
+    /// </summary>
+    public void HandleNetworkLost()
+    {
+        if (_isDisconnecting) return;
+        _isDisconnecting = true;
+        _disconnectTimer = 10.0;
+        UIManager.ShowConnectionLost(10);
+        Console.WriteLine("[GameManager] Network lost — starting 10-s disconnect countdown.");
+    }
+
     public void Update(GameTime gameTime)
     {
+        // Connection-lost countdown: block game updates and count down to Disconnected
+        if (_isDisconnecting)
+        {
+            _disconnectTimer -= gameTime.ElapsedGameTime.TotalSeconds;
+            int secondsLeft = Math.Max(0, (int)Math.Ceiling(_disconnectTimer));
+            UIManager.ShowConnectionLost(secondsLeft);
+
+            if (_disconnectTimer <= 0)
+            {
+                _isDisconnecting = false;
+                Disconnected?.Invoke();
+            }
+            return;
+        }
+
+        if (IsNetworkClient)
+        {
+            // Apply incoming network state BEFORE processing input so that zone occupancy
+            // and tower ownership are current when the UI and input handler run.
+            SyncManager?.ApplyIncomingDeltas();
+        }
+
         UIManager.Update(gameTime);
         _inputHandler.Update();
 
-        TowerController.Update(gameTime);
-        WaveController?.Update(gameTime);
-        EnemyController?.Update(gameTime);
-        DamageDealerController?.Update(gameTime);
-
-        if (Map.DefensePoints.Count > 0)
+        if (!IsNetworkClient)
         {
-            UIManager.Lives = Map.DefensePoints[0].Health;
+            // Host / singleplayer: run full simulation
+            TowerController.Update(gameTime);
+            WaveController?.Update(gameTime);
+            EnemyController?.Update(gameTime);
+            DamageDealerController?.Update(gameTime);
+
+            if (Map.DefensePoints.Count > 0)
+                UIManager.Lives = Map.DefensePoints[0].Health;
+
+            // Broadcast state to clients if we are the multiplayer host
+            SyncManager?.BroadcastTick(gameTime);
         }
 
         if (UIManager.Lives <= 0)
@@ -216,7 +287,8 @@ public class GameManager
             Defeat?.Invoke();
         }
 
-        if (WaveController != null &&
+        if (!IsNetworkClient &&
+            WaveController != null &&
             WaveController.CurrentWaveIndex >= WaveController.TotalWaves &&
             !WaveController.IsWaveActive &&
             (EnemyController == null || EnemyController.Enemies.Count == 0))

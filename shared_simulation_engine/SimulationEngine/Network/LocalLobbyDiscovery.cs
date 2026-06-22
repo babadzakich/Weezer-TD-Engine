@@ -30,9 +30,11 @@ internal sealed record LocalLobbyEntry(
     int Ping,
     int MaxPlayers,
     DateTimeOffset LastUpdated,
-    bool IsGameStarted = false);
+    bool IsGameStarted = false,
+    int LastWaveStartedIndex = -1,
+    string? LevelPath = null);
 
-public sealed class LocalLobbyDiscovery : IDisposable
+public sealed class LocalLobbyDiscovery : ILobbyDiscovery, IDisposable
 {
     private const string LocalLobbyFileName = "WeezerTD_LocalLobbies.json";
     private static readonly string LocalLobbyFilePath = Path.Combine(Path.GetTempPath(), LocalLobbyFileName);
@@ -122,7 +124,7 @@ public sealed class LocalLobbyDiscovery : IDisposable
         }
     }
 
-    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0)
+    public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string? levelPath = null)
     {
         EnsureNotDisposed();
         _ownEntry = new LocalLobbyEntry(
@@ -133,7 +135,10 @@ public sealed class LocalLobbyDiscovery : IDisposable
             true,
             ping,
             maxPlayers,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            false,
+            -1,
+            levelPath);
 
         SaveOwnEntry();
         return _ownEntry.LobbyId;
@@ -164,7 +169,10 @@ public sealed class LocalLobbyDiscovery : IDisposable
                 false,
                 ping,
                 hostEntry.MaxPlayers,
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow,
+                false,
+                -1,
+                hostEntry.LevelPath);
 
             UpdateOwnEntry(entries, _ownEntry);
             SaveEntries(entries);
@@ -257,6 +265,61 @@ public sealed class LocalLobbyDiscovery : IDisposable
         }
     }
 
+    public bool SignalWaveStart(int waveIndex)
+    {
+        EnsureNotDisposed();
+        if (_ownEntry is null || !_ownEntry.IsHost) return false;
+
+        AcquireMutex();
+        try
+        {
+            var entries = LoadEntries();
+            PruneStale(entries);
+            _ownEntry = _ownEntry with { LastWaveStartedIndex = waveIndex, LastUpdated = DateTimeOffset.UtcNow };
+            UpdateOwnEntry(entries, _ownEntry);
+            SaveEntries(entries);
+            return true;
+        }
+        finally
+        {
+            ReleaseMutex();
+        }
+    }
+
+    public int GetLobbyWaveStartIndex(string lobbyId)
+    {
+        EnsureNotDisposed();
+        AcquireMutex();
+        try
+        {
+            var entries = LoadEntries();
+            PruneStale(entries);
+            var hostEntry = entries.FirstOrDefault(e => e.LobbyId == lobbyId && e.IsHost);
+            return hostEntry?.LastWaveStartedIndex ?? -1;
+        }
+        finally
+        {
+            ReleaseMutex();
+        }
+    }
+
+    public string? GetLobbyLevelPath(string lobbyId)
+    {
+        EnsureNotDisposed();
+        AcquireMutex();
+        try
+        {
+            var entries = LoadEntries();
+            PruneStale(entries);
+            var hostEntry = entries.FirstOrDefault(e => e.LobbyId == lobbyId && e.IsHost);
+            return hostEntry?.LevelPath;
+        }
+        finally
+        {
+            ReleaseMutex();
+        }
+    }
+
     public bool IsLobbyGameStarting(string lobbyId)
     {
         EnsureNotDisposed();
@@ -272,6 +335,10 @@ public sealed class LocalLobbyDiscovery : IDisposable
             ReleaseMutex();
         }
     }
+
+    public string GetLobbyHostIp(string lobbyId) => "127.0.0.1";
+
+    public string GetInstanceIp(string instanceId) => "127.0.0.1";
 
     private void SaveOwnEntry()
     {

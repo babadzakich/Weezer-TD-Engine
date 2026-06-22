@@ -6,6 +6,7 @@ using SimulationEngine.TowerRelated.Behaviors;
 using SimulationEngine.UI;
 using System;
 using SimulationEngine.BulletRelated.Behaviors;
+using SimulationEngine.Network;
 
 namespace SimulationEngine;
 
@@ -14,17 +15,21 @@ public class GameInputHandler
     private readonly UIManager _uiManager;
     private readonly GameMap _map;
     private readonly TowerController _towerController;
-    
+
     private MouseState _previousMouseState;
     private BuildZone _selectedBuildZone;
     private Tower _selectedTower;
+
+    /// <summary>Set to true for multiplayer clients (actions go to master instead of applying locally).</summary>
+    public bool IsNetworkClient { get; set; } = false;
+    public GameSyncManager SyncManager { get; set; }
 
     public GameInputHandler(UIManager uiManager, GameMap map, TowerController towerController)
     {
         _uiManager = uiManager;
         _map = map;
         _towerController = towerController;
-        
+
         _uiManager.TowerSelectionPanel.OnTowerSelected += OnTowerSelectedFromPanel;
         _uiManager.OnTowerSellRequested += SellTower;
         _uiManager.OnTowerUpgradeRequested += UpgradeTower;
@@ -99,9 +104,10 @@ public class GameInputHandler
 
     private void ShowTowerControlPanel(Tower tower)
     {
+        Console.WriteLine($"[Owner] Clicked tower: NetworkId={tower.NetworkId} OwnerInstanceId='{tower.OwnerInstanceId}' LocalPlayerInstanceId='{_uiManager.LocalPlayerInstanceId}'");
         _selectedTower = tower;
         _selectedBuildZone = null;
-        
+
         // Показываем панель управления башней
         _uiManager.ShowTowerControl(tower);
         _uiManager.HideTowerSelection();
@@ -109,24 +115,33 @@ public class GameInputHandler
 
     private void OnTowerSelectedFromPanel(ITowerBehavior towerBehavior, LevelLoader.TowerDefinition definition)
     {
-        // Проверяем, что у нас выбрана зона для строительства
         if (_selectedBuildZone == null) return;
-        
-        // Проверяем, хватает ли денег
-        if (!_uiManager.CanAffordTower(towerBehavior))
+        if (!_uiManager.CanAffordTower(towerBehavior)) return;
+
+        LevelLoader.TowerDefinition towerDefinition = definition ?? towerBehavior.Definition;
+        string owner = _uiManager.LocalPlayerInstanceId ?? string.Empty;
+        int cost = towerDefinition?.Cost ?? towerBehavior.Cost;
+        string behaviorId = !string.IsNullOrWhiteSpace(towerDefinition?.Id)
+            ? towerDefinition.Id
+            : towerBehavior.Id;
+        string zoneId = _selectedBuildZone.Id;
+
+        if (IsNetworkClient && SyncManager != null)
         {
-            // TODO: показать сообщение о недостатке средств
+            Console.WriteLine($"[Owner] Client placing tower: owner='{owner}' behaviorId='{behaviorId}' LocalPlayerInstanceId='{_uiManager.LocalPlayerInstanceId}'");
+            // Client: send placement request to master, don't apply locally
+            // Use a temporary negative ID; master will assign the real one
+            SyncManager.RequestTowerPlace(zoneId, behaviorId, owner, cost, -1);
+            _uiManager.HideTowerSelection();
+            _selectedBuildZone = null;
             return;
         }
-        
-        // Создаём башню с выбранным поведением
-        ITowerBehavior behaviorInstance = towerBehavior;
-        LevelLoader.TowerDefinition towerDefinition = definition ?? towerBehavior.Definition;
 
+        // Host / singleplayer: apply locally
+        ITowerBehavior behaviorInstance = towerBehavior;
         if (towerBehavior is SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior defBehavior)
         {
             towerDefinition ??= defBehavior.Definition;
-            // новый экземпляр, чтобы состояния не пересекались
             behaviorInstance = new SimulationEngine.TowerRelated.Behaviors.DefinitionTowerBehavior(
                 towerDefinition,
                 new StandardBulletBehavior(25f, 300f, 500f));
@@ -137,13 +152,15 @@ public class GameInputHandler
         }
 
         var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, towerDefinition);
-        _towerController.AddTower(tower);
-        
-        // Списываем деньги и занимаем зону
+        tower.OwnerInstanceId = owner;
+        _towerController.AddTower(tower); // assigns NetworkId
+
         _uiManager.PurchaseTower(towerBehavior);
         _selectedBuildZone.Occupy(tower);
-        
-        // Закрываем панель выбора
+
+        // Record for multiplayer broadcast (host mode)
+        SyncManager?.RecordTowerPlaced(tower.NetworkId, zoneId, behaviorId, owner, cost);
+
         _uiManager.HideTowerSelection();
         _selectedBuildZone = null;
     }
@@ -172,11 +189,35 @@ public class GameInputHandler
     private void SellTower(Tower tower)
     {
         if (tower == null) return;
-        
-        // Возвращаем деньги
+        if (tower.OwnerInstanceId != _uiManager.LocalPlayerInstanceId)
+        {
+            Console.WriteLine("Attempt to sell tower by non-owner ignored.");
+            _uiManager.HideTowerControl();
+            return;
+        }
+
+        string zoneId = "";
+        foreach (var zone in _map.BuildZones)
+        {
+            if (Vector2.Distance(zone.Position, tower.Position) < 10)
+            {
+                zoneId = zone.Id;
+                break;
+            }
+        }
+
+        if (IsNetworkClient && SyncManager != null)
+        {
+            SyncManager.RequestTowerRemove(tower.NetworkId, zoneId);
+            _uiManager.HideTowerControl();
+            _selectedTower = null;
+            return;
+        }
+
+        // Host / singleplayer: apply locally
+        int refund = (int)((tower.Definition?.Cost ?? 0) * 0.5f);
         _uiManager.SellTower(tower);
-        
-        // Освобождаем зону строительства
+
         foreach (var zone in _map.BuildZones)
         {
             if (Vector2.Distance(zone.Position, tower.Position) < 10)
@@ -185,26 +226,30 @@ public class GameInputHandler
                 break;
             }
         }
-        
-        // Удаляем башню
+
+        SyncManager?.RecordTowerRemoved(tower.NetworkId, zoneId, refund);
         _towerController.towers.Remove(tower);
-        
-        // Скрываем панель управления
+
         _uiManager.HideTowerControl();
         _selectedTower = null;
     }
 
     private void UpgradeTower(Tower tower, LevelLoader.TowerUpgradeDefinition next)
     {
-        if (tower == null) return;
-        if (next == null) return;
+        if (tower == null || next == null) return;
+
+        if (tower.OwnerInstanceId != _uiManager.LocalPlayerInstanceId)
+        {
+            Console.WriteLine("Attempt to upgrade tower by non-owner ignored.");
+            _uiManager.HideTowerControl();
+            return;
+        }
 
         var def = tower.Definition;
         if (def == null || def.Upgrades == null || def.Upgrades.Count == 0) return;
 
         int cost = next.Cost;
         if (_uiManager.Money < cost) return;
-
         if (string.IsNullOrWhiteSpace(next.TargetTowerId)) return;
 
         var gameManager = GameManager.GetInstance();
@@ -214,27 +259,34 @@ public class GameInputHandler
             return;
         }
 
+        if (IsNetworkClient && SyncManager != null)
+        {
+            SyncManager.RequestTowerUpgrade(tower.NetworkId, targetDefinition.Id, tower.UpgradeLevel, tower.UpgradeLevel + 1, cost);
+            _uiManager.HideTowerControl();
+            _selectedTower = null;
+            return;
+        }
+
+        // Host / singleplayer: apply locally
         var upgradedBehavior = TowerBehaviorFactory.CreateTowerBehavior(targetDefinition);
         var upgradedTower = new Tower(upgradedBehavior, tower.Position, targetDefinition)
         {
-            Texture = _towerController.GetTowerTexture(targetDefinition)
+            NetworkId       = tower.NetworkId,
+            OwnerInstanceId = tower.OwnerInstanceId,
+            Texture         = _towerController.GetTowerTexture(targetDefinition),
         };
 
         _uiManager.Money -= cost;
 
         int towerIndex = _towerController.towers.IndexOf(tower);
         if (towerIndex >= 0)
-        {
             _towerController.towers[towerIndex] = upgradedTower;
-        }
         else
-        {
             _towerController.AddTower(upgradedTower);
-        }
+
+        SyncManager?.RecordTowerUpgraded(tower.NetworkId, targetDefinition.Id, tower.UpgradeLevel, tower.UpgradeLevel + 1, cost);
 
         _selectedTower = upgradedTower;
-
-        // обновляем UI панели управления
         _uiManager.ShowTowerControl(upgradedTower);
     }
 }

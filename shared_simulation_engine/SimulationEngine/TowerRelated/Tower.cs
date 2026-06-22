@@ -14,6 +14,9 @@ public class Tower
     public float cooldownTimer { get; set; } = 0f;
     
     public int UpgradeLevel { get; set; }
+    public int NetworkId { get; set; } = -1;
+    // InstanceId of the player who owns this tower (from LocalLobbyDiscovery.InstanceId)
+    public string OwnerInstanceId { get; set; } = string.Empty;
 
     public Tower(ITowerBehavior behavior, Vector2 position, LevelLoader.TowerDefinition definition = null)
     {

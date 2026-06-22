@@ -18,18 +18,20 @@ public class LobbyBrowserPanel
         public int MaxPlayers { get; set; }
     }
 
-    private readonly LocalLobbyDiscovery _discoveryService;
+    private readonly ILobbyDiscovery _discoveryService;
     private List<LobbyInfo> _lobbies = new();
     private Button _backButton;
     private Button _refreshButton;
     private int _screenWidth;
     private int _screenHeight;
     private int _selectedIndex = -1;
+    private TimeSpan _autoRefreshAccumulator = TimeSpan.Zero;
+    private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(2);
 
     public event Action OnBackClicked;
     public event Action<LobbyInfo> OnLobbySelected;
 
-    public LobbyBrowserPanel(int screenWidth, int screenHeight, LocalLobbyDiscovery discoveryService)
+    public LobbyBrowserPanel(int screenWidth, int screenHeight, ILobbyDiscovery discoveryService)
     {
         _screenWidth = screenWidth;
         _screenHeight = screenHeight;
@@ -65,6 +67,13 @@ public class LobbyBrowserPanel
 
     public void Update(GameTime gameTime, MouseState mouseState, MouseState previousMouseState)
     {
+        _autoRefreshAccumulator += gameTime.ElapsedGameTime;
+        if (_autoRefreshAccumulator >= AutoRefreshInterval)
+        {
+            _autoRefreshAccumulator = TimeSpan.Zero;
+            RefreshLobbies();
+        }
+
         _backButton.Update(gameTime, mouseState, previousMouseState);
         _refreshButton.Update(gameTime, mouseState, previousMouseState);
 

@@ -277,17 +277,18 @@ public sealed class BulletState
 // ---------------------------------------------------------------------------
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "t")]
-[JsonDerivedType(typeof(EnemySpawnedEvent),    "spawn")]
-[JsonDerivedType(typeof(EnemyKilledEvent),      "kill")]
-[JsonDerivedType(typeof(EnemyReachedGoalEvent), "goal")]
-[JsonDerivedType(typeof(BulletSpawnedEvent),    "bullet_spawn")]
-[JsonDerivedType(typeof(BulletImpactEvent),     "impact")]
-[JsonDerivedType(typeof(TowerPlacedEvent),      "place")]
-[JsonDerivedType(typeof(TowerRemovedEvent),     "remove")]
-[JsonDerivedType(typeof(TowerUpgradedEvent),    "upgrade")]
-[JsonDerivedType(typeof(WaveStartedEvent),      "wave_start")]
-[JsonDerivedType(typeof(WaveEndedEvent),        "wave_end")]
-[JsonDerivedType(typeof(GameOverEvent),         "game_over")]
+[JsonDerivedType(typeof(EnemySpawnedEvent),       "spawn")]
+[JsonDerivedType(typeof(EnemyKilledEvent),         "kill")]
+[JsonDerivedType(typeof(EnemyReachedGoalEvent),    "goal")]
+[JsonDerivedType(typeof(BulletSpawnedEvent),       "bullet_spawn")]
+[JsonDerivedType(typeof(BulletImpactEvent),        "impact")]
+[JsonDerivedType(typeof(TowerPlacedEvent),         "place")]
+[JsonDerivedType(typeof(TowerPlaceRejectedEvent),  "place_rejected")]
+[JsonDerivedType(typeof(TowerRemovedEvent),        "remove")]
+[JsonDerivedType(typeof(TowerUpgradedEvent),       "upgrade")]
+[JsonDerivedType(typeof(WaveStartedEvent),         "wave_start")]
+[JsonDerivedType(typeof(WaveEndedEvent),           "wave_end")]
+[JsonDerivedType(typeof(GameOverEvent),            "game_over")]
 public abstract class GameEvent { }
 
 /// <summary>
@@ -429,6 +430,17 @@ public sealed class TowerPlacedEvent : GameEvent
     public int Cost { get; init; }
 }
 
+/// <summary>Sent by host when a client's tower placement is rejected (e.g. zone already occupied).</summary>
+public sealed class TowerPlaceRejectedEvent : GameEvent
+{
+    [JsonPropertyName("zoneId")]
+    public string ZoneId { get; init; } = "";
+
+    /// <summary>InstanceId of the client whose request was rejected.</summary>
+    [JsonPropertyName("requesterId")]
+    public string RequesterId { get; init; } = "";
+}
+
 public sealed class TowerRemovedEvent : GameEvent
 {
     [JsonPropertyName("tid")]
@@ -439,6 +451,10 @@ public sealed class TowerRemovedEvent : GameEvent
 
     [JsonPropertyName("refund")]
     public int Refund { get; init; }
+
+    /// <summary>InstanceId клиента, отправившего запрос (для валидации владельца на хосте).</summary>
+    [JsonPropertyName("owner")]
+    public string Owner { get; init; } = "";
 }
 
 public sealed class TowerUpgradedEvent : GameEvent
@@ -457,6 +473,10 @@ public sealed class TowerUpgradedEvent : GameEvent
 
     [JsonPropertyName("cost")]
     public int Cost { get; init; }
+
+    /// <summary>InstanceId клиента, отправившего запрос (для валидации владельца на хосте).</summary>
+    [JsonPropertyName("owner")]
+    public string Owner { get; init; } = "";
 }
 
 public sealed class WaveStartedEvent : GameEvent

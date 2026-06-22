@@ -46,12 +46,15 @@ public class GameRunner : Game
     private MultiplayerMenuPanel _multiplayerMenuPanel;
     private LobbyBrowserPanel _lobbyBrowserPanel;
     private LobbyPanel _lobbyPanel;
-    private LocalLobbyDiscovery _lobbyDiscovery;
+    private ILobbyDiscovery _lobbyDiscovery;
+    private GameSyncManager _gameSyncManager;
     private string? _currentLobbyId;
     private string _currentLobbyName = string.Empty;
     private string _playerName = string.Empty;
     private string _currentLobbyLevelPath = string.Empty;
     private bool _gameStartingInLobby = false;
+    private int _lastObservedHostWaveStartIndex = -1;
+    private DateTimeOffset _lastLobbyStateRefresh = DateTimeOffset.MinValue;
     
     private GameState _currentState = GameState.MainMenu;
     private bool _isSelectingLevelForLobby = false;
@@ -107,7 +110,7 @@ public class GameRunner : Game
 
         _mainMenuPanel = new MainMenuPanel(width, height);
         _multiplayerMenuPanel = new MultiplayerMenuPanel(width, height);
-        _lobbyDiscovery = new LocalLobbyDiscovery();
+        _lobbyDiscovery = new UdpLobbyDiscovery();
         _playerName = $"Player_{Environment.MachineName}_{Guid.NewGuid():N}";
         _lobbyBrowserPanel = new LobbyBrowserPanel(width, height, _lobbyDiscovery);
         _lobbyPanel = new LobbyPanel(width, height, _lobbyDiscovery);
@@ -176,7 +179,7 @@ public class GameRunner : Game
                 string mapName = System.IO.Path.GetFileNameWithoutExtension(levelPath);
                 string lobbyName = $"Lobby: {mapName}";
                 _currentLobbyName = lobbyName;
-                _currentLobbyId = _lobbyDiscovery.HostLobby(lobbyName, maxPlayers, _playerName);
+                _currentLobbyId = _lobbyDiscovery.HostLobby(lobbyName, maxPlayers, _playerName, 0, levelPath);
                 RefreshCurrentLobbyState();
             }
         };
@@ -263,6 +266,27 @@ public class GameRunner : Game
                 enemyController,
                 damageDealerController
             );
+
+            // Provide local player's instance id to UI so towers are owned correctly
+            if (_lobbyDiscovery != null && gameManager?.UIManager != null)
+            {
+                gameManager.UIManager.LocalPlayerInstanceId = _lobbyDiscovery.InstanceId;
+
+                if (!string.IsNullOrEmpty(_currentLobbyId))
+                {
+                    bool isHost = _lobbyDiscovery.IsHost;
+                    gameManager.UIManager.StartWaveButton.IsEnabled = isHost;
+                    gameManager.UIManager.OnStartWaveRequested += () =>
+                    {
+                        if (isHost)
+                            _lobbyDiscovery.SignalWaveStart(gameManager.WaveController.CurrentWaveIndex);
+                    };
+                    _lastObservedHostWaveStartIndex = _lobbyDiscovery.GetLobbyWaveStartIndex(_currentLobbyId);
+
+                    // ---- P2P game sync setup ----
+                    SetupGameSync(isHost);
+                }
+            }
             
             // Передаем стандартные текстуры
             gameManager.DefaultTowerTexture = _towerTexture;
@@ -301,11 +325,47 @@ public class GameRunner : Game
             return;
         }
 
+        // Try to read the host's selected level (so clients know which level to load)
+        var hostLevel = _lobbyDiscovery.GetLobbyLevelPath(_currentLobbyId);
+        if (!string.IsNullOrEmpty(hostLevel))
+        {
+            _currentLobbyLevelPath = hostLevel;
+        }
+
         _lobbyPanel.LoadLobby(_currentLobbyName, players[0].MaxPlayers, players, _lobbyDiscovery.InstanceId);
+    }
+
+    private void SetupGameSync(bool isHost)
+    {
+        _gameSyncManager?.Dispose();
+        _gameSyncManager = new GameSyncManager(isHost, gameManager);
+
+        if (isHost)
+        {
+            _gameSyncManager.StartAsHost();
+            gameManager.SetNetworkMode(isClient: false, _gameSyncManager);
+        }
+        else
+        {
+            string hostIp = _lobbyDiscovery.GetLobbyHostIp(_currentLobbyId);
+            if (string.IsNullOrEmpty(hostIp))
+            {
+                Console.WriteLine("[GameSync] Could not determine host IP — sync disabled.");
+                _gameSyncManager.Dispose();
+                _gameSyncManager = null;
+                return;
+            }
+
+            Console.WriteLine($"[GameSync] Client connecting to host at {hostIp}");
+            _gameSyncManager.StartAsClient(hostIp);
+            gameManager.SetNetworkMode(isClient: true, _gameSyncManager);
+        }
     }
 
     private void ReturnToMenu()
     {
+        _gameSyncManager?.Dispose();
+        _gameSyncManager = null;
         _currentState = GameState.LevelSelection;
         _levelSelectionPanel.RefreshLevelList();
     }
@@ -512,7 +572,7 @@ public class GameRunner : Game
             ms.XButton2
         );
         
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || ks.IsKeyDown(Keys.Escape))
+        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || (IsActive && ks.IsKeyDown(Keys.Escape)))
             Exit();
 
         switch (_currentState)
@@ -528,40 +588,77 @@ public class GameRunner : Game
                 break;
             case GameState.Lobby:
                 _lobbyDiscovery.KeepAlive();
-                RefreshCurrentLobbyState();
+                if (DateTimeOffset.UtcNow - _lastLobbyStateRefresh >= TimeSpan.FromSeconds(1))
+                {
+                    _lastLobbyStateRefresh = DateTimeOffset.UtcNow;
+                    RefreshCurrentLobbyState();
+                }
                 _lobbyPanel.Update(gameTime, virtualMs, _previousMouseState);
                 
-                // Check if game is starting and load level for all players
-                if (_gameStartingInLobby && !string.IsNullOrEmpty(_currentLobbyId) && !string.IsNullOrEmpty(_currentLobbyLevelPath))
+                // Check if host signaled game start; clients may not have _gameStartingInLobby set
+                if (!string.IsNullOrEmpty(_currentLobbyId))
                 {
                     if (_lobbyDiscovery.IsLobbyGameStarting(_currentLobbyId))
                     {
-                        LoadLevel(_currentLobbyLevelPath);
+                        if (string.IsNullOrEmpty(_currentLobbyLevelPath))
+                        {
+                            _currentLobbyLevelPath = _lobbyDiscovery.GetLobbyLevelPath(_currentLobbyId) ?? string.Empty;
+                        }
+
+                        if (!string.IsNullOrEmpty(_currentLobbyLevelPath))
+                        {
+                            LoadLevel(_currentLobbyLevelPath);
+                        }
                     }
                 }
                 break;
             case GameState.LevelSelection:
-                _levelSelectionPanel.Update(ks, _previousKeyboardState);
+                if (IsActive)
+                    _levelSelectionPanel.Update(ks, _previousKeyboardState);
                 break;
             case GameState.Playing:
                 if (_showInstructions)
                 {
-                    if ((ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter)) ||
-                        (ks.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space)))
+                    if (IsActive &&
+                        ((ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter)) ||
+                         (ks.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space))))
                     {
                         _showInstructions = false;
                     }
                 }
                 else
                 {
+                    if (!string.IsNullOrEmpty(_currentLobbyId))
+                    {
+                        _lobbyDiscovery.KeepAlive();
+                        int hostWaveStartIndex = _lobbyDiscovery.GetLobbyWaveStartIndex(_currentLobbyId);
+                        if (hostWaveStartIndex > _lastObservedHostWaveStartIndex)
+                        {
+                            _lastObservedHostWaveStartIndex = hostWaveStartIndex;
+                            if (gameManager?.WaveController != null &&
+                                !gameManager.WaveController.IsWaveActive &&
+                                gameManager.WaveController.CurrentWaveIndex == hostWaveStartIndex)
+                            {
+                                Console.WriteLine($"Host requested wave start for wave {hostWaveStartIndex}");
+                                gameManager.StartWave();
+                            }
+                        }
+                    }
+
                     gameManager?.Update(gameTime);
                     
-                    if (ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter))
+                    bool canStartWaveLocally = string.IsNullOrEmpty(_currentLobbyId) || _lobbyDiscovery.IsHost;
+                    if (IsActive && canStartWaveLocally && ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter))
                     {
+                        if (!string.IsNullOrEmpty(_currentLobbyId) && _lobbyDiscovery.IsHost)
+                        {
+                            _lobbyDiscovery.SignalWaveStart(gameManager.WaveController.CurrentWaveIndex);
+                        }
+
                         gameManager?.StartWave();
                     }
 
-                    if (ks.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
+                    if (IsActive && ks.IsKeyDown(Keys.Back) && _previousKeyboardState.IsKeyUp(Keys.Back))
                     {
                         ReturnToMenu();
                     }
@@ -572,6 +669,14 @@ public class GameRunner : Game
         _previousKeyboardState = ks;
         _previousMouseState = virtualMs;
         base.Update(gameTime);
+    }
+
+    protected override void OnExiting(object sender, ExitingEventArgs args)
+    {
+        _gameSyncManager?.Dispose();
+        if (_lobbyDiscovery is IDisposable d)
+            d.Dispose();
+        base.OnExiting(sender, args);
     }
 
     protected override void Draw(GameTime gameTime)

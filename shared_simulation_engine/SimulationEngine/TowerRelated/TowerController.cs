@@ -10,6 +10,8 @@ public class TowerController : Controller
     public readonly List<Tower> towers;
     private static TowerController _instance;
     private readonly Dictionary<string, Microsoft.Xna.Framework.Graphics.Texture2D> _textureCache = new();
+    private readonly Dictionary<int, Tower> _towersById = new();
+    private int _nextNetworkId = 1;
 
     private readonly Game _engine;
     public Microsoft.Xna.Framework.Graphics.Texture2D DefaultTexture { get; set; }
@@ -36,11 +38,22 @@ public class TowerController : Controller
 
     public void AddTower(Tower tower)
     {
+        if (tower.NetworkId < 0)
+            tower.NetworkId = _nextNetworkId++;
+        _towersById[tower.NetworkId] = tower;
         if (tower.Texture == null)
-        {
             tower.Texture = GetTowerTexture(tower.Definition);
-        }
         towers.Add(tower);
+    }
+
+    public Tower GetByNetworkId(int networkId)
+        => _towersById.TryGetValue(networkId, out var t) ? t : null;
+
+    public void RemoveTower(Tower tower)
+    {
+        if (tower.NetworkId >= 0)
+            _towersById.Remove(tower.NetworkId);
+        towers.Remove(tower);
     }
 
     public Microsoft.Xna.Framework.Graphics.Texture2D GetTowerTexture(LevelLoader.TowerDefinition definition)

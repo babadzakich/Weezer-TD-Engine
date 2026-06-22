@@ -21,6 +21,7 @@ public class TowerControlPanel : UIElement
     private List<LevelLoader.TowerUpgradeDefinition> _upgradeOptions = new();
     private bool _isMaxLevel;
     private bool _isUpgradeListOpen;
+    private bool _canModifyTower = true;
     
     public event Action<Tower> OnSellTower;
     public event Action<Tower, LevelLoader.TowerUpgradeDefinition> OnUpgradeTower;
@@ -61,13 +62,18 @@ public class TowerControlPanel : UIElement
         _isUpgradeListOpen = false;
     }
 
-    public void SetUpgradeInfo(List<LevelLoader.TowerUpgradeDefinition> upgradeOptions, int currentMoney, bool isMaxLevel)
+    public void SetUpgradeInfo(List<LevelLoader.TowerUpgradeDefinition> upgradeOptions, int currentMoney, bool isMaxLevel, bool canModifyTower)
     {
         _isMaxLevel = isMaxLevel;
         _upgradeOptions = upgradeOptions ?? new List<LevelLoader.TowerUpgradeDefinition>();
+        _canModifyTower = canModifyTower;
         RebuildUpgradeButtons(currentMoney);
 
-        if (_isMaxLevel)
+        // For non-owners: hide buttons entirely so no click path exists
+        _sellButton.IsEnabled = _canModifyTower;
+        _sellButton.IsVisible = _canModifyTower;
+
+        if (_isMaxLevel || !_canModifyTower)
         {
             _showUpgradeButton.IsVisible = false;
             _isUpgradeListOpen = false;
@@ -186,6 +192,12 @@ public class TowerControlPanel : UIElement
         _sellButton.Draw(spriteBatch, pixel, font);
         _showUpgradeButton.Draw(spriteBatch, pixel, font);
 
+        if (!_canModifyTower && font != null)
+        {
+            Vector2 infoPos = Position + new Vector2(10, Size.Y - 80);
+            spriteBatch.DrawString(font, "Not your tower", infoPos, Color.OrangeRed);
+        }
+
         if (_isUpgradeListOpen)
         {
             var buttonsSnapshot = _upgradeOptionButtons.ToArray();
@@ -220,7 +232,7 @@ public class TowerControlPanel : UIElement
             {
                 BackgroundColor = new Color(35, 70, 110),
                 HoverColor = new Color(50, 95, 145),
-                IsEnabled = currentMoney >= option.Cost
+                IsEnabled = _canModifyTower && currentMoney >= option.Cost
             };
 
             var capturedOption = option;
