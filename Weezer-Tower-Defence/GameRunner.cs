@@ -142,6 +142,7 @@ public class GameRunner : Game
         // Wiring Lobby Browser
         _lobbyBrowserPanel.OnBackClicked += () => _currentState = GameState.MultiplayerMenu;
         _lobbyBrowserPanel.OnLobbySelected += (lobby) => {
+            SimulationEngine.Network.OwnershipDebug.Clear();
             if (_lobbyDiscovery.JoinLobby(lobby.LobbyId, _playerName))
             {
                 _currentLobbyId = lobby.LobbyId;
@@ -175,6 +176,7 @@ public class GameRunner : Game
         _levelSelectionPanel.OnLevelSelectedExtended += (levelPath, maxPlayers) => {
             if (_isSelectingLevelForLobby)
             {
+                SimulationEngine.Network.OwnershipDebug.Clear();
                 _currentState = GameState.Lobby;
                 _currentLobbyLevelPath = levelPath;
                 string mapName = System.IO.Path.GetFileNameWithoutExtension(levelPath);
@@ -273,6 +275,7 @@ public class GameRunner : Game
             {
                 gameManager.UIManager.LocalPlayerInstanceId = _lobbyDiscovery.InstanceId;
                 gameManager.UIManager.ResolvePlayerName = id => GetPlayerNameById(id);
+                SimulationEngine.Network.OwnershipDebug.Log($"Initialize Game: PlayerName='{_playerName}' InstanceId='{_lobbyDiscovery.InstanceId}' IsHost={_lobbyDiscovery.IsHost} LobbyId='{_currentLobbyId}'");
 
                 if (!string.IsNullOrEmpty(_currentLobbyId))
                 {
@@ -658,7 +661,11 @@ public class GameRunner : Game
                         }
                     }
 
-                    gameManager?.Update(gameTime);
+                    if (gameManager != null)
+                    {
+                        gameManager.IsWindowActive = IsActive;
+                        gameManager.Update(gameTime);
+                    }
                     
                     bool canStartWaveLocally = string.IsNullOrEmpty(_currentLobbyId) || _lobbyDiscovery.IsHost;
                     if (IsActive && canStartWaveLocally && ks.IsKeyDown(Keys.Enter) && _previousKeyboardState.IsKeyUp(Keys.Enter))

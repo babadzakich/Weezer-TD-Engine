@@ -40,6 +40,7 @@ public class GameManager
     public event Action Disconnected;
 
     public bool IsNetworkClient { get; private set; } = false;
+    public bool IsWindowActive { get; set; } = true;
     public Network.GameSyncManager SyncManager { get; private set; }
 
     private bool _isDisconnecting;
@@ -264,8 +265,11 @@ public class GameManager
             SyncManager?.ApplyIncomingDeltas();
         }
 
-        UIManager.Update(gameTime);
-        _inputHandler.Update();
+        if (IsWindowActive)
+        {
+            UIManager.Update(gameTime);
+            _inputHandler.Update();
+        }
 
         if (!IsNetworkClient)
         {
@@ -328,7 +332,7 @@ public class GameManager
 
     private void DrawTowerHoverTooltip(SpriteBatch spriteBatch, SpriteFont font, Texture2D pixel)
     {
-        if (font == null || pixel == null) return;
+        if (!IsWindowActive || font == null || pixel == null) return;
         
         MouseState ms = Mouse.GetState();
         Vector2 mousePos = new Vector2(ms.X, ms.Y);

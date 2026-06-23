@@ -462,6 +462,7 @@ public sealed class GameSyncManager : IDisposable
         {
             OwnerInstanceId = place.Owner,
         };
+        OwnershipDebug.Log($"Host ApplyClientTowerPlace: received request from owner='{place.Owner}'. Created tower with OwnerInstanceId='{tower.OwnerInstanceId}'");
         _gm.TowerController.AddTower(tower);
         SetPlayerBalance(place.Owner, balance - place.Cost);
         zone.Occupy(tower);
@@ -672,7 +673,7 @@ public sealed class GameSyncManager : IDisposable
             NetworkId       = place.TowerId,
             OwnerInstanceId = place.Owner,
         };
-        Console.WriteLine($"[Owner] Client creating tower: NetworkId={place.TowerId} owner='{place.Owner}' LocalPlayerInstanceId='{_gm.UIManager.LocalPlayerInstanceId}'");
+        OwnershipDebug.Log($"Client ClientPlaceTower: received broadcast. NetworkId={place.TowerId} owner='{place.Owner}' LocalPlayerInstanceId='{_gm.UIManager.LocalPlayerInstanceId}'");
         tc.AddTower(tower);
         zone.Occupy(tower);
     }
@@ -719,7 +720,10 @@ public sealed class GameSyncManager : IDisposable
     // -----------------------------------------------------------------------
 
     public void RequestTowerPlace(string zoneId, string behaviorId, string owner, int cost, int tempId)
-        => SendRequest(new TowerPlacedEvent { TowerId = tempId, ZoneId = zoneId, BehaviorId = behaviorId, Owner = owner, Cost = cost });
+    {
+        OwnershipDebug.Log($"Client RequestTowerPlace: sending request for zone='{zoneId}' owner='{owner}'");
+        SendRequest(new TowerPlacedEvent { TowerId = tempId, ZoneId = zoneId, BehaviorId = behaviorId, Owner = owner, Cost = cost });
+    }
 
     public void RequestTowerRemove(int towerId, string zoneId)
         => SendRequest(new TowerRemovedEvent { TowerId = towerId, ZoneId = zoneId, Owner = _gm.UIManager.LocalPlayerInstanceId });

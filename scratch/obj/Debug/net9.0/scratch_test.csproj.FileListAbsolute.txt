@@ -1,0 +1,15 @@
+C:\Projects\HW\Weezer-TD-Engine\scratch\bin\Debug\net9.0\scratch_test.exe
+C:\Projects\HW\Weezer-TD-Engine\scratch\bin\Debug\net9.0\scratch_test.deps.json
+C:\Projects\HW\Weezer-TD-Engine\scratch\bin\Debug\net9.0\scratch_test.runtimeconfig.json
+C:\Projects\HW\Weezer-TD-Engine\scratch\bin\Debug\net9.0\scratch_test.dll
+C:\Projects\HW\Weezer-TD-Engine\scratch\bin\Debug\net9.0\scratch_test.pdb
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.AssemblyInfoInputs.cache
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.AssemblyInfo.cs
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.csproj.CoreCompileInputs.cache
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.sourcelink.json
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.dll
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\refint\scratch_test.dll
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.pdb
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\scratch_test.genruntimeconfig.cache
+C:\Projects\HW\Weezer-TD-Engine\scratch\obj\Debug\net9.0\ref\scratch_test.dll

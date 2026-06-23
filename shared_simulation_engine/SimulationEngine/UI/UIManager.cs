@@ -116,7 +116,7 @@ public class UIManager
                           tower.Definition.Upgrades == null ||
                           tower.Definition.Upgrades.Count == 0;
         bool isOwner = tower.IsOwnedBy(LocalPlayerInstanceId);
-        Console.WriteLine($"[Owner] ShowTowerControl: tower.OwnerInstanceId='{tower.OwnerInstanceId}' LocalPlayerInstanceId='{LocalPlayerInstanceId}' isOwner={isOwner}");
+        SimulationEngine.Network.OwnershipDebug.Log($"UIManager ShowTowerControl: tower.NetworkId={tower.NetworkId} tower.OwnerInstanceId='{tower.OwnerInstanceId}' LocalPlayerInstanceId='{LocalPlayerInstanceId}' isOwner={isOwner}");
         TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel, isOwner);
     }
 

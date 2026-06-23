@@ -128,7 +128,7 @@ public class GameInputHandler
 
         if (IsNetworkClient && SyncManager != null)
         {
-            Console.WriteLine($"[Owner] Client placing tower: owner='{owner}' behaviorId='{behaviorId}' LocalPlayerInstanceId='{_uiManager.LocalPlayerInstanceId}'");
+            SimulationEngine.Network.OwnershipDebug.Log($"Client OnTowerSelected: owner='{owner}' LocalPlayerInstanceId='{_uiManager.LocalPlayerInstanceId}'");
             // Client: send placement request to master, don't apply locally
             // Use a temporary negative ID; master will assign the real one
             SyncManager.RequestTowerPlace(zoneId, behaviorId, owner, cost, -1);
@@ -153,6 +153,7 @@ public class GameInputHandler
 
         var tower = new Tower(behaviorInstance, _selectedBuildZone.Position, towerDefinition);
         tower.OwnerInstanceId = owner;
+        SimulationEngine.Network.OwnershipDebug.Log($"Host OnTowerSelected: local tower created. NetworkId={tower.NetworkId} OwnerInstanceId='{tower.OwnerInstanceId}'");
         _towerController.AddTower(tower); // assigns NetworkId
 
         _uiManager.PurchaseTower(towerBehavior);
