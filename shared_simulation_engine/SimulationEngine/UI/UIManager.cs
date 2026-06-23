@@ -25,6 +25,9 @@ public class UIManager
     private bool _connectionLostVisible;
     private int  _connectionLostSeconds;
 
+    private string _notificationText = "";
+    private float  _notificationTimer = 0f;
+
     public int Money { get => ResourcePanel.Money; set => ResourcePanel.Money = value; }
     public int Lives { get => ResourcePanel.Lives; set => ResourcePanel.Lives = value; }
     public int Wave { get => ResourcePanel.Wave; set => ResourcePanel.Wave = value; }
@@ -168,6 +171,15 @@ public class UIManager
         }
 
         _previousMouseState = currentMouseState;
+
+        if (_notificationTimer > 0f)
+            _notificationTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+    }
+
+    public void ShowNotification(string text, float durationSeconds = 3f)
+    {
+        _notificationText  = text;
+        _notificationTimer = durationSeconds;
     }
 
     public void Draw(SpriteBatch spriteBatch, Texture2D pixel, SpriteFont font)
@@ -176,6 +188,9 @@ public class UIManager
         {
             element.Draw(spriteBatch, pixel, font);
         }
+
+        if (_notificationTimer > 0f && font != null && !string.IsNullOrEmpty(_notificationText))
+            DrawNotification(spriteBatch, pixel, font);
 
         if (_connectionLostVisible)
             DrawConnectionLostOverlay(spriteBatch, pixel, font);
@@ -201,6 +216,25 @@ public class UIManager
     public void HideConnectionLost()
     {
         _connectionLostVisible = false;
+    }
+
+    private void DrawNotification(SpriteBatch spriteBatch, Texture2D pixel, SpriteFont font)
+    {
+        var textSize = font.MeasureString(_notificationText);
+        float padding = 12f;
+        float w = textSize.X + padding * 2;
+        float h = textSize.Y + padding * 2;
+        float x = (_screenWidth - w) / 2f;
+        float y = _screenHeight - h - 20f;
+
+        // Fade out in the last 0.5 seconds
+        float alpha = Math.Clamp(_notificationTimer / 0.5f, 0f, 1f);
+        byte a = (byte)(200 * alpha);
+
+        spriteBatch.Draw(pixel, new Rectangle((int)x, (int)y, (int)w, (int)h), new Color(0, 0, 0, (int)a));
+        spriteBatch.DrawString(font, _notificationText,
+            new Vector2(x + padding, y + padding),
+            new Color(255, 80, 80, (int)a));
     }
 
     private void DrawConnectionLostOverlay(SpriteBatch spriteBatch, Texture2D pixel, SpriteFont font)

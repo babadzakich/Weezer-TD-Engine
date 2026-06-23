@@ -9,6 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using SimulationEngine.EnemyRelated;
+using SimulationEngine.BulletRelated;
+using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.TowerRelated;
 using SimulationEngine.TowerRelated.Behaviors;
 
@@ -224,6 +226,13 @@ public sealed class GameSyncManager : IDisposable
             wc.OnWaveStarted += idx => EnqueueEvent(new WaveStartedEvent { WaveIdx = idx });
             wc.OnWaveEnded   += idx => EnqueueEvent(new WaveEndedEvent   { WaveIdx = idx });
         }
+
+        var dc = _gm.DamageDealerController;
+        if (dc != null)
+        {
+            dc.OnBulletAdded   += OnHostBulletAdded;
+            dc.OnBulletRemoved += OnHostBulletRemoved;
+        }
     }
 
     private void OnHostEnemySpawned(Enemy e)
@@ -253,6 +262,38 @@ public sealed class GameSyncManager : IDisposable
             BaseHpAfter   = _gm.UIManager.Lives,
             MobsRemaining = _gm.EnemyController?.Enemies.Count(en => en.isAlive) ?? 0,
         });
+
+    private void OnHostBulletAdded(DamageDealer d)
+    {
+        float maxDist = d.Behavior is StandardBulletBehavior sbh ? sbh.MaxDistance : 500f;
+        Console.WriteLine($"[Bullet] HOST spawned: id={d.NetworkId} hitRadius={d.HitRadius} behaviorHitRadius={d.Behavior.HitRadius} speed={d.Behavior.Speed} maxDist={maxDist} dmg={d.Behavior.Damage}");
+        EnqueueEvent(new BulletSpawnedEvent
+        {
+            BulletId  = d.NetworkId,
+            BehaviorId = d.Behavior.GetType().Name,
+            Behavior  = BulletBehavior.Linear,
+            X         = d.Position.X,
+            Y         = d.Position.Y,
+            Dx        = d.Direction.X,
+            Dy        = d.Direction.Y,
+            Speed     = d.Behavior.Speed,
+            MaxDist   = maxDist,
+            Dmg       = d.Behavior.Damage,
+            HitRadius = d.HitRadius,
+        });
+    }
+
+    private void OnHostBulletRemoved(DamageDealer d)
+    {
+        EnqueueEvent(new BulletImpactEvent
+        {
+            BulletId   = d.NetworkId,
+            X          = d.Position.X,
+            Y          = d.Position.Y,
+            Damage     = d.Behavior.Damage,
+            ImpactType = BulletImpactType.Mob,
+        });
+    }
 
     private void EnqueueEvent(GameEvent evt)
     {
@@ -304,6 +345,7 @@ public sealed class GameSyncManager : IDisposable
 
     private void ApplyClientTowerPlace(TowerPlacedEvent place)
     {
+        Console.WriteLine($"[Owner] HOST ApplyClientTowerPlace: zone='{place.ZoneId}' owner='{place.Owner}' myId='{_gm.UIManager.LocalPlayerInstanceId}'");
         var zone = _gm.Map.BuildZones.FirstOrDefault(z => z.Id == place.ZoneId);
         if (zone == null)
         {
@@ -312,7 +354,15 @@ public sealed class GameSyncManager : IDisposable
         }
         if (zone.IsOccupied)
         {
-            Console.WriteLine($"[Owner] Client TowerPlace REJECTED: zone '{place.ZoneId}' already occupied (requester='{place.Owner}')");
+            // If the zone is occupied by the same requester, this is a duplicate UDP packet
+            // (same-machine testing often delivers one packet twice via broadcast + loopback).
+            // Silently discard — the requester already got the TowerPlacedEvent confirmation.
+            if (zone.OccupyingTower?.OwnerInstanceId == place.Owner)
+            {
+                Console.WriteLine($"[Owner] Client TowerPlace: zone '{place.ZoneId}' duplicate request from '{place.Owner}' (ignored)");
+                return;
+            }
+            Console.WriteLine($"[Owner] Client TowerPlace REJECTED: zone '{place.ZoneId}' already occupied by another player (requester='{place.Owner}')");
             EnqueueEvent(new TowerPlaceRejectedEvent { ZoneId = place.ZoneId, RequesterId = place.Owner });
             return;
         }
@@ -465,6 +515,8 @@ public sealed class GameSyncManager : IDisposable
             case EnemySpawnedEvent   spawn:  ClientSpawnEnemy(spawn);                               break;
             case EnemyKilledEvent    kill:   ClientRemoveEnemy(kill.EnemyId,  killed: true);        break;
             case EnemyReachedGoalEvent goal: ClientRemoveEnemy(goal.EnemyId,  killed: false);       break;
+            case BulletSpawnedEvent  bSpawn: ClientSpawnBullet(bSpawn);                             break;
+            case BulletImpactEvent   impact: ClientRemoveBullet(impact.BulletId);                   break;
             case TowerPlacedEvent         place:    ClientPlaceTower(place);                            break;
             case TowerPlaceRejectedEvent  rejected: ClientHandlePlaceRejected(rejected);               break;
             case TowerRemovedEvent        remove:   ClientRemoveTower(remove.TowerId);                 break;
@@ -497,6 +549,29 @@ public sealed class GameSyncManager : IDisposable
             SpawnPointId = spawn.SpawnPointId,
         };
         ec.AddEnemy(enemy);
+    }
+
+    private void ClientSpawnBullet(BulletSpawnedEvent spawn)
+    {
+        var dc = _gm.DamageDealerController;
+        if (dc == null || dc.GetByNetworkId(spawn.BulletId) != null) return;
+
+        Console.WriteLine($"[Bullet] CLIENT spawn: id={spawn.BulletId} hitRadius={spawn.HitRadius} speed={spawn.Speed} maxDist={spawn.MaxDist} dmg={spawn.Dmg} visualSize={spawn.HitRadius * 4f}px");
+        var behavior = new StandardBulletBehavior(spawn.Dmg, spawn.Speed, spawn.MaxDist, spawn.HitRadius);
+        var direction = new Microsoft.Xna.Framework.Vector2(spawn.Dx, spawn.Dy);
+        var dealer = new DamageDealer(behavior, new Microsoft.Xna.Framework.Vector2(spawn.X, spawn.Y), direction, spawn.HitRadius)
+        {
+            NetworkId = spawn.BulletId,
+        };
+        dc.AddVisualBullet(dealer);
+    }
+
+    private void ClientRemoveBullet(int bulletId)
+    {
+        var dc = _gm.DamageDealerController;
+        if (dc == null) return;
+        var dealer = dc.GetByNetworkId(bulletId);
+        if (dealer != null) dealer.IsActive = false;
     }
 
     private void ClientRemoveEnemy(int networkId, bool killed)
@@ -542,10 +617,10 @@ public sealed class GameSyncManager : IDisposable
 
     private void ClientHandlePlaceRejected(TowerPlaceRejectedEvent rejected)
     {
+        Console.WriteLine($"[Owner] CLIENT received rejection: requesterId='{rejected.RequesterId}' myId='{_gm.UIManager.LocalPlayerInstanceId}' isForMe={rejected.RequesterId == _gm.UIManager.LocalPlayerInstanceId}");
         if (rejected.RequesterId != _gm.UIManager.LocalPlayerInstanceId) return;
-        // Our placement was rejected by the host (zone occupied or insufficient funds).
-        // Close the selection panel so the player knows to pick a different zone.
         _gm.UIManager.HideTowerSelection();
+        _gm.UIManager.ShowNotification("Зона уже занята другим игроком!", 3f);
     }
 
     private void ClientRemoveTower(int networkId)
@@ -582,7 +657,10 @@ public sealed class GameSyncManager : IDisposable
     // -----------------------------------------------------------------------
 
     public void RequestTowerPlace(string zoneId, string behaviorId, string owner, int cost, int tempId)
-        => SendRequest(new TowerPlacedEvent { TowerId = tempId, ZoneId = zoneId, BehaviorId = behaviorId, Owner = owner, Cost = cost });
+    {
+        Console.WriteLine($"[Owner] CLIENT RequestTowerPlace: zone='{zoneId}' owner='{owner}' myId='{_gm.UIManager.LocalPlayerInstanceId}'");
+        SendRequest(new TowerPlacedEvent { TowerId = tempId, ZoneId = zoneId, BehaviorId = behaviorId, Owner = owner, Cost = cost });
+    }
 
     public void RequestTowerRemove(int towerId, string zoneId)
         => SendRequest(new TowerRemovedEvent { TowerId = towerId, ZoneId = zoneId, Owner = _gm.UIManager.LocalPlayerInstanceId });
@@ -595,6 +673,7 @@ public sealed class GameSyncManager : IDisposable
         if (_requester == null || _hostEndpoint == null) return;
         var delta = new FrameDelta { Seq = RequestSeq, Events = [evt] };
         byte[] data = FrameDeltaSerializer.Serialize(delta);
+        Console.WriteLine($"[Owner] CLIENT SendRequest JSON: {System.Text.Encoding.UTF8.GetString(data)}");
         try { _requester.Send(data, _hostEndpoint); } catch { }
     }
 

@@ -16,6 +16,12 @@ public class DamageDealerController : Controller
     private readonly Dictionary<string, Microsoft.Xna.Framework.Graphics.Texture2D> _explosionCache = new();
     public Microsoft.Xna.Framework.Graphics.Texture2D DefaultTexture { get; set; }
 
+    private int _nextNetworkId = 1;
+    /// <summary>Fired on the host each time a bullet is spawned. Used by GameSyncManager to broadcast BulletSpawnedEvent.</summary>
+    public event Action<DamageDealer> OnBulletAdded;
+    /// <summary>Fired on the host each time a bullet is removed (hit or expired). Used by GameSyncManager to broadcast BulletImpactEvent.</summary>
+    public event Action<DamageDealer> OnBulletRemoved;
+
     private readonly Game _engine;
 
     private DamageDealerController(Game engine)
@@ -40,11 +46,39 @@ public class DamageDealerController : Controller
 
     public void AddDamageDealer(DamageDealer damageDealer)
     {
+        if (damageDealer.NetworkId < 0)
+            damageDealer.NetworkId = _nextNetworkId++;
         if (damageDealer.Texture == null || damageDealer.Texture == DefaultTexture)
-        {
             damageDealer.Texture = GetBulletTexture(damageDealer);
-        }
         damageDealers.Add(damageDealer);
+        OnBulletAdded?.Invoke(damageDealer);
+    }
+
+    /// <summary>Client-only: add a visual bullet without assigning a new NetworkId or firing host events.</summary>
+    public void AddVisualBullet(DamageDealer damageDealer)
+    {
+        if (damageDealer.Texture == null)
+            damageDealer.Texture = DefaultTexture;
+        damageDealers.Add(damageDealer);
+    }
+
+    public DamageDealer GetByNetworkId(int id)
+    {
+        foreach (var d in damageDealers)
+            if (d.NetworkId == id) return d;
+        return null;
+    }
+
+    /// <summary>Client-only: move bullets without collision detection.</summary>
+    public void UpdatePositionsOnly(GameTime deltaTime)
+    {
+        for (int i = damageDealers.Count - 1; i >= 0; i--)
+        {
+            var dd = damageDealers[i];
+            dd.Update(deltaTime);
+            if (!dd.IsActive)
+                damageDealers.RemoveAt(i);
+        }
     }
 
     public Microsoft.Xna.Framework.Graphics.Texture2D GetBulletTexture(DamageDealer damageDealer)
@@ -111,6 +145,7 @@ public class DamageDealerController : Controller
 
             if (!damageDealer.IsActive)
             {
+                OnBulletRemoved?.Invoke(damageDealer);
                 damageDealers.RemoveAt(i);
                 continue;
             }
@@ -138,6 +173,7 @@ public class DamageDealerController : Controller
 
                     // Single-hit bullet: deactivate and remove
                     damageDealer.IsActive = false;
+                    OnBulletRemoved?.Invoke(damageDealer);
                     damageDealers.RemoveAt(i);
                     break;
                 }

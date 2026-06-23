@@ -261,6 +261,8 @@ public class GameManager
             // Apply incoming network state BEFORE processing input so that zone occupancy
             // and tower ownership are current when the UI and input handler run.
             SyncManager?.ApplyIncomingDeltas();
+            // Move visual bullets locally (no collision detection — host is authoritative).
+            DamageDealerController?.UpdatePositionsOnly(gameTime);
         }
 
         UIManager.Update(gameTime);

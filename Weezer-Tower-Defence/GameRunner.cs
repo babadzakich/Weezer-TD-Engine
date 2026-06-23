@@ -272,6 +272,7 @@ public class GameRunner : Game
             if (_lobbyDiscovery != null && gameManager?.UIManager != null)
             {
                 gameManager.UIManager.LocalPlayerInstanceId = _lobbyDiscovery.InstanceId;
+                Console.WriteLine($"[Owner] LocalPlayerInstanceId set to '{_lobbyDiscovery.InstanceId}' isHost={_lobbyDiscovery.IsHost}");
 
                 if (!string.IsNullOrEmpty(_currentLobbyId))
                 {
