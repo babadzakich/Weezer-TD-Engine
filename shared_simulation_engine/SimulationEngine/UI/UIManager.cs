@@ -22,6 +22,9 @@ public class UIManager
     private readonly int _screenWidth;
     private readonly int _screenHeight;
 
+    private bool _connectionLostVisible;
+    private int  _connectionLostSeconds;
+
     public int Money { get => ResourcePanel.Money; set => ResourcePanel.Money = value; }
     public int Lives { get => ResourcePanel.Lives; set => ResourcePanel.Lives = value; }
     public int Wave { get => ResourcePanel.Wave; set => ResourcePanel.Wave = value; }
@@ -173,6 +176,9 @@ public class UIManager
         {
             element.Draw(spriteBatch, pixel, font);
         }
+
+        if (_connectionLostVisible)
+            DrawConnectionLostOverlay(spriteBatch, pixel, font);
     }
 
     public bool IsMouseOverUI(Vector2 mousePosition)
@@ -184,5 +190,38 @@ public class UIManager
         }
 
         return false;
+    }
+
+    public void ShowConnectionLost(int secondsLeft)
+    {
+        _connectionLostVisible = true;
+        _connectionLostSeconds = secondsLeft;
+    }
+
+    public void HideConnectionLost()
+    {
+        _connectionLostVisible = false;
+    }
+
+    private void DrawConnectionLostOverlay(SpriteBatch spriteBatch, Texture2D pixel, SpriteFont font)
+    {
+        // Semi-transparent black overlay
+        spriteBatch.Draw(pixel,
+            new Rectangle(0, 0, _screenWidth, _screenHeight),
+            new Color(0, 0, 0, 160));
+
+        if (font == null) return;
+
+        string title   = "Соединение потеряно";
+        string counter = $"Выход через {_connectionLostSeconds} сек...";
+
+        var titleSize   = font.MeasureString(title);
+        var counterSize = font.MeasureString(counter);
+
+        var titlePos   = new Vector2((_screenWidth - titleSize.X) / 2f,   _screenHeight / 2f - 40);
+        var counterPos = new Vector2((_screenWidth - counterSize.X) / 2f, _screenHeight / 2f + 10);
+
+        spriteBatch.DrawString(font, title,   titlePos,   Color.White);
+        spriteBatch.DrawString(font, counter, counterPos, Color.OrangeRed);
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -340,6 +341,15 @@ public class GameRunner : Game
         _gameSyncManager?.Dispose();
         _gameSyncManager = new GameSyncManager(isHost, gameManager);
 
+        // Build peer map and give it to the Raft node before starting sockets.
+        var peerIps = BuildPeerIpMap();
+        _gameSyncManager.SetPeers(peerIps, _lobbyDiscovery.InstanceId);
+
+        // Wire disconnect / host-switch events.
+        _gameSyncManager.OnNetworkLost  += OnNetworkLost;
+        _gameSyncManager.OnHostSwitched += OnHostSwitched;
+        gameManager.Disconnected        += ReturnToMenu;
+
         if (isHost)
         {
             _gameSyncManager.StartAsHost();
@@ -360,6 +370,36 @@ public class GameRunner : Game
             _gameSyncManager.StartAsClient(hostIp);
             gameManager.SetNetworkMode(isClient: true, _gameSyncManager);
         }
+    }
+
+    /// <summary>Collects instanceId → IP for every lobby player except ourselves.</summary>
+    private Dictionary<string, string> BuildPeerIpMap()
+    {
+        var result = new Dictionary<string, string>();
+        if (string.IsNullOrEmpty(_currentLobbyId)) return result;
+
+        var players = _lobbyDiscovery.GetLobbyPlayers(_currentLobbyId);
+        foreach (var player in players)
+        {
+            if (player.InstanceId == _lobbyDiscovery.InstanceId) continue;
+            var ip = _lobbyDiscovery.GetInstanceIp(player.InstanceId);
+            if (!string.IsNullOrEmpty(ip))
+                result[player.InstanceId] = ip;
+        }
+
+        Console.WriteLine($"[GameSync] Peer map: {result.Count} peer(s)");
+        return result;
+    }
+
+    private void OnNetworkLost()
+    {
+        Console.WriteLine("[GameRunner] Network lost — starting disconnect countdown.");
+        gameManager?.HandleNetworkLost();
+    }
+
+    private void OnHostSwitched(string newHostIp)
+    {
+        Console.WriteLine($"[GameRunner] Host switched to {newHostIp}.");
     }
 
     private void ReturnToMenu()
