@@ -18,6 +18,13 @@ public class Tower
     // InstanceId of the player who owns this tower (from LocalLobbyDiscovery.InstanceId)
     public string OwnerInstanceId { get; set; } = string.Empty;
 
+    public bool IsOwnedBy(string playerId)
+    {
+        string ownId = OwnerInstanceId ?? string.Empty;
+        string queryId = playerId ?? string.Empty;
+        return ownId.Equals(queryId, System.StringComparison.OrdinalIgnoreCase);
+    }
+
     public Tower(ITowerBehavior behavior, Vector2 position, LevelLoader.TowerDefinition definition = null)
     {
         Position = position;

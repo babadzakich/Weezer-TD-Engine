@@ -111,7 +111,8 @@ public class GameRunner : Game
         _mainMenuPanel = new MainMenuPanel(width, height);
         _multiplayerMenuPanel = new MultiplayerMenuPanel(width, height);
         _lobbyDiscovery = new UdpLobbyDiscovery();
-        _playerName = $"Player_{Environment.MachineName}_{Guid.NewGuid():N}";
+        _playerName = $"Player_{Guid.NewGuid().ToString("N").Substring(0, 4)}";
+        _multiplayerMenuPanel.PlayerName = _playerName;
         _lobbyBrowserPanel = new LobbyBrowserPanel(width, height, _lobbyDiscovery);
         _lobbyPanel = new LobbyPanel(width, height, _lobbyDiscovery);
         _levelSelectionPanel = new LevelSelectionPanel(width, height);
@@ -271,6 +272,7 @@ public class GameRunner : Game
             if (_lobbyDiscovery != null && gameManager?.UIManager != null)
             {
                 gameManager.UIManager.LocalPlayerInstanceId = _lobbyDiscovery.InstanceId;
+                gameManager.UIManager.ResolvePlayerName = id => GetPlayerNameById(id);
 
                 if (!string.IsNullOrEmpty(_currentLobbyId))
                 {
@@ -295,6 +297,7 @@ public class GameRunner : Game
 
             gameManager.Defeat += () => ReturnToMenu();
             gameManager.Win += () => ReturnToMenu();
+            gameManager.Disconnected += () => ReturnToMenu();
             
             _currentState = GameState.Playing;
             _showInstructions = true;
@@ -339,6 +342,15 @@ public class GameRunner : Game
     {
         _gameSyncManager?.Dispose();
         _gameSyncManager = new GameSyncManager(isHost, gameManager);
+
+        if (!string.IsNullOrEmpty(_currentLobbyId) && _lobbyDiscovery != null)
+        {
+            var lobbyPlayers = _lobbyDiscovery.GetLobbyPlayers(_currentLobbyId);
+            foreach (var p in lobbyPlayers)
+            {
+                _gameSyncManager.RegisterPlayerId(p.InstanceId);
+            }
+        }
 
         if (isHost)
         {
@@ -581,7 +593,8 @@ public class GameRunner : Game
                 _mainMenuPanel.Update(gameTime, virtualMs, _previousMouseState);
                 break;
             case GameState.MultiplayerMenu:
-                _multiplayerMenuPanel.Update(gameTime, virtualMs, _previousMouseState);
+                _multiplayerMenuPanel.Update(gameTime, virtualMs, _previousMouseState, ks, _previousKeyboardState);
+                _playerName = _multiplayerMenuPanel.PlayerName;
                 break;
             case GameState.LobbyBrowser:
                 _lobbyBrowserPanel.Update(gameTime, virtualMs, _previousMouseState);
@@ -801,5 +814,16 @@ public class GameRunner : Game
         }
         
         return wave;
+    }
+
+    private string GetPlayerNameById(string id)
+    {
+        if (string.IsNullOrEmpty(_currentLobbyId) || _lobbyDiscovery == null)
+        {
+            return _playerName;
+        }
+        var players = _lobbyDiscovery.GetLobbyPlayers(_currentLobbyId);
+        var player = players.FirstOrDefault(p => p.InstanceId == id);
+        return player != null ? player.PlayerName : $"Player_{id.Substring(0, Math.Min(4, id.Length))}";
     }
 }

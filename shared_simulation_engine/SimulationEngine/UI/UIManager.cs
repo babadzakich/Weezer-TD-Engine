@@ -27,6 +27,7 @@ public class UIManager
     public int Wave { get => ResourcePanel.Wave; set => ResourcePanel.Wave = value; }
     // Local player's instance id (set by the host/client launcher)
     public string LocalPlayerInstanceId { get; set; } = string.Empty;
+    public Func<string, string> ResolvePlayerName { get; set; }
 
     public event Action OnStartWaveRequested;
     public event Action<Tower> OnTowerSellRequested;
@@ -114,7 +115,7 @@ public class UIManager
         bool isMaxLevel = tower.Definition == null ||
                           tower.Definition.Upgrades == null ||
                           tower.Definition.Upgrades.Count == 0;
-        bool isOwner = tower.OwnerInstanceId == LocalPlayerInstanceId;
+        bool isOwner = tower.IsOwnedBy(LocalPlayerInstanceId);
         Console.WriteLine($"[Owner] ShowTowerControl: tower.OwnerInstanceId='{tower.OwnerInstanceId}' LocalPlayerInstanceId='{LocalPlayerInstanceId}' isOwner={isOwner}");
         TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel, isOwner);
     }
@@ -155,7 +156,7 @@ public class UIManager
             bool isMaxLevel = tower.Definition == null ||
                               tower.Definition.Upgrades == null ||
                               tower.Definition.Upgrades.Count == 0;
-            bool isOwner = tower.OwnerInstanceId == LocalPlayerInstanceId;
+            bool isOwner = tower.IsOwnedBy(LocalPlayerInstanceId);
             TowerControlPanel.SetUpgradeInfo(upgrades, Money, isMaxLevel, isOwner);
         }
 
@@ -167,11 +168,37 @@ public class UIManager
         _previousMouseState = currentMouseState;
     }
 
+    private int? _connectionLostSecondsLeft = null;
+
+    public void ShowConnectionLost(int secondsLeft)
+    {
+        _connectionLostSecondsLeft = secondsLeft;
+    }
+
+    public void HideConnectionLost()
+    {
+        _connectionLostSecondsLeft = null;
+    }
+
     public void Draw(SpriteBatch spriteBatch, Texture2D pixel, SpriteFont font)
     {
         foreach (var element in _allElements)
         {
             element.Draw(spriteBatch, pixel, font);
+        }
+
+        if (_connectionLostSecondsLeft.HasValue)
+        {
+            // Draw a semi-transparent black overlay
+            spriteBatch.Draw(pixel, new Rectangle(0, 0, _screenWidth, _screenHeight), new Color(0, 0, 0, 180));
+            
+            if (font != null)
+            {
+                string text = $"Connection Lost. Disconnecting in {_connectionLostSecondsLeft.Value}s...";
+                Vector2 textSize = font.MeasureString(text);
+                Vector2 position = new Vector2((_screenWidth - textSize.X) / 2, (_screenHeight - textSize.Y) / 2);
+                spriteBatch.DrawString(font, text, position, Color.Red);
+            }
         }
     }
 

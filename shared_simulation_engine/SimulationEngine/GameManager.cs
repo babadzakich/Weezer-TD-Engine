@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using SimulationEngine.BulletRelated;
 using SimulationEngine.BulletRelated.Behaviors;
 using SimulationEngine.EnemyRelated;
@@ -280,6 +281,23 @@ public class GameManager
             // Broadcast state to clients if we are the multiplayer host
             SyncManager?.BroadcastTick(gameTime);
         }
+        else
+        {
+            // Client: run local visual simulation for towers, projectiles, and enemies
+            TowerController.Update(gameTime);
+            DamageDealerController?.Update(gameTime);
+            if (EnemyController != null)
+            {
+                for (int i = 0; i < EnemyController.Enemies.Count; i++)
+                {
+                    var enemy = EnemyController.Enemies[i];
+                    if (enemy.isAlive)
+                    {
+                        enemy.Update(gameTime);
+                    }
+                }
+            }
+        }
 
         if (UIManager.Lives <= 0)
         {
@@ -305,6 +323,54 @@ public class GameManager
         EnemyController?.Draw(spriteBatch);
         DamageDealerController?.Draw(spriteBatch);
         UIManager.Draw(spriteBatch, pixelTexture, font);
+        DrawTowerHoverTooltip(spriteBatch, font, pixelTexture);
+    }
+
+    private void DrawTowerHoverTooltip(SpriteBatch spriteBatch, SpriteFont font, Texture2D pixel)
+    {
+        if (font == null || pixel == null) return;
+        
+        MouseState ms = Mouse.GetState();
+        Vector2 mousePos = new Vector2(ms.X, ms.Y);
+        
+        Tower hoveredTower = null;
+        foreach (var tower in TowerController.towers)
+        {
+            if (Vector2.Distance(tower.Position, mousePos) < 30)
+            {
+                hoveredTower = tower;
+                break;
+            }
+        }
+        
+        if (hoveredTower != null)
+        {
+            string ownerId = hoveredTower.OwnerInstanceId;
+            string ownerName = "Host";
+            
+            if (UIManager.ResolvePlayerName != null)
+            {
+                ownerName = UIManager.ResolvePlayerName(ownerId);
+            }
+            
+            string tooltipText = $"Owner: {ownerName}";
+            Vector2 textSize = font.MeasureString(tooltipText);
+            
+            Vector2 tooltipPos = mousePos + new Vector2(15, 15);
+            
+            // Draw background rectangle
+            Rectangle bgRect = new Rectangle((int)tooltipPos.X, (int)tooltipPos.Y, (int)textSize.X + 10, (int)textSize.Y + 6);
+            spriteBatch.Draw(pixel, bgRect, new Color(0, 0, 0, 180));
+            
+            // Draw border
+            spriteBatch.Draw(pixel, new Rectangle(bgRect.X, bgRect.Y, bgRect.Width, 1), Color.White);
+            spriteBatch.Draw(pixel, new Rectangle(bgRect.X, bgRect.Y + bgRect.Height - 1, bgRect.Width, 1), Color.White);
+            spriteBatch.Draw(pixel, new Rectangle(bgRect.X, bgRect.Y, 1, bgRect.Height), Color.White);
+            spriteBatch.Draw(pixel, new Rectangle(bgRect.X + bgRect.Width - 1, bgRect.Y, 1, bgRect.Height), Color.White);
+            
+            // Draw text
+            spriteBatch.DrawString(font, tooltipText, tooltipPos + new Vector2(5, 3), Color.Yellow);
+        }
     }
 
     public void StartWave()

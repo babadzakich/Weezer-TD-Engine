@@ -50,6 +50,8 @@ public sealed class GameSyncManager : IDisposable
     private readonly List<GameEvent> _pendingEvents = new();
     private readonly ConcurrentQueue<FrameDelta> _pendingClientRequests = new();
     private long _seq;
+    private readonly ConcurrentDictionary<string, int> _playerBalances = new(StringComparer.OrdinalIgnoreCase);
+    private int _startingMoney = 100;
 
     // Client-only
     private UdpClient? _stateReceiver;
@@ -79,6 +81,40 @@ public sealed class GameSyncManager : IDisposable
     {
         _isHostMode = isHost;
         _gm = gm;
+        _startingMoney = gm.UIManager.Money;
+        RegisterPlayerId(gm.UIManager.LocalPlayerInstanceId);
+    }
+
+    private readonly ConcurrentDictionary<string, byte> _seenPlayerIds = new(StringComparer.OrdinalIgnoreCase);
+
+    public void RegisterPlayerId(string? id)
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            _seenPlayerIds.TryAdd(id, 0);
+            // Ensure balance is initialized
+            GetPlayerBalance(id);
+        }
+    }
+
+    public int GetPlayerBalance(string playerId)
+    {
+        if (string.IsNullOrEmpty(playerId) || playerId.Equals(_gm.UIManager.LocalPlayerInstanceId, StringComparison.OrdinalIgnoreCase))
+        {
+            return _gm.UIManager.Money;
+        }
+
+        return _playerBalances.GetOrAdd(playerId, _startingMoney);
+    }
+
+    public void SetPlayerBalance(string playerId, int amount)
+    {
+        if (string.IsNullOrEmpty(playerId) || playerId.Equals(_gm.UIManager.LocalPlayerInstanceId, StringComparison.OrdinalIgnoreCase))
+        {
+            _gm.UIManager.Money = amount;
+            return;
+        }
+        _playerBalances[playerId] = amount;
     }
 
     // -----------------------------------------------------------------------
@@ -160,6 +196,16 @@ public sealed class GameSyncManager : IDisposable
             _pendingEvents.Clear();
         }
 
+        var playerMoney = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(_gm.UIManager.LocalPlayerInstanceId))
+        {
+            playerMoney[_gm.UIManager.LocalPlayerInstanceId] = _gm.UIManager.Money;
+        }
+        foreach (var kvp in _playerBalances)
+        {
+            playerMoney[kvp.Key] = kvp.Value;
+        }
+
         var delta = new FrameDelta
         {
             Seq    = Interlocked.Increment(ref _seq),
@@ -167,6 +213,7 @@ public sealed class GameSyncManager : IDisposable
             Global = new GlobalState
             {
                 Money      = _gm.UIManager.Money,
+                PlayerMoney = playerMoney,
                 Lives      = _gm.UIManager.Lives,
                 WaveIdx    = _gm.WaveController?.CurrentWaveIndex ?? 0,
                 WaveActive = _gm.WaveController?.IsWaveActive ?? false,
@@ -243,7 +290,80 @@ public sealed class GameSyncManager : IDisposable
     }
 
     private void OnHostEnemyKilled(Enemy e)
-        => EnqueueEvent(new EnemyKilledEvent { EnemyId = e.NetworkId, Reward = 0 });
+    {
+        int totalReward = (int)Math.Max(10, e.MaxHealth / 10);
+        var activePlayers = _seenPlayerIds.Keys.ToList();
+        int numPlayers = activePlayers.Count;
+
+        if (numPlayers > 0)
+        {
+            float totalDamageDealt = 0f;
+            foreach (var kvp in e.DamageContributors)
+            {
+                totalDamageDealt += kvp.Value;
+            }
+
+            if (totalDamageDealt <= 0)
+            {
+                // Fallback: split equally
+                int share = totalReward / numPlayers;
+                int leftover = totalReward - (share * numPlayers);
+                for (int i = 0; i < numPlayers; i++)
+                {
+                    int amt = share + (i == 0 ? leftover : 0);
+                    SetPlayerBalance(activePlayers[i], GetPlayerBalance(activePlayers[i]) + amt);
+                }
+            }
+            else
+            {
+                // Option 4: 50% split equally, 50% split by damage contribution
+                int baseShareTotal = totalReward / 2;
+                int baseSharePerPlayer = baseShareTotal / numPlayers;
+                int leftoverBase = baseShareTotal - (baseSharePerPlayer * numPlayers);
+
+                int damageShareTotal = totalReward - baseShareTotal;
+
+                // 1. Distribute base share
+                for (int i = 0; i < numPlayers; i++)
+                {
+                    int amt = baseSharePerPlayer + (i == 0 ? leftoverBase : 0);
+                    SetPlayerBalance(activePlayers[i], GetPlayerBalance(activePlayers[i]) + amt);
+                }
+
+                // 2. Distribute damage share
+                int distributedDamageShare = 0;
+                var contributorList = e.DamageContributors.ToList();
+                for (int i = 0; i < contributorList.Count; i++)
+                {
+                    var contributor = contributorList[i];
+                    string pId = contributor.Key;
+                    float dmg = contributor.Value;
+
+                    if (string.IsNullOrEmpty(pId))
+                    {
+                        pId = _gm.UIManager.LocalPlayerInstanceId ?? string.Empty;
+                    }
+
+                    // Register this player ID if not seen before
+                    RegisterPlayerId(pId);
+
+                    int share = (int)Math.Round((dmg / totalDamageDealt) * damageShareTotal);
+                    if (i == contributorList.Count - 1)
+                    {
+                        share = damageShareTotal - distributedDamageShare;
+                    }
+                    else
+                    {
+                        distributedDamageShare += share;
+                    }
+
+                    SetPlayerBalance(pId, GetPlayerBalance(pId) + share);
+                }
+            }
+        }
+
+        EnqueueEvent(new EnemyKilledEvent { EnemyId = e.NetworkId, Reward = totalReward });
+    }
 
     private void OnHostEnemyReachedGoal(Enemy e)
         => EnqueueEvent(new EnemyReachedGoalEvent
@@ -304,6 +424,7 @@ public sealed class GameSyncManager : IDisposable
 
     private void ApplyClientTowerPlace(TowerPlacedEvent place)
     {
+        RegisterPlayerId(place.Owner);
         var zone = _gm.Map.BuildZones.FirstOrDefault(z => z.Id == place.ZoneId);
         if (zone == null)
         {
@@ -316,9 +437,10 @@ public sealed class GameSyncManager : IDisposable
             EnqueueEvent(new TowerPlaceRejectedEvent { ZoneId = place.ZoneId, RequesterId = place.Owner });
             return;
         }
-        if (_gm.UIManager.Money < place.Cost)
+        int balance = GetPlayerBalance(place.Owner);
+        if (balance < place.Cost)
         {
-            Console.WriteLine($"[Owner] Client TowerPlace REJECTED: not enough money ({_gm.UIManager.Money} < {place.Cost})");
+            Console.WriteLine($"[Owner] Client TowerPlace REJECTED: not enough money ({balance} < {place.Cost})");
             EnqueueEvent(new TowerPlaceRejectedEvent { ZoneId = place.ZoneId, RequesterId = place.Owner });
             return;
         }
@@ -341,7 +463,7 @@ public sealed class GameSyncManager : IDisposable
             OwnerInstanceId = place.Owner,
         };
         _gm.TowerController.AddTower(tower);
-        _gm.UIManager.Money -= place.Cost;
+        SetPlayerBalance(place.Owner, balance - place.Cost);
         zone.Occupy(tower);
 
         EnqueueEvent(new TowerPlacedEvent
@@ -356,17 +478,19 @@ public sealed class GameSyncManager : IDisposable
 
     private void ApplyClientTowerRemove(TowerRemovedEvent remove)
     {
+        RegisterPlayerId(remove.Owner);
         var tower = _gm.TowerController.GetByNetworkId(remove.TowerId);
         if (tower == null) return;
 
-        if (!string.IsNullOrEmpty(tower.OwnerInstanceId) && tower.OwnerInstanceId != remove.Owner)
+        if (!string.IsNullOrEmpty(tower.OwnerInstanceId) && !tower.IsOwnedBy(remove.Owner))
         {
             Console.WriteLine($"[GameSync] Remove rejected: tower owner={tower.OwnerInstanceId}, requester={remove.Owner}");
             return;
         }
 
         int refund = (int)((tower.Definition?.Cost ?? 0) * 0.5f);
-        _gm.UIManager.Money += refund;
+        int balance = GetPlayerBalance(remove.Owner);
+        SetPlayerBalance(remove.Owner, balance + refund);
 
         var zone = _gm.Map.BuildZones.FirstOrDefault(z => Vector2.Distance(z.Position, tower.Position) < 10f);
         zone?.Free();
@@ -377,17 +501,19 @@ public sealed class GameSyncManager : IDisposable
 
     private void ApplyClientTowerUpgrade(TowerUpgradedEvent upg)
     {
+        RegisterPlayerId(upg.Owner);
         var tower = _gm.TowerController.GetByNetworkId(upg.TowerId);
         if (tower == null) return;
 
-        if (!string.IsNullOrEmpty(tower.OwnerInstanceId) && tower.OwnerInstanceId != upg.Owner)
+        if (!string.IsNullOrEmpty(tower.OwnerInstanceId) && !tower.IsOwnedBy(upg.Owner))
         {
             Console.WriteLine($"[GameSync] Upgrade rejected: tower owner={tower.OwnerInstanceId}, requester={upg.Owner}");
             return;
         }
 
         if (!_gm.TowerDefinitions.TryGetValue(upg.BehaviorId, out var def)) return;
-        if (_gm.UIManager.Money < upg.Cost) return;
+        int balance = GetPlayerBalance(upg.Owner);
+        if (balance < upg.Cost) return;
 
         var behavior = TowerBehaviorFactory.CreateTowerBehavior(def);
         var upgraded = new Tower(behavior, tower.Position, def)
@@ -395,7 +521,7 @@ public sealed class GameSyncManager : IDisposable
             NetworkId       = upg.TowerId,
             OwnerInstanceId = tower.OwnerInstanceId,
         };
-        _gm.UIManager.Money -= upg.Cost;
+        SetPlayerBalance(upg.Owner, balance - upg.Cost);
 
         int idx = _gm.TowerController.towers.IndexOf(tower);
         if (idx >= 0) _gm.TowerController.towers[idx] = upgraded;
@@ -437,8 +563,18 @@ public sealed class GameSyncManager : IDisposable
 
     private void ApplyDelta(FrameDelta delta)
     {
-        _gm.UIManager.Money = delta.Global.Money;
         _gm.UIManager.Lives = delta.Global.Lives;
+
+        string localId = _gm.UIManager.LocalPlayerInstanceId;
+        if (delta.Global.PlayerMoney != null && !string.IsNullOrEmpty(localId) &&
+            delta.Global.PlayerMoney.TryGetValue(localId, out int myMoney))
+        {
+            _gm.UIManager.Money = myMoney;
+        }
+        else
+        {
+            _gm.UIManager.Money = delta.Global.Money;
+        }
 
         var ec = _gm.EnemyController;
         if (ec != null)
@@ -448,6 +584,7 @@ public sealed class GameSyncManager : IDisposable
                 var enemy = ec.GetByNetworkId(tick.Id);
                 if (enemy == null || !enemy.isAlive) continue;
                 enemy.Position = new Vector2(tick.X, tick.Y);
+                enemy.Health = tick.Hp;
             }
         }
 

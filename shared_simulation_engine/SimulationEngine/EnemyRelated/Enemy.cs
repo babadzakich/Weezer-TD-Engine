@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices.Swift;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -12,7 +13,7 @@ public class Enemy
     private Vector2 _previousPosition;
     private IEnemyType _type;
     private readonly MapRelated.Path _path;
-    public int Health => _type.health;
+    public int Health { get => _type.health; set => _type.health = value; }
     public int MaxHealth => _type.MaxHealth;
     public int Damage => _type.Damage;
     public float HitRadius => _type.HitRadius;
@@ -105,9 +106,19 @@ public class Enemy
         return _pixelTexture;
     }
 
-    public void TakeDamage(float amount)
+    public Dictionary<string, float> DamageContributors { get; } = new(System.StringComparer.OrdinalIgnoreCase);
+
+    public void TakeDamage(float amount, string sourcePlayerId = "")
     {
         _type.TakeDamage(amount);
+
+        string pId = sourcePlayerId ?? string.Empty;
+        if (!DamageContributors.ContainsKey(pId))
+        {
+            DamageContributors[pId] = 0f;
+        }
+        DamageContributors[pId] += amount;
+
         // kill enemy if health is leess or equals than 0
         if (_type.health <= 0)
         {

@@ -8,6 +8,7 @@ public class DamageDealer
     public IDamageDealerBehavior Behavior { get; }
     public Texture2D Texture { get; set; }
     public float HitRadius { get; }
+    public string OwnerInstanceId { get; set; } = string.Empty;
 
     public Vector2 position;
     public bool IsActive = true;

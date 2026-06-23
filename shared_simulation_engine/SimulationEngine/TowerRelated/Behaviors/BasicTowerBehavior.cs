@@ -113,6 +113,7 @@ public class BasicTowerBehavior : ITowerBehavior
         Vector2 direction = Vector2.Normalize(targetPosition - tower.Position);
         
         var bullet = new DamageDealer(projectileConfig, tower.Position, direction, projectileConfig.HitRadius);
+        bullet.OwnerInstanceId = tower.OwnerInstanceId;
         GameManager.GetInstance().DamageDealerController?.AddDamageDealer(bullet);
     }
 

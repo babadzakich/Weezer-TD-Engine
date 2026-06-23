@@ -131,7 +131,7 @@ public class DamageDealerController : Controller
 
                 if (distance <= combinedRadius)
                 {
-                    enemy.TakeDamage(damageDealer.Behavior.Damage);
+                    enemy.TakeDamage(damageDealer.Behavior.Damage, damageDealer.OwnerInstanceId);
                     
                     // Спавним взрыв
                     SpawnExplosion(damageDealer);

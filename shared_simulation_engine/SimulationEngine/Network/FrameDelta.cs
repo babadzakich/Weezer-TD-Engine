@@ -149,6 +149,9 @@ public sealed class GlobalState
     [JsonPropertyName("money")]
     public int Money { get; init; }
 
+    [JsonPropertyName("playerMoney")]
+    public Dictionary<string, int> PlayerMoney { get; init; } = new(System.StringComparer.OrdinalIgnoreCase);
+
     [JsonPropertyName("lives")]
     public int Lives { get; init; }
 

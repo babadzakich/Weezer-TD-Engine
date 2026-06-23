@@ -189,7 +189,7 @@ public class GameInputHandler
     private void SellTower(Tower tower)
     {
         if (tower == null) return;
-        if (tower.OwnerInstanceId != _uiManager.LocalPlayerInstanceId)
+        if (!tower.IsOwnedBy(_uiManager.LocalPlayerInstanceId))
         {
             Console.WriteLine("Attempt to sell tower by non-owner ignored.");
             _uiManager.HideTowerControl();
@@ -238,7 +238,7 @@ public class GameInputHandler
     {
         if (tower == null || next == null) return;
 
-        if (tower.OwnerInstanceId != _uiManager.LocalPlayerInstanceId)
+        if (!tower.IsOwnedBy(_uiManager.LocalPlayerInstanceId))
         {
             Console.WriteLine("Attempt to upgrade tower by non-owner ignored.");
             _uiManager.HideTowerControl();
