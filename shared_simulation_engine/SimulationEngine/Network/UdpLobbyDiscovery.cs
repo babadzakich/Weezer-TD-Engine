@@ -32,6 +32,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
     private readonly string _instanceId = Guid.NewGuid().ToString("N");
     private readonly CancellationTokenSource _cts = new();
     private readonly ConcurrentDictionary<string, LobbyAnnouncement> _discovered = new();
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _discoveredLastSeen = new();
     private readonly ConcurrentDictionary<string, PeerPlayer> _lobbyPlayers = new();
 
     private UdpClient _broadcaster;
@@ -264,6 +265,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
 
                 ann = ann with { SourceIp = result.RemoteEndPoint.Address.ToString() };
                 _discovered[ann.InstanceId] = ann;
+                _discoveredLastSeen[ann.InstanceId] = DateTimeOffset.UtcNow;
 
                 // Track player presence within the lobby we're in (or any lobby)
                 _lobbyPlayers[ann.InstanceId] = new PeerPlayer
@@ -288,10 +290,10 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
         var cutoff = DateTimeOffset.UtcNow.AddSeconds(-StaleSeconds);
         foreach (var key in _discovered.Keys.ToArray())
         {
-            if (_discovered.TryGetValue(key, out var a) &&
-                DateTimeOffset.FromUnixTimeSeconds(a.Timestamp) < cutoff)
+            if (_discoveredLastSeen.TryGetValue(key, out var lastSeen) && lastSeen < cutoff)
             {
                 _discovered.TryRemove(key, out _);
+                _discoveredLastSeen.TryRemove(key, out _);
                 _lobbyPlayers.TryRemove(key, out _);
             }
         }
