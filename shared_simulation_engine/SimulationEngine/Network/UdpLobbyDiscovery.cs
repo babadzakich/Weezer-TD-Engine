@@ -242,8 +242,54 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
                         Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                     };
                     byte[] payload = JsonSerializer.SerializeToUtf8Bytes(_ownAnnouncement, JsonOpts);
-                    await _broadcaster.SendAsync(payload, broadcastEp, ct); // LAN
-                    await _broadcaster.SendAsync(payload, loopbackEp,  ct); // same-machine
+                    
+                    // 1. Broadcast on all active network interfaces to handle multi-NIC/virtual adapter environments
+                    try
+                    {
+                        foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                        {
+                            if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                            if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+
+                            var props = ni.GetIPProperties();
+                            foreach (var unicast in props.UnicastAddresses)
+                            {
+                                if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
+                                {
+                                    var ipBytes = unicast.Address.GetAddressBytes();
+                                    var maskBytes = unicast.IPv4Mask?.GetAddressBytes();
+                                    if (maskBytes == null || maskBytes.Length != 4) continue;
+
+                                    var broadcastBytes = new byte[4];
+                                    for (int i = 0; i < 4; i++)
+                                    {
+                                        broadcastBytes[i] = (byte)(ipBytes[i] | ~maskBytes[i]);
+                                    }
+                                    var subnetBroadcast = new IPAddress(broadcastBytes);
+                                    await _broadcaster.SendAsync(payload, new IPEndPoint(subnetBroadcast, BroadcastPort), ct);
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Fallback to standard broad broadcast if NIC scanning fails
+                        await _broadcaster.SendAsync(payload, broadcastEp, ct);
+                    }
+
+                    // 2. Local loopback broadcast (same-machine)
+                    await _broadcaster.SendAsync(payload, loopbackEp,  ct);
+
+                    // 3. Unicast directly to all known peer players in our lobby (direct routing fallback)
+                    foreach (var player in _lobbyPlayers.Values)
+                    {
+                        if (player.InstanceId == _instanceId || player.LobbyId != _ownAnnouncement.LobbyId) continue;
+                        var ipStr = GetInstanceIp(player.InstanceId);
+                        if (!string.IsNullOrEmpty(ipStr) && IPAddress.TryParse(ipStr, out var ip))
+                        {
+                            await _broadcaster.SendAsync(payload, new IPEndPoint(ip, BroadcastPort), ct);
+                        }
+                    }
                 }
                 await Task.Delay(AnnounceIntervalMs, ct);
             }
