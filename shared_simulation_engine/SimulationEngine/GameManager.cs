@@ -230,6 +230,19 @@ public class GameManager
     }
 
     /// <summary>
+    /// Called by GameSyncManager when another node is elected master while we were host.
+    /// Switches back to client-only mode (apply deltas, stop running the authoritative
+    /// simulation) so the two nodes don't both simulate (split-brain).
+    /// </summary>
+    public void DemoteToClient()
+    {
+        IsNetworkClient = true;
+        _inputHandler.IsNetworkClient = true;
+        UIManager.StartWaveButton.IsEnabled = false;
+        Console.WriteLine("[GameManager] Demoted to client.");
+    }
+
+    /// <summary>
     /// Called when the network is detected as broken (Raft couldn't reach any peer).
     /// Shows a connection-lost overlay and fires Disconnected after 10 seconds.
     /// </summary>

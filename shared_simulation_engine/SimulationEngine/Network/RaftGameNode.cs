@@ -44,6 +44,9 @@ public sealed class RaftGameNode : IDisposable
     public const int ConsensusPort = 47780;
 
     private static readonly TimeSpan HeartbeatTimeout   = TimeSpan.FromSeconds(3);
+    // How often the leader re-broadcasts its leadership (acts as a Raft heartbeat).
+    // Must be comfortably smaller than HeartbeatTimeout so followers tolerate a few losses.
+    private static readonly TimeSpan HeartbeatInterval  = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan ElectionTimeoutMin = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan ElectionTimeoutMax = TimeSpan.FromMilliseconds(1500);
     private static readonly TimeSpan PacketTimeout      = TimeSpan.FromSeconds(1);
@@ -130,6 +133,7 @@ public sealed class RaftGameNode : IDisposable
         {
             _role             = GameNodeRole.Leader;
             _currentTerm      = 1;
+            _votedFor         = _myId;   // we've "voted" for ourselves this term: don't grant our vote away
             _leaderId         = _myId;
             _masterInstanceId = _myId;
             _lastLeaderContact = DateTimeOffset.UtcNow;
@@ -272,22 +276,38 @@ public sealed class RaftGameNode : IDisposable
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Broadcasts presence every 2 s so all nodes learn each other's IPs.
+    /// Runs every <see cref="HeartbeatInterval"/> (1 s):
+    ///   - If we are the Leader, re-broadcast a LeaderAnnouncement. This is the Raft
+    ///     heartbeat that keeps every follower's election timer from firing, independent
+    ///     of whether game-state FrameDeltas are flowing. Without it a 3 s gap in
+    ///     FrameDeltas triggers a spurious election and the master role flip-flops.
+    ///   - Otherwise broadcast plain presence so all nodes learn each other's IPs.
     /// On same-machine testing, broadcast reaches all processes sharing port 47780.
-    /// On LAN, broadcast reaches all nodes on the subnet.
+    /// On LAN, broadcast reaches all nodes on the subnet (BroadcastAsync also unicasts
+    /// to every known peer, so heartbeats survive broadcast-filtering firewalls).
     /// </summary>
     private async Task AnnounceLoopAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
-            var packet = ConsensusPacket.Create(
-                ConsensusMessageTypes.Announce,
-                Guid.NewGuid().ToString("N"),
-                _myId,
-                new PingPayload());
-            await BroadcastAsync(packet, ct);
+            bool isLeader;
+            lock (_lock) { isLeader = _role == GameNodeRole.Leader; }
 
-            try { await Task.Delay(TimeSpan.FromSeconds(2), ct); }
+            if (isLeader)
+            {
+                await AnnounceLeadershipAsync(ct);
+            }
+            else
+            {
+                var packet = ConsensusPacket.Create(
+                    ConsensusMessageTypes.Announce,
+                    Guid.NewGuid().ToString("N"),
+                    _myId,
+                    new PingPayload());
+                await BroadcastAsync(packet, ct);
+            }
+
+            try { await Task.Delay(HeartbeatInterval, ct); }
             catch (OperationCanceledException) { break; }
         }
     }
@@ -318,24 +338,44 @@ public sealed class RaftGameNode : IDisposable
             string? masterId;
             lock (_lock) { masterId = _masterInstanceId; }
 
-            var clientPeers = _peerIdToIp
-                .Where(kv => kv.Key != _myId && kv.Key != masterId)
+            var otherPeers = _peerIdToIp
+                .Where(kv => kv.Key != _myId)
+                .ToList();
+            var clientPeers = otherPeers
+                .Where(kv => kv.Key != masterId)
                 .ToList();
 
-            if (clientPeers.Count == 0)
+            if (otherPeers.Count == 0)
             {
-                // Sole remaining player — self-promote without voting.
-                Console.WriteLine("[Raft] No other client peers found — self-promoting to master.");
+                // Truly alone — no other node exists. Self-promote without voting.
+                Console.WriteLine("[Raft] No peers at all — self-promoting to master.");
                 await StartElectionAsync(ct);
                 return;
             }
 
-            // Broadcast a single ping — any alive client peer will respond.
+            // Probe the network. Any node (a client peer OR the master itself) that
+            // answers the ping proves it is still reachable.
             bool anyAlive = await PingAnyPeerAsync(ct);
+
+            if (clientPeers.Count == 0)
+            {
+                // The only other node is the master. Confirm it is really gone before
+                // taking over — a brief heartbeat gap in a 2-player game must NOT cause
+                // a split-brain where both nodes believe they are the host.
+                if (anyAlive)
+                {
+                    Console.WriteLine("[Raft] Master answered ping — still alive, standing down.");
+                    lock (_lock) _lastLeaderContact = DateTimeOffset.UtcNow;
+                    continue;
+                }
+                Console.WriteLine("[Raft] Master unreachable, no other peers — self-promoting to master.");
+                await StartElectionAsync(ct);
+                return;
+            }
 
             if (!anyAlive)
             {
-                Console.WriteLine("[Raft] No client peer responded — own network is broken.");
+                Console.WriteLine("[Raft] No peer responded — own network is broken.");
                 OnNetworkLost?.Invoke();
                 return;
             }
@@ -524,12 +564,19 @@ public sealed class RaftGameNode : IDisposable
         var payload = packet.Payload.Deserialize<LeaderAnnouncementPayload>(JsonOpts);
         if (payload is null) return;
 
+        bool leaderChanged;
         lock (_lock)
         {
             if (payload.Term < _currentTerm) return;
+            // Distinguish a genuine leadership change from a periodic heartbeat re-announce
+            // of the same leader (which arrives every HeartbeatInterval).
+            leaderChanged = _masterInstanceId != payload.LeaderId || _currentTerm != payload.Term;
             _masterInstanceId = payload.LeaderId;
             BecomeFollower(payload.Term, payload.LeaderId);
         }
+
+        // Heartbeat from the leader we already follow — timer was reset above, stay quiet.
+        if (!leaderChanged) return;
 
         string ip = !string.IsNullOrEmpty(payload.LeaderIp)
             ? payload.LeaderIp

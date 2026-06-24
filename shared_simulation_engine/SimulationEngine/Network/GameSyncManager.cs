@@ -311,8 +311,16 @@ public sealed class GameSyncManager : IDisposable
     // Host: subscribe to game events
     // -----------------------------------------------------------------------
 
+    private bool _eventsSubscribed;
+
     private void SubscribeToGameEvents()
     {
+        // Idempotent: a node may pass through host mode more than once
+        // (promote → demote → re-promote). The handlers themselves are no-ops while
+        // the local simulation is paused (client mode), so we never unsubscribe.
+        if (_eventsSubscribed) return;
+        _eventsSubscribed = true;
+
         var ec = _gm.EnemyController;
         if (ec != null)
         {
@@ -896,6 +904,15 @@ public sealed class GameSyncManager : IDisposable
 
         // Update the endpoint we send client requests to
         _hostEndpoint = new IPEndPoint(IPAddress.Parse(ip), RequestPort);
+
+        // If we currently act as host but a *different* node is now the elected master,
+        // step down. Otherwise both nodes would run their own simulation (split-brain):
+        // towers placed on one never reach the other and enemy state diverges.
+        bool isMe = !string.IsNullOrEmpty(instanceId)
+                 && instanceId.Equals(_gm.UIManager.LocalPlayerInstanceId, StringComparison.OrdinalIgnoreCase);
+        if (_isHostMode && !isMe)
+            DemoteToClient(ip);
+
         OnHostSwitched?.Invoke(ip);
     }
 
@@ -944,6 +961,53 @@ public sealed class GameSyncManager : IDisposable
         _gm.PromoteToHost();
 
         Console.WriteLine("[GameSync] Promoted to game master.");
+    }
+
+    // -----------------------------------------------------------------------
+    // DemoteToClient — a former host steps down when another node is elected master
+    // -----------------------------------------------------------------------
+
+    private void DemoteToClient(string hostIp)
+    {
+        if (!_isHostMode) return;
+
+        // Flip the mode flag first so BroadcastTick stops sending immediately.
+        _isHostMode = false;
+        _raftPromotion = false; // allow a future re-promotion if leadership comes back
+
+        // Close host-only sockets (their receive loops exit on dispose).
+        try { _broadcaster?.Dispose(); } catch { }
+        _broadcaster = null;
+        try { _requestReceiver?.Dispose(); } catch { }
+        _requestReceiver = null;
+
+        // Point requests at the new master and (re)open client-only sockets.
+        try { _hostEndpoint = new IPEndPoint(IPAddress.Parse(hostIp), RequestPort); }
+        catch { }
+
+        if (_stateReceiver == null)
+        {
+            try
+            {
+                _stateReceiver = new UdpClient();
+                _stateReceiver.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                _stateReceiver.Client.Bind(new IPEndPoint(IPAddress.Any, StateBroadcastPort));
+                _stateReceiver.EnableBroadcast = true;
+                _ = Task.Run(() => ReceiveStateLoopAsync(_cts.Token), _cts.Token);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GameSync] DemoteToClient: failed to open client socket: {ex.Message}");
+            }
+        }
+
+        _requester ??= new UdpClient();
+        SendHello();
+
+        // Tell GameManager to stop simulating and start applying incoming deltas again.
+        _gm.DemoteToClient();
+
+        Console.WriteLine("[GameSync] Demoted to client — new master is the active host.");
     }
 
     // -----------------------------------------------------------------------

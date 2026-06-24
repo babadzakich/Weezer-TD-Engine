@@ -1,4 +1,0 @@
-[23:58:14.748] [PID 24360] Initialize Game: PlayerName='Player_966c' InstanceId='71f8f00ccb6448b18b0bf7c6616bde81' IsHost=False LobbyId='f1ccb49d45e749b3b2420cb3c9fc5d4c'
-[23:58:31.136] [PID 24360] Host OnTowerSelected: local tower created. NetworkId=-1 OwnerInstanceId='71f8f00ccb6448b18b0bf7c6616bde81'
-[23:58:37.048] [PID 24360] Host OnTowerSelected: local tower created. NetworkId=-1 OwnerInstanceId='71f8f00ccb6448b18b0bf7c6616bde81'
-[23:58:50.664] [PID 24360] Host OnTowerSelected: local tower created. NetworkId=-1 OwnerInstanceId='71f8f00ccb6448b18b0bf7c6616bde81'
