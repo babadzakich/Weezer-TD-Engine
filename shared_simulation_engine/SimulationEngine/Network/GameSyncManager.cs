@@ -61,9 +61,9 @@ public sealed class GameSyncManager : IDisposable
     private IPEndPoint? _hostEndpoint;
     private readonly ConcurrentQueue<FrameDelta> _incomingDeltas = new();
 
-    // Raft consensus node (both host and client)
     private RaftGameNode? _raftNode;
     private bool _raftPromotion; // guard: PromoteToHost runs only once
+    private readonly ConcurrentDictionary<string, string> _peerIps = new(StringComparer.OrdinalIgnoreCase);
 
     private bool _disposed;
 
@@ -130,6 +130,10 @@ public sealed class GameSyncManager : IDisposable
     /// </summary>
     public void SetPeers(IReadOnlyDictionary<string, string> instanceToIp, string myInstanceId)
     {
+        _peerIps.Clear();
+        foreach (var kv in instanceToIp)
+            _peerIps[kv.Key] = kv.Value;
+
         _raftNode = new RaftGameNode(myInstanceId);
         _raftNode.SetPeers(instanceToIp);
         _raftNode.OnBecameLeader    += HandleRaftBecameLeader;
@@ -225,10 +229,60 @@ public sealed class GameSyncManager : IDisposable
         };
 
         byte[] payload = FrameDeltaSerializer.Serialize(delta);
-        var broadcastEp = new IPEndPoint(IPAddress.Broadcast, StateBroadcastPort);
-        var loopbackEp  = new IPEndPoint(IPAddress.Loopback,  StateBroadcastPort);
-        try { _broadcaster.Send(payload, broadcastEp); } catch { }
-        try { _broadcaster.Send(payload, loopbackEp);  } catch { }
+        BroadcastState(payload);
+    }
+
+    private void BroadcastState(byte[] payload)
+    {
+        if (_broadcaster == null) return;
+
+        // 1. Broadcast on all active network interfaces to handle multi-NIC/virtual adapter environments
+        try
+        {
+            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+
+                var props = ni.GetIPProperties();
+                foreach (var unicast in props.UnicastAddresses)
+                {
+                    if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        var ipBytes = unicast.Address.GetAddressBytes();
+                        var maskBytes = unicast.IPv4Mask?.GetAddressBytes();
+                        if (maskBytes == null || maskBytes.Length != 4) continue;
+
+                        var broadcastBytes = new byte[4];
+                        for (int i = 0; i < 4; i++)
+                        {
+                            broadcastBytes[i] = (byte)(ipBytes[i] | ~maskBytes[i]);
+                        }
+                        var subnetBroadcast = new IPAddress(broadcastBytes);
+                        _broadcaster.Send(payload, new IPEndPoint(subnetBroadcast, StateBroadcastPort));
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to standard broad broadcast
+            var broadcastEp = new IPEndPoint(IPAddress.Broadcast, StateBroadcastPort);
+            try { _broadcaster.Send(payload, broadcastEp); } catch { }
+        }
+
+        // 2. Local loopback broadcast (same-machine)
+        var loopbackEp = new IPEndPoint(IPAddress.Loopback, StateBroadcastPort);
+        try { _broadcaster.Send(payload, loopbackEp); } catch { }
+
+        // 3. Unicast directly to all known peer players (fallback direct channel)
+        foreach (var ipStr in _peerIps.Values)
+        {
+            if (!string.IsNullOrEmpty(ipStr) && IPAddress.TryParse(ipStr, out var ip))
+            {
+                try { _broadcaster.Send(payload, new IPEndPoint(ip, StateBroadcastPort)); } catch { }
+            }
+        }
     }
 
     private void ProcessPendingClientRequests()

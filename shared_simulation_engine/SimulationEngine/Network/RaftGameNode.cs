@@ -562,16 +562,55 @@ public sealed class RaftGameNode : IDisposable
         }
     }
 
-    /// <summary>
-    /// Sends the packet to both the subnet broadcast address and the loopback broadcast address.
-    /// This ensures delivery on LAN (255.255.255.255) AND on same-machine testing where multiple
-    /// processes share port 47780 via SO_REUSEADDR (broadcast reaches all of them, unicast doesn't).
-    /// </summary>
     private async Task BroadcastAsync(ConsensusPacket packet, CancellationToken ct)
     {
         var data = JsonSerializer.SerializeToUtf8Bytes(packet, JsonOpts);
-        try { await _udp!.SendAsync(data, BroadcastEp, ct); } catch { }
-        try { await _udp!.SendAsync(data, LoopbackEp,  ct); } catch { }
+        
+        // 1. Broadcast on all active network interfaces to handle multi-NIC/virtual adapter environments
+        try
+        {
+            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+
+                var props = ni.GetIPProperties();
+                foreach (var unicast in props.UnicastAddresses)
+                {
+                    if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        var ipBytes = unicast.Address.GetAddressBytes();
+                        var maskBytes = unicast.IPv4Mask?.GetAddressBytes();
+                        if (maskBytes == null || maskBytes.Length != 4) continue;
+
+                        var broadcastBytes = new byte[4];
+                        for (int i = 0; i < 4; i++)
+                        {
+                            broadcastBytes[i] = (byte)(ipBytes[i] | ~maskBytes[i]);
+                        }
+                        var subnetBroadcast = new IPAddress(broadcastBytes);
+                        await _udp!.SendAsync(data, new IPEndPoint(subnetBroadcast, ConsensusPort), ct);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to standard broad broadcast
+            try { await _udp!.SendAsync(data, BroadcastEp, ct); } catch { }
+        }
+
+        // 2. Local loopback broadcast (same-machine)
+        try { await _udp!.SendAsync(data, LoopbackEp, ct); } catch { }
+
+        // 3. Unicast directly to all known peer players (fallback direct channel)
+        foreach (var ipStr in _peerIdToIp.Values)
+        {
+            if (!string.IsNullOrEmpty(ipStr) && IPAddress.TryParse(ipStr, out var ip))
+            {
+                try { await _udp!.SendAsync(data, new IPEndPoint(ip, ConsensusPort), ct); } catch { }
+            }
+        }
     }
 
     /// <summary>Best-effort detection of the machine's outbound IP address.</summary>
