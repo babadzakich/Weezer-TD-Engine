@@ -1,0 +1,32 @@
+[
+  {
+    "name": "basic_tower",
+    "className": "BasicTowerBehavior",
+    "args": [
+      {
+        "name": "id",
+        "value": "basic_tower"
+      },
+      {
+        "name": "name",
+        "value": "Basic Tower"
+      },
+      {
+        "name": "projectileConfig",
+        "value": "test_base_round"
+      },
+      {
+        "name": "cost",
+        "value": 100
+      },
+      {
+        "name": "range",
+        "value": 150
+      },
+      {
+        "name": "fireRate",
+        "value": 1.0
+      }
+    ]
+  }
+]

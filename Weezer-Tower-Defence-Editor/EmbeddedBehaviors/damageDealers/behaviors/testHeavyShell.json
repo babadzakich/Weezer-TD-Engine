@@ -1,0 +1,23 @@
+{
+  "name": "Test Heavy Shell",
+  "fileName": "testHeavyShell",
+  "className": "TestHeavyShellBehavior",
+  "args": [
+    {
+      "name": "damage",
+      "type": "float"
+    },
+    {
+      "name": "speed",
+      "type": "float"
+    },
+    {
+      "name": "maxDistance",
+      "type": "float"
+    },
+    {
+      "name": "hitRadius",
+      "type": "float"
+    }
+  ]
+}

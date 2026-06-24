@@ -1,0 +1,5 @@
+C:\Projects\HW\Weezer-TD-Engine\obj\Debug\net9.0\scratch_test.GeneratedMSBuildEditorConfig.editorconfig
+C:\Projects\HW\Weezer-TD-Engine\obj\Debug\net9.0\scratch_test.AssemblyInfoInputs.cache
+C:\Projects\HW\Weezer-TD-Engine\obj\Debug\net9.0\scratch_test.AssemblyInfo.cs
+C:\Projects\HW\Weezer-TD-Engine\obj\Debug\net9.0\scratch_test.csproj.CoreCompileInputs.cache
+C:\Projects\HW\Weezer-TD-Engine\obj\Debug\net9.0\scratch_test.sourcelink.json

@@ -1,0 +1,23 @@
+{
+  "name": "Orc Warrior",
+  "fileName": "orcEnemy",
+  "className": "OrcEnemyType",
+  "args": [
+    {
+      "name": "health",
+      "type": "int"
+    },
+    {
+      "name": "speed",
+      "type": "float"
+    },
+    {
+      "name": "damage",
+      "type": "int"
+    },
+    {
+      "name": "hitRadius",
+      "type": "float"
+    }
+  ]
+}

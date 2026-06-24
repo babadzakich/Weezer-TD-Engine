@@ -1,0 +1,23 @@
+{
+  "name": "Training Dummy Enemy",
+  "fileName": "trainingDummyEnemy",
+  "className": "TrainingDummyEnemyType",
+  "args": [
+    {
+      "name": "health",
+      "type": "int"
+    },
+    {
+      "name": "speed",
+      "type": "float"
+    },
+    {
+      "name": "damage",
+      "type": "int"
+    },
+    {
+      "name": "hitRadius",
+      "type": "float"
+    }
+  ]
+}

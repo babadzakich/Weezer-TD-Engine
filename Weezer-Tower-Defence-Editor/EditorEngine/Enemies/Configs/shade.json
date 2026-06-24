@@ -1,0 +1,8 @@
+{
+  "Id": "shade",
+  "DisplayName": "Shadow Shade",
+  "BehaviorId": "teleporting",
+  "BaseHealth": 50,
+  "BaseSpeed": 30.0,
+  "Damage": 5
+}

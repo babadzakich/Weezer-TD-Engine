@@ -1,0 +1,31 @@
+{
+  "name": "Branching Test Tower",
+  "fileName": "branchingTestTower",
+  "className": "BranchingTestTowerBehavior",
+  "args": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "projectileConfig",
+      "type": "IDamageDealerBehavior"
+    },
+    {
+      "name": "cost",
+      "type": "int"
+    },
+    {
+      "name": "range",
+      "type": "float"
+    },
+    {
+      "name": "fireRate",
+      "type": "float"
+    }
+  ]
+}

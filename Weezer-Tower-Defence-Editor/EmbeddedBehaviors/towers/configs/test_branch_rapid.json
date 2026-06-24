@@ -1,0 +1,32 @@
+[
+  {
+    "name": "test_branch_rapid",
+    "className": "BranchingTestTowerBehavior",
+    "args": [
+      {
+        "name": "id",
+        "value": "test_branch_rapid"
+      },
+      {
+        "name": "name",
+        "value": "Rapid Fork Tower"
+      },
+      {
+        "name": "projectileConfig",
+        "value": "test_rapid_round"
+      },
+      {
+        "name": "cost",
+        "value": 210
+      },
+      {
+        "name": "range",
+        "value": 185
+      },
+      {
+        "name": "fireRate",
+        "value": 3.0
+      }
+    ]
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "test_branch_laser",
+    "className": "LaserTowerBehavior",
+    "args": [
+      {
+        "name": "id",
+        "value": "test_branch_laser"
+      },
+      {
+        "name": "name",
+        "value": "Laser Fork Tower"
+      },
+      {
+        "name": "projectileConfig",
+        "value": "test_base_round"
+      },
+      {
+        "name": "cost",
+        "value": 260
+      },
+      {
+        "name": "range",
+        "value": 200
+      },
+      {
+        "name": "fireRate",
+        "value": 30.0
+      }
+    ]
+  }
+]

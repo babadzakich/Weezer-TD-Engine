@@ -1,0 +1,11 @@
+{
+  "id": "test_branch_heavy",
+  "name": "Heavy Fork Tower",
+  "className": "BranchingTestTowerBehavior",
+  "bulletClassName": "test_heavy_shell",
+  "cost": 240,
+  "range": 240,
+  "fireRate": 0.7,
+  "damage": 36,
+  "upgradeOptions": []
+}
