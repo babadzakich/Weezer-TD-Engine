@@ -1,0 +1,11 @@
+{
+  "id": "test_branch_laser",
+  "name": "Laser Fork Tower",
+  "className": "LaserTowerBehavior",
+  "bulletClassName": "",
+  "cost": 260,
+  "range": 200,
+  "fireRate": 30.0,
+  "damage": 6,
+  "upgradeOptions": []
+}

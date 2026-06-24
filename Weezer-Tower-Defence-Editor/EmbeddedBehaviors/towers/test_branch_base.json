@@ -15,6 +15,10 @@
     {
       "cost": 110,
       "targetTowerId": "test_branch_heavy"
+    },
+    {
+      "cost": 140,
+      "targetTowerId": "test_branch_laser"
     }
   ]
 }
