@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -21,6 +22,7 @@ namespace SimulationEngine.BulletRelated.Behaviors
         public float Damage { get => _damage; set => _damage = value; }
         public float HitRadius { get => _hitRadius; set => _hitRadius = value; }
         public float Speed { get => _speed; set => _speed = value; }
+        public float MaxDistance => _maxDistance;
 
         public void Draw(DamageDealer damageDealer, SpriteBatch spriteBatch)
         {
@@ -32,9 +34,9 @@ namespace SimulationEngine.BulletRelated.Behaviors
             
             if (damageDealer.Texture != null)
             {
-                // Масштабируем пулю под её радиус попадания (HitRadius)
-                // Визуальный размер обычно чуть больше физического радиуса для красоты
-                float visualSize = damageDealer.HitRadius * 4f; 
+                // Visual size is independent of collision radius — cap at 40px so large-radius
+                // splash bullets (e.g. hitRadius=100) don't cover the whole screen.
+                float visualSize = Math.Min(damageDealer.HitRadius * 2f, 40f);
                 Rectangle destRect = new Rectangle(
                     (int)damageDealer.Position.X,
                     (int)damageDealer.Position.Y,

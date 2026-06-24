@@ -9,6 +9,7 @@ namespace SimulationEngine.MapRelated;
 public class BuildZone
 {
     private Tower occupyingTower;
+    public Tower OccupyingTower => occupyingTower;
     public Vector2 Position { get; set; }
     public string Id { get; set; }
     public bool IsOccupied { get; set; }

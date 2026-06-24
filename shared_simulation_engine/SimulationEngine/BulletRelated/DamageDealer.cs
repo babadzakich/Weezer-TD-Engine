@@ -45,6 +45,8 @@ public class DamageDealer
         set => position = value;
     }
 
+    public int NetworkId { get; set; } = -1;
+
     public bool IsOutOfBounds(Rectangle bounds)
     {
         return Position.X < bounds.Left || Position.X > bounds.Right ||
