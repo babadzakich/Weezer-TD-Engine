@@ -79,7 +79,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
             .Where(p => p.LobbyId == lobbyId)
             .OrderByDescending(p => p.IsHost)
             .ThenBy(p => p.PlayerName, StringComparer.OrdinalIgnoreCase)
-            .Select(p => new LocalLobbyPlayerInfo(p.InstanceId, p.PlayerName, p.IsHost, 0, p.MaxPlayers))
+            .Select(p => new LocalLobbyPlayerInfo(p.InstanceId, p.PlayerName, p.IsHost, 0, p.MaxPlayers, p.IsReady))
             .ToArray();
     }
 
@@ -108,6 +108,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
             PlayerName = hostName,
             IsHost = true,
             MaxPlayers = maxPlayers,
+            IsReady = false,
             LastSeen = DateTimeOffset.UtcNow
         };
 
@@ -143,6 +144,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
             PlayerName = playerName,
             IsHost = false,
             MaxPlayers = host.MaxPlayers,
+            IsReady = false,
             LastSeen = DateTimeOffset.UtcNow
         };
 
@@ -164,7 +166,13 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
             _lobbyPlayers[_instanceId] = p with { LastSeen = DateTimeOffset.UtcNow };
     }
 
-    public void UpdatePlayerStatus(bool isReady) { /* ready state not broadcast in this impl */ }
+    public void UpdatePlayerStatus(bool isReady)
+    {
+        if (_ownAnnouncement is null) return;
+        _ownAnnouncement = _ownAnnouncement with { IsReady = isReady };
+        if (_lobbyPlayers.TryGetValue(_instanceId, out var p))
+            _lobbyPlayers[_instanceId] = p with { IsReady = isReady, LastSeen = DateTimeOffset.UtcNow };
+    }
 
     public bool SignalGameStart()
     {
@@ -265,6 +273,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
                     PlayerName = ann.PlayerName,
                     IsHost = ann.IsHost,
                     MaxPlayers = ann.MaxPlayers,
+                    IsReady = ann.IsReady,
                     LastSeen = DateTimeOffset.UtcNow
                 };
             }
@@ -310,6 +319,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
         public bool IsGameStarted { get; init; }
         public int LastWaveStartedIndex { get; init; } = -1;
         public long Timestamp { get; init; }
+        public bool IsReady { get; init; }
         [JsonIgnore] public string SourceIp { get; init; } = "";
     }
 
@@ -320,6 +330,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
         public string PlayerName { get; init; } = "";
         public bool IsHost { get; init; }
         public int MaxPlayers { get; init; }
+        public bool IsReady { get; init; }
         public DateTimeOffset LastSeen { get; set; }
     }
 

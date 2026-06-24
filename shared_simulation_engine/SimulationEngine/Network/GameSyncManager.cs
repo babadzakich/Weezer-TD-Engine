@@ -551,7 +551,7 @@ public sealed class GameSyncManager : IDisposable
 
         var zone = _gm.Map.BuildZones.FirstOrDefault(z => Vector2.Distance(z.Position, tower.Position) < 10f);
         zone?.Free();
-        _gm.TowerController.towers.Remove(tower);
+        _gm.TowerController.RemoveTower(tower);
 
         EnqueueEvent(new TowerRemovedEvent { TowerId = remove.TowerId, ZoneId = remove.ZoneId, Refund = refund });
     }
@@ -577,11 +577,12 @@ public sealed class GameSyncManager : IDisposable
         {
             NetworkId       = upg.TowerId,
             OwnerInstanceId = tower.OwnerInstanceId,
+            UpgradeLevel    = upg.Level,
         };
+        upgraded.ApplyLevelStats();
         SetPlayerBalance(upg.Owner, balance - upg.Cost);
 
-        int idx = _gm.TowerController.towers.IndexOf(tower);
-        if (idx >= 0) _gm.TowerController.towers[idx] = upgraded;
+        _gm.TowerController.ReplaceTower(tower, upgraded);
 
         EnqueueEvent(upg);
     }
@@ -790,10 +791,11 @@ public sealed class GameSyncManager : IDisposable
         {
             NetworkId       = upg.TowerId,
             OwnerInstanceId = tower.OwnerInstanceId,
+            UpgradeLevel    = upg.Level,
         };
+        upgraded.ApplyLevelStats();
 
-        int idx = tc.towers.IndexOf(tower);
-        if (idx >= 0) tc.towers[idx] = upgraded;
+        tc.ReplaceTower(tower, upgraded);
     }
 
     // -----------------------------------------------------------------------

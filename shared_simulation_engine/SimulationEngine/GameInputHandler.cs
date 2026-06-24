@@ -253,7 +253,7 @@ public class GameInputHandler
         }
 
         SyncManager?.RecordTowerRemoved(tower.NetworkId, zoneId, refund);
-        _towerController.towers.Remove(tower);
+        _towerController.RemoveTower(tower);
 
         _uiManager.HideTowerControl();
         _selectedTower = null;
@@ -298,16 +298,13 @@ public class GameInputHandler
         {
             NetworkId       = tower.NetworkId,
             OwnerInstanceId = tower.OwnerInstanceId,
-            Texture         = _towerController.GetTowerTexture(targetDefinition),
+            UpgradeLevel    = tower.UpgradeLevel + 1,
         };
+        upgradedTower.ApplyLevelStats();
 
         _uiManager.Money -= cost;
 
-        int towerIndex = _towerController.towers.IndexOf(tower);
-        if (towerIndex >= 0)
-            _towerController.towers[towerIndex] = upgradedTower;
-        else
-            _towerController.AddTower(upgradedTower);
+        _towerController.ReplaceTower(tower, upgradedTower);
 
         SyncManager?.RecordTowerUpgraded(tower.NetworkId, targetDefinition.Id, tower.UpgradeLevel, tower.UpgradeLevel + 1, cost);
 

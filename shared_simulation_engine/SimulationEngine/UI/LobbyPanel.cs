@@ -76,7 +76,7 @@ public class LobbyPanel
                 IsHost = player.IsHost,
                 Ping = player.Ping,
                 DownloadProgress = 1.0f,
-                IsReady = false
+                IsReady = player.IsReady
             });
         }
 

@@ -19,7 +19,8 @@ public sealed record LocalLobbyPlayerInfo(
     string PlayerName,
     bool IsHost,
     int Ping,
-    int MaxPlayers);
+    int MaxPlayers,
+    bool IsReady = false);
 
 internal sealed record LocalLobbyEntry(
     string InstanceId,
@@ -32,7 +33,8 @@ internal sealed record LocalLobbyEntry(
     DateTimeOffset LastUpdated,
     bool IsGameStarted = false,
     int LastWaveStartedIndex = -1,
-    string? LevelPath = null);
+    string? LevelPath = null,
+    bool IsReady = false);
 
 public sealed class LocalLobbyDiscovery : ILobbyDiscovery, IDisposable
 {
@@ -115,7 +117,8 @@ public sealed class LocalLobbyDiscovery : ILobbyDiscovery, IDisposable
                     entry.PlayerName,
                     entry.IsHost,
                     entry.Ping,
-                    entry.MaxPlayers))
+                    entry.MaxPlayers,
+                    entry.IsReady))
                 .ToArray();
         }
         finally
@@ -234,7 +237,7 @@ public sealed class LocalLobbyDiscovery : ILobbyDiscovery, IDisposable
         {
             var entries = LoadEntries();
             PruneStale(entries);
-            _ownEntry = _ownEntry with { LastUpdated = DateTimeOffset.UtcNow };
+            _ownEntry = _ownEntry with { IsReady = isReady, LastUpdated = DateTimeOffset.UtcNow };
             UpdateOwnEntry(entries, _ownEntry);
             SaveEntries(entries);
         }

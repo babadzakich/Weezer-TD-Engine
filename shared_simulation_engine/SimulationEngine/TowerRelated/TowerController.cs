@@ -58,6 +58,39 @@ public class TowerController : Controller
         towers.Remove(tower);
     }
 
+    public void ReplaceTower(Tower oldTower, Tower newTower)
+    {
+        int idx = towers.IndexOf(oldTower);
+        if (idx >= 0)
+        {
+            towers[idx] = newTower;
+        }
+        else
+        {
+            towers.Add(newTower);
+        }
+
+        if (newTower.NetworkId < 0)
+        {
+            newTower.NetworkId = oldTower.NetworkId;
+        }
+
+        if (oldTower.NetworkId >= 0 && oldTower.NetworkId != newTower.NetworkId)
+        {
+            _towersById.Remove(oldTower.NetworkId);
+        }
+
+        if (newTower.NetworkId >= 0)
+        {
+            _towersById[newTower.NetworkId] = newTower;
+        }
+
+        if (newTower.Texture == null)
+        {
+            newTower.Texture = GetTowerTexture(newTower.Definition);
+        }
+    }
+
     public Microsoft.Xna.Framework.Graphics.Texture2D GetTowerTexture(LevelLoader.TowerDefinition definition)
     {
         if (definition == null) return DefaultTexture;
