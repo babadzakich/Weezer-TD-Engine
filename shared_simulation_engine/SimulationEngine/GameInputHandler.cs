@@ -37,15 +37,23 @@ public class GameInputHandler
 
     public void Update()
     {
+        // If another player claimed our selected build zone, close the panel immediately.
+        if (IsNetworkClient && _selectedBuildZone != null && _selectedBuildZone.IsOccupied)
+        {
+            _uiManager.ShowNotification("Зона уже занята другим игроком!", 3f);
+            _uiManager.HideTowerSelection();
+            _selectedBuildZone = null;
+        }
+
         MouseState mouseState = Mouse.GetState();
         Vector2 mousePos = new Vector2(mouseState.X, mouseState.Y);
-        
+
         // Обрабатываем клики на игровом поле (не на UI)
         if (!_uiManager.IsMouseOverUI(mousePos))
         {
             HandleGameFieldInput(mouseState, mousePos);
         }
-        
+
         _previousMouseState = mouseState;
     }
 
@@ -128,6 +136,21 @@ public class GameInputHandler
 
         if (IsNetworkClient && SyncManager != null)
         {
+            if (string.IsNullOrEmpty(owner))
+            {
+                Console.WriteLine($"[Owner] Client placing tower: LocalPlayerInstanceId is not set, cannot determine owner. Tower placement aborted.");
+                _uiManager.HideTowerSelection();
+                _selectedBuildZone = null;
+                return;
+            }
+            if (_selectedBuildZone.IsOccupied)
+            {
+                Console.WriteLine($"[Owner] Client placing tower ABORTED: zone '{zoneId}' was occupied by another player while build panel was open.");
+                _uiManager.ShowNotification("Зона уже занята другим игроком!", 3f);
+                _uiManager.HideTowerSelection();
+                _selectedBuildZone = null;
+                return;
+            }
             Console.WriteLine($"[Owner] Client placing tower: owner='{owner}' behaviorId='{behaviorId}' LocalPlayerInstanceId='{_uiManager.LocalPlayerInstanceId}'");
             // Client: send placement request to master, don't apply locally
             // Use a temporary negative ID; master will assign the real one

@@ -346,6 +346,12 @@ public sealed class GameSyncManager : IDisposable
     private void ApplyClientTowerPlace(TowerPlacedEvent place)
     {
         Console.WriteLine($"[Owner] HOST ApplyClientTowerPlace: zone='{place.ZoneId}' owner='{place.Owner}' myId='{_gm.UIManager.LocalPlayerInstanceId}'");
+        if (string.IsNullOrEmpty(place.Owner))
+        {
+            Console.WriteLine($"[Owner] Client TowerPlace REJECTED: missing owner InstanceId");
+            EnqueueEvent(new TowerPlaceRejectedEvent { ZoneId = place.ZoneId, RequesterId = place.Owner });
+            return;
+        }
         var zone = _gm.Map.BuildZones.FirstOrDefault(z => z.Id == place.ZoneId);
         if (zone == null)
         {

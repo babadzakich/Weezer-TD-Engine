@@ -222,6 +222,7 @@ public class GameManager
     public void PromoteToHost()
     {
         IsNetworkClient = false;
+        _inputHandler.IsNetworkClient = false;
         UIManager.StartWaveButton.IsEnabled = true;
         Console.WriteLine("[GameManager] Promoted to game master.");
     }

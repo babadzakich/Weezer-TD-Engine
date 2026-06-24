@@ -40,6 +40,8 @@ public class TowerController : Controller
     {
         if (tower.NetworkId < 0)
             tower.NetworkId = _nextNetworkId++;
+        else if (tower.NetworkId >= _nextNetworkId)
+            _nextNetworkId = tower.NetworkId + 1;
         _towersById[tower.NetworkId] = tower;
         if (tower.Texture == null)
             tower.Texture = GetTowerTexture(tower.Definition);
