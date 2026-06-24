@@ -87,6 +87,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
     public string HostLobby(string lobbyName, int maxPlayers, string hostName, int ping = 0, string? levelPath = null)
     {
         string lobbyId = Guid.NewGuid().ToString("N");
+        Console.WriteLine($"[UdpDiscovery] HostLobby: Name={lobbyName}, Host={hostName}, LobbyId={lobbyId}, Instance={_instanceId}");
         _ownAnnouncement = new LobbyAnnouncement
         {
             InstanceId = _instanceId,
@@ -120,6 +121,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
     {
         PruneStale();
         var host = _discovered.Values.FirstOrDefault(a => a.LobbyId == lobbyId && a.IsHost);
+        Console.WriteLine($"[UdpDiscovery] JoinLobby: ID={lobbyId}, Player={playerName}, HostFound={host is not null}");
         if (host is null) return false;
         if (_lobbyPlayers.Values.Count(p => p.LobbyId == lobbyId) >= host.MaxPlayers) return false;
 
@@ -155,6 +157,7 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
     public void LeaveLobby()
     {
         if (_ownAnnouncement is null) return;
+        Console.WriteLine($"[UdpDiscovery] LeaveLobby: LobbyId={_ownAnnouncement.LobbyId}, InstanceId={_instanceId}");
         _lobbyPlayers.TryRemove(_instanceId, out _);
         _ownAnnouncement = null;
     }
@@ -227,8 +230,10 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
 
     private async Task AnnounceLoopAsync(CancellationToken ct)
     {
+        Console.WriteLine("[UdpDiscovery] AnnounceLoopAsync started.");
         var broadcastEp = new IPEndPoint(IPAddress.Broadcast, BroadcastPort);
         var loopbackEp  = new IPEndPoint(IPAddress.Loopback,   BroadcastPort);
+        int logCounter = 0;
         while (!ct.IsCancellationRequested)
         {
             try
@@ -242,6 +247,13 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
                         Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                     };
                     byte[] payload = JsonSerializer.SerializeToUtf8Bytes(_ownAnnouncement, JsonOpts);
+                    
+                    logCounter++;
+                    bool shouldLog = (logCounter % 5 == 1);
+                    if (shouldLog)
+                    {
+                        Console.WriteLine($"[UdpDiscovery] Announcing: Host={_ownAnnouncement.IsHost}, LobbyId={_ownAnnouncement.LobbyId}, Players={count}");
+                    }
                     
                     // 1. Broadcast on all active network interfaces to handle multi-NIC/virtual adapter environments
                     try
@@ -266,14 +278,21 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
                                         broadcastBytes[i] = (byte)(ipBytes[i] | ~maskBytes[i]);
                                     }
                                     var subnetBroadcast = new IPAddress(broadcastBytes);
+                                    if (shouldLog)
+                                    {
+                                        Console.WriteLine($"[UdpDiscovery] Subnet Broadcast: Interface={ni.Name} ({unicast.Address}) -> IP={subnetBroadcast}:{BroadcastPort}");
+                                    }
                                     await _broadcaster.SendAsync(payload, new IPEndPoint(subnetBroadcast, BroadcastPort), ct);
                                 }
                             }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Fallback to standard broad broadcast if NIC scanning fails
+                        if (shouldLog)
+                        {
+                            Console.WriteLine($"[UdpDiscovery] Subnet Broadcast failed: {ex.Message}. Falling back to default broadcast.");
+                        }
                         await _broadcaster.SendAsync(payload, broadcastEp, ct);
                     }
 
@@ -287,6 +306,10 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
                         var ipStr = GetInstanceIp(player.InstanceId);
                         if (!string.IsNullOrEmpty(ipStr) && IPAddress.TryParse(ipStr, out var ip))
                         {
+                            if (shouldLog)
+                            {
+                                Console.WriteLine($"[UdpDiscovery] Direct Unicast to Peer: Name={player.PlayerName} -> IP={ip}:{BroadcastPort}");
+                            }
                             await _broadcaster.SendAsync(payload, new IPEndPoint(ip, BroadcastPort), ct);
                         }
                     }
@@ -294,20 +317,34 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
                 await Task.Delay(AnnounceIntervalMs, ct);
             }
             catch (OperationCanceledException) { break; }
-            catch { /* ignore send errors */ }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UdpDiscovery] Error in AnnounceLoopAsync: {ex.Message}");
+            }
         }
     }
 
     private async Task ReceiveLoopAsync(CancellationToken ct)
     {
+        Console.WriteLine($"[UdpDiscovery] ReceiveLoopAsync listening on port {BroadcastPort}...");
         while (!ct.IsCancellationRequested)
         {
             try
             {
                 var result = await _listener.ReceiveAsync(ct);
                 var json = Encoding.UTF8.GetString(result.Buffer);
+                Console.WriteLine($"[UdpDiscovery] Receive: {result.Buffer.Length} bytes from {result.RemoteEndPoint}");
+
                 var ann = JsonSerializer.Deserialize<LobbyAnnouncement>(json, JsonOpts);
-                if (ann is null || ann.InstanceId == _instanceId) continue;
+                if (ann is null)
+                {
+                    Console.WriteLine("[UdpDiscovery] Receive: Deserialization failed.");
+                    continue;
+                }
+                
+                if (ann.InstanceId == _instanceId) continue;
+
+                Console.WriteLine($"[UdpDiscovery] Receive: Parsed Announcement from {ann.PlayerName} (IsHost={ann.IsHost}, LobbyId={ann.LobbyId}, Ready={ann.IsReady})");
 
                 ann = ann with { SourceIp = result.RemoteEndPoint.Address.ToString() };
                 _discovered[ann.InstanceId] = ann;
@@ -327,7 +364,10 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
             }
             catch (OperationCanceledException) { break; }
             catch (ObjectDisposedException) { break; }
-            catch { /* ignore malformed packets */ }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UdpDiscovery] Receive error: {ex.Message}");
+            }
         }
     }
 
@@ -338,7 +378,10 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
         {
             if (_discoveredLastSeen.TryGetValue(key, out var lastSeen) && lastSeen < cutoff)
             {
-                _discovered.TryRemove(key, out _);
+                if (_discovered.TryRemove(key, out var a))
+                {
+                    Console.WriteLine($"[UdpDiscovery] Pruned stale announcement: Player={a.PlayerName}, InstanceId={key}");
+                }
                 _discoveredLastSeen.TryRemove(key, out _);
                 _lobbyPlayers.TryRemove(key, out _);
             }
@@ -346,7 +389,12 @@ public sealed class UdpLobbyDiscovery : ILobbyDiscovery, IDisposable
         foreach (var key in _lobbyPlayers.Keys.ToArray())
         {
             if (_lobbyPlayers.TryGetValue(key, out var p) && p.LastSeen < cutoff)
-                _lobbyPlayers.TryRemove(key, out _);
+            {
+                if (_lobbyPlayers.TryRemove(key, out _))
+                {
+                    Console.WriteLine($"[UdpDiscovery] Pruned stale player: Player={p.PlayerName}, InstanceId={key}");
+                }
+            }
         }
     }
 
