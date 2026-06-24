@@ -54,7 +54,6 @@ public sealed class RaftGameNode : IDisposable
 
     private static readonly JsonSerializerOptions JsonOpts = ConsensusJson.Options;
 
-    private static readonly IPEndPoint BroadcastEp = new(IPAddress.Broadcast, ConsensusPort);
     private static readonly IPEndPoint LoopbackEp  = new(IPAddress.Loopback,  ConsensusPort);
 
     // -----------------------------------------------------------------------
@@ -612,39 +611,12 @@ public sealed class RaftGameNode : IDisposable
     private async Task BroadcastAsync(ConsensusPacket packet, CancellationToken ct)
     {
         var data = JsonSerializer.SerializeToUtf8Bytes(packet, JsonOpts);
-        
-        // 1. Broadcast on all active network interfaces to handle multi-NIC/virtual adapter environments
-        try
-        {
-            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
-                if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
 
-                var props = ni.GetIPProperties();
-                foreach (var unicast in props.UnicastAddresses)
-                {
-                    if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
-                    {
-                        var ipBytes = unicast.Address.GetAddressBytes();
-                        var maskBytes = unicast.IPv4Mask?.GetAddressBytes();
-                        if (maskBytes == null || maskBytes.Length != 4) continue;
-
-                        var broadcastBytes = new byte[4];
-                        for (int i = 0; i < 4; i++)
-                        {
-                            broadcastBytes[i] = (byte)(ipBytes[i] | ~maskBytes[i]);
-                        }
-                        var subnetBroadcast = new IPAddress(broadcastBytes);
-                        await _udp!.SendAsync(data, new IPEndPoint(subnetBroadcast, ConsensusPort), ct);
-                    }
-                }
-            }
-        }
-        catch
+        // 1. Broadcast on all active network interfaces (multi-NIC/virtual adapter envs).
+        //    Targets are cached (see BroadcastTargets) — enumerating NICs per send is expensive on Windows.
+        foreach (var subnetBroadcast in BroadcastTargets.Get())
         {
-            // Fallback to standard broad broadcast
-            try { await _udp!.SendAsync(data, BroadcastEp, ct); } catch { }
+            try { await _udp!.SendAsync(data, new IPEndPoint(subnetBroadcast, ConsensusPort), ct); } catch { }
         }
 
         // 2. Local loopback broadcast (same-machine)

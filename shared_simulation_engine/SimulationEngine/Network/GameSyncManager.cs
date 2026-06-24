@@ -236,39 +236,11 @@ public sealed class GameSyncManager : IDisposable
     {
         if (_broadcaster == null) return;
 
-        // 1. Broadcast on all active network interfaces to handle multi-NIC/virtual adapter environments
-        try
+        // 1. Broadcast on all active network interfaces (multi-NIC/virtual adapter envs).
+        //    Targets are cached — enumerating NICs per tick tanks the host to ~1 FPS on Windows.
+        foreach (var subnetBroadcast in BroadcastTargets.Get())
         {
-            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
-                if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
-
-                var props = ni.GetIPProperties();
-                foreach (var unicast in props.UnicastAddresses)
-                {
-                    if (unicast.Address.AddressFamily == AddressFamily.InterNetwork)
-                    {
-                        var ipBytes = unicast.Address.GetAddressBytes();
-                        var maskBytes = unicast.IPv4Mask?.GetAddressBytes();
-                        if (maskBytes == null || maskBytes.Length != 4) continue;
-
-                        var broadcastBytes = new byte[4];
-                        for (int i = 0; i < 4; i++)
-                        {
-                            broadcastBytes[i] = (byte)(ipBytes[i] | ~maskBytes[i]);
-                        }
-                        var subnetBroadcast = new IPAddress(broadcastBytes);
-                        _broadcaster.Send(payload, new IPEndPoint(subnetBroadcast, StateBroadcastPort));
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // Fallback to standard broad broadcast
-            var broadcastEp = new IPEndPoint(IPAddress.Broadcast, StateBroadcastPort);
-            try { _broadcaster.Send(payload, broadcastEp); } catch { }
+            try { _broadcaster.Send(payload, new IPEndPoint(subnetBroadcast, StateBroadcastPort)); } catch { }
         }
 
         // 2. Local loopback broadcast (same-machine)
