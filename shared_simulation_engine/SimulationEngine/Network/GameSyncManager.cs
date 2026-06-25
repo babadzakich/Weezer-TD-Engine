@@ -143,14 +143,23 @@ public sealed class GameSyncManager : IDisposable
 
     public void StartAsHost()
     {
-        _broadcaster = new UdpClient { EnableBroadcast = true };
-
-        _requestReceiver = new UdpClient();
-        _requestReceiver.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        _requestReceiver.Client.Bind(new IPEndPoint(IPAddress.Any, RequestPort));
-
         SubscribeToGameEvents();
-        _ = Task.Run(() => ReceiveRequestsLoopAsync(_cts.Token), _cts.Token);
+
+        if (ProxyLink.Enabled)
+        {
+            // Proxy mode: no LAN sockets — state/requests ride the proxy channels.
+            EnsureProxySubscriptions();
+        }
+        else
+        {
+            _broadcaster = new UdpClient { EnableBroadcast = true };
+
+            _requestReceiver = new UdpClient();
+            _requestReceiver.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            _requestReceiver.Client.Bind(new IPEndPoint(IPAddress.Any, RequestPort));
+
+            _ = Task.Run(() => ReceiveRequestsLoopAsync(_cts.Token), _cts.Token);
+        }
 
         if (_raftNode != null)
         {
@@ -164,23 +173,69 @@ public sealed class GameSyncManager : IDisposable
     {
         _hostEndpoint = new IPEndPoint(IPAddress.Parse(hostIp), RequestPort);
 
-        _stateReceiver = new UdpClient();
-        _stateReceiver.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        _stateReceiver.Client.Bind(new IPEndPoint(IPAddress.Any, StateBroadcastPort));
-        _stateReceiver.EnableBroadcast = true;
+        if (ProxyLink.Enabled)
+        {
+            // Proxy mode: no LAN sockets — state arrives on, and requests go out via, the proxy.
+            EnsureProxySubscriptions();
+        }
+        else
+        {
+            _stateReceiver = new UdpClient();
+            _stateReceiver.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            _stateReceiver.Client.Bind(new IPEndPoint(IPAddress.Any, StateBroadcastPort));
+            _stateReceiver.EnableBroadcast = true;
 
-        _requester = new UdpClient();
+            _requester = new UdpClient();
 
-        _ = Task.Run(() => ReceiveStateLoopAsync(_cts.Token), _cts.Token);
+            _ = Task.Run(() => ReceiveStateLoopAsync(_cts.Token), _cts.Token);
+        }
+
         SendHello();
 
         _raftNode?.Start();
+    }
+
+    // -----------------------------------------------------------------------
+    // Proxy-mode channel subscriptions (state + requests). Idempotent.
+    // -----------------------------------------------------------------------
+
+    private bool _proxySubscribed;
+
+    private void EnsureProxySubscriptions()
+    {
+        if (_proxySubscribed || !ProxyLink.Enabled) return;
+        _proxySubscribed = true;
+
+        // Both roles subscribe to both channels and gate by mode, so promote/demote
+        // needs no socket juggling — only the _isHostMode flag flips.
+        ProxyLink.Instance!.Subscribe(ProxyLink.ChannelState,   OnProxyStateBytes);
+        ProxyLink.Instance!.Subscribe(ProxyLink.ChannelRequest, OnProxyRequestBytes);
+    }
+
+    private void OnProxyStateBytes(byte[] data)
+    {
+        if (_isHostMode) return; // the host produces state, never consumes it
+        var delta = FrameDeltaSerializer.Deserialize(data);
+        if (delta != null && delta.Seq > 0)
+        {
+            _incomingDeltas.Enqueue(delta);
+            _raftNode?.NotifyMasterAlive();
+        }
+    }
+
+    private void OnProxyRequestBytes(byte[] data)
+    {
+        if (!_isHostMode) return; // only the host processes client requests
+        var delta = FrameDeltaSerializer.Deserialize(data);
+        if (delta == null || delta.Seq == HelloSeq || delta.Seq != RequestSeq) return;
+        _pendingClientRequests.Enqueue(delta);
     }
 
     private void SendHello()
     {
         var hello = new FrameDelta { Seq = HelloSeq };
         byte[] data = FrameDeltaSerializer.Serialize(hello);
+        if (ProxyLink.Enabled) { ProxyLink.Instance!.Send(ProxyLink.ChannelRequest, data); return; }
         try { _requester?.Send(data, _hostEndpoint); } catch { }
     }
 
@@ -190,7 +245,8 @@ public sealed class GameSyncManager : IDisposable
 
     public void BroadcastTick(GameTime gameTime)
     {
-        if (!_isHostMode || _broadcaster == null) return;
+        if (!_isHostMode) return;
+        if (_broadcaster == null && !ProxyLink.Enabled) return;
 
         ProcessPendingClientRequests();
 
@@ -851,10 +907,13 @@ public sealed class GameSyncManager : IDisposable
 
     private void SendRequest(GameEvent evt)
     {
-        if (_requester == null || _hostEndpoint == null) return;
         var delta = new FrameDelta { Seq = RequestSeq, Events = [evt] };
         byte[] data = FrameDeltaSerializer.Serialize(delta);
         Console.WriteLine($"[Owner] CLIENT SendRequest JSON: {System.Text.Encoding.UTF8.GetString(data)}");
+
+        if (ProxyLink.Enabled) { ProxyLink.Instance!.Send(ProxyLink.ChannelRequest, data); return; }
+
+        if (_requester == null || _hostEndpoint == null) return;
         try { _requester.Send(data, _hostEndpoint); } catch { }
     }
 
@@ -903,6 +962,17 @@ public sealed class GameSyncManager : IDisposable
         if (_raftPromotion) return;
         _raftPromotion = true;
 
+        if (ProxyLink.Enabled)
+        {
+            // Proxy mode: nothing to rebind — just flip role; channel handlers gate by _isHostMode.
+            EnsureProxySubscriptions();
+            SubscribeToGameEvents();
+            _isHostMode = true;
+            _gm.PromoteToHost();
+            Console.WriteLine("[GameSync] Promoted to game master (proxy).");
+            return;
+        }
+
         // Close client-only sockets
         _stateReceiver?.Dispose();
         _stateReceiver = null;
@@ -946,6 +1016,16 @@ public sealed class GameSyncManager : IDisposable
         // Flip the mode flag first so BroadcastTick stops sending immediately.
         _isHostMode = false;
         _raftPromotion = false; // allow a future re-promotion if leadership comes back
+
+        if (ProxyLink.Enabled)
+        {
+            // Proxy mode: no sockets to swap — channel handlers gate by _isHostMode.
+            EnsureProxySubscriptions();
+            try { _hostEndpoint = new IPEndPoint(IPAddress.Parse(hostIp), RequestPort); } catch { }
+            _gm.DemoteToClient();
+            Console.WriteLine("[GameSync] Demoted to client (proxy).");
+            return;
+        }
 
         // Close host-only sockets (their receive loops exit on dispose).
         try { _broadcaster?.Dispose(); } catch { }

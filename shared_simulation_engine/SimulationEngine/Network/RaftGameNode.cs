@@ -112,14 +112,31 @@ public sealed class RaftGameNode : IDisposable
 
     public void Start()
     {
-        _udp = new UdpClient();
-        _udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        _udp.Client.Bind(new IPEndPoint(IPAddress.Any, ConsensusPort));
-        _udp.EnableBroadcast = true;
+        if (ProxyLink.Enabled)
+        {
+            // All consensus traffic rides the proxy "raft" channel; no LAN socket needed.
+            ProxyLink.Instance!.Subscribe(ProxyLink.ChannelRaft, OnRaftProxyBytes);
+        }
+        else
+        {
+            _udp = new UdpClient();
+            _udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            _udp.Client.Bind(new IPEndPoint(IPAddress.Any, ConsensusPort));
+            _udp.EnableBroadcast = true;
 
-        _ = Task.Run(() => ReceiveLoopAsync(_cts.Token), _cts.Token);
+            _ = Task.Run(() => ReceiveLoopAsync(_cts.Token), _cts.Token);
+        }
+
         _ = Task.Run(() => RunElectionTimerAsync(_cts.Token), _cts.Token);
         _ = Task.Run(() => AnnounceLoopAsync(_cts.Token), _cts.Token);
+    }
+
+    private void OnRaftProxyBytes(byte[] data)
+    {
+        ConsensusPacket? packet;
+        try { packet = JsonSerializer.Deserialize<ConsensusPacket>(data, JsonOpts); }
+        catch { return; }
+        _ = ProcessPacketAsync(packet, "proxy", _cts.Token);
     }
 
     /// <summary>
@@ -194,10 +211,21 @@ public sealed class RaftGameNode : IDisposable
         try { packet = JsonSerializer.Deserialize<ConsensusPacket>(result.Buffer, JsonOpts); }
         catch { return; }
 
+        await ProcessPacketAsync(packet, result.RemoteEndPoint.Address.ToString(), ct);
+    }
+
+    /// <summary>
+    /// Handles one already-deserialized consensus packet, regardless of how it arrived
+    /// (direct UDP or via the proxy). <paramref name="senderIp"/> is recorded for the
+    /// dynamic peer map and unicast fallback (it is "proxy" / unused in proxy mode —
+    /// routing then relies on the instanceIds inside the packet).
+    /// </summary>
+    private async Task ProcessPacketAsync(ConsensusPacket? packet, string senderIp, CancellationToken ct)
+    {
         if (packet is null || packet.From == _myId) return;
 
         // Always learn the sender's actual IP so peer discovery is dynamic.
-        _peerIdToIp[packet.From] = result.RemoteEndPoint.Address.ToString();
+        _peerIdToIp[packet.From] = senderIp;
 
         // Responses are matched by requestId regardless of TargetId.
         if (_pending.TryRemove(packet.RequestId, out var tcs))
@@ -611,6 +639,14 @@ public sealed class RaftGameNode : IDisposable
     private async Task BroadcastAsync(ConsensusPacket packet, CancellationToken ct)
     {
         var data = JsonSerializer.SerializeToUtf8Bytes(packet, JsonOpts);
+
+        // Proxy mode: hand the packet to the proxy "raft" channel and stop. The proxy
+        // fans it out to every other node; routing within Raft still uses instanceIds.
+        if (ProxyLink.Enabled)
+        {
+            ProxyLink.Instance!.Send(ProxyLink.ChannelRaft, data);
+            return;
+        }
 
         // 1. Broadcast on all active network interfaces (multi-NIC/virtual adapter envs).
         //    Targets are cached (see BroadcastTargets) — enumerating NICs per send is expensive on Windows.
